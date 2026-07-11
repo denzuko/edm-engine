@@ -1,3 +1,5 @@
 *.fasl
 .qlot/
 .cache/
+**/shaders/*.fs
+**/shaders/*.vs

@@ -51,7 +51,10 @@ until this smoke test actually ran the code.
 
 ## Regenerating shaders from c-mera source
 
-`shaders/*.fs`/`*.vs` are generated output, not hand-edited. The source
+`shaders/*.fs`/`*.vs` are generated output, not hand-edited, and are
+gitignored — they don't ship in the repo. Running `tools/build-shaders.lisp`
+is a required step before the arcade will load, not an optional
+regeneration. The source
 of truth is `shaders/*.fs.lisp`/`*.vs.lisp` — c-mera GLSL S-expressions,
 so state-to-color mappings and other shader logic get the same macro
 system as the rest of the engine, not raw string-templated GLSL.

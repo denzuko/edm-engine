@@ -196,3 +196,56 @@
       (is (string= (wordle-game-answer game) (wordle-game-answer restored)))
       (is (equalp (wordle-game-history game) (wordle-game-history restored)))
       (is (eq (wordle-game-status game) (wordle-game-status restored))))))
+
+;; --- Full win/lose/fail audit (per explicit request) ---
+;;
+;; WIN:  guess exactly matches answer, at any row up to and including
+;;       the last — covered above (submit-guess-wins-when-guess-matches-
+;;       answer, winning-on-the-final-row-resolves-to-won-not-lost).
+;; LOSE: max-rows guesses exhausted without a match — covered above
+;;       (submit-guess-loses-after-max-rows-without-winning, losing-
+;;       exactly-at-the-final-row-resolves-to-lost).
+;; TIE:  GAME-OUTCOME supports :TIE generically for future tables, but
+;;       Wordle itself has no tie condition — asserted below as an
+;;       explicit negative, not just an absence of a positive test.
+;; FAIL (rejected action, not game-ending):
+;;   - wrong-length guess           (submit-guess-errors-on-wrong-length)
+;;   - guess not in corpus          (submit-guess-signals-invalid-word-*,
+;;                                    try-submit-returns-rejected-*)
+;;   - submit after game finished   (submit-guess-errors-once-game-is-
+;;                                    finished, finished-game-ignores-*)
+;;   - incomplete input submitted   (try-submit-returns-not-ready-*)
+;;   - typing past answer length    (push-letter-stops-at-answer-length)
+;;   - typing a non-letter          (push-letter-ignores-non-alpha)
+;;   - backspace on empty input     (pop-letter-no-op-when-empty)
+;;   - typing after game finished   (push-letter-ignores-when-game-
+;;                                    finished, finished-game-ignores-*)
+
+(test wordle-never-produces-a-tie-outcome
+  "GAME-OUTCOME is generic and supports :TIE for future tables, but
+Wordle has no tie condition — win, lose, or still playing only."
+  (let ((won (make-wordle-game "CRANE" :max-rows 1 :corpus '("CRANE")))
+        (lost (make-wordle-game "CRANE" :max-rows 1 :corpus '("CRANE" "STEED")))
+        (playing (make-wordle-game "CRANE")))
+    (submit-guess won "CRANE")
+    (submit-guess lost "STEED")
+    (dolist (g (list won lost playing))
+      (is (member (edm-engine:game-outcome g) '(nil :win :lose))))))
+
+(test game-score-exact-value-winning-on-first-guess
+  (let ((game (make-wordle-game "CRANE" :max-rows 6 :corpus '("CRANE"))))
+    (submit-guess game "CRANE")
+    (is (= 600 (edm-engine:game-score game)))))
+
+(test game-score-exact-value-winning-on-final-guess
+  (let ((game (make-wordle-game "CRANE" :max-rows 1 :corpus '("CRANE"))))
+    (submit-guess game "CRANE")
+    (is (= 100 (edm-engine:game-score game)))))
+
+;; abandoning a game before any outcome must not award points — a
+;; player leaving mid-game isn't a win, and shouldn't silently bank one
+(test game-score-zero-for-an-abandoned-in-progress-game
+  (let ((game (make-wordle-game "CRANE" :corpus '("CRANE" "STEED"))))
+    (submit-guess game "STEED")
+    (is (eq :playing (wordle-game-status game)))
+    (is (= 0 (edm-engine:game-score game)))))
