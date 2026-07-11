@@ -10,11 +10,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: configure meta.* git config
+        run: |
+          git config meta.application edm-engine
+          git config meta.role game-engine-core
+          git config meta.version 0.1.0
+          git config meta.branch main
       - uses: denzuko/dps-meta@v1
         with:
           type: lisp-actor
-        # reads git config meta.* keys (meta.org, meta.project, meta.namespace,
-        # meta.license, meta.owner) committed to this repo; scaffolds
+        # reads git config meta.* keys committed above; scaffolds
         # org.cispec.* CMDB identity headers + governance files.
 
   gate:
