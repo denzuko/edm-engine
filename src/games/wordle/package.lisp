@@ -6,7 +6,8 @@
    #:wordle-game #:make-wordle-game #:submit-guess #:rows-for-render
    #:wordle-game-answer #:wordle-game-history #:wordle-game-max-rows
    #:wordle-game-status #:wordle-game-input #:wordle-game-pulse
-   #:push-letter #:pop-letter #:try-submit #:tick-pulse #:+pulse-max+))
+   #:push-letter #:pop-letter #:try-submit #:tick-pulse #:+pulse-max+
+   #:valid-word-p #:invalid-word #:invalid-word-guess #:wordle-restore-game))
 (in-package :edm-engine/games/wordle)
 
 (declaim (optimize (speed 3) (safety 3)))

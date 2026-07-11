@@ -120,13 +120,13 @@ triggers are untested I/O."
       (edm-engine/audio:play-tone :square 400.0 0.05))
     (pop-letter game))
   (when (raylib:is-key-pressed :key-enter)
-    (let ((history-count (length (wordle-game-history game))))
-      (try-submit game)
-      (when (> (length (wordle-game-history game)) history-count)
-        (ecase (wordle-game-status game)
-          (:won (edm-engine/audio:play-tone :sine 1200.0 0.4))
-          (:lost (edm-engine/audio:play-tone :sine 150.0 0.5))
-          (:playing (edm-engine/audio:play-tone :sine 600.0 0.08))))))
+    (case (try-submit game)
+      (:submitted
+       (ecase (wordle-game-status game)
+         (:won (edm-engine/audio:play-tone :sine 1200.0 0.4))
+         (:lost (edm-engine/audio:play-tone :sine 150.0 0.5))
+         (:playing (edm-engine/audio:play-tone :sine 600.0 0.08))))
+      (:rejected (edm-engine/audio:play-tone :square 200.0 0.15))))
   (tick-pulse game))
 
 (defmethod edm-engine:game-render ((game wordle-game) window-width window-height)
@@ -141,4 +141,5 @@ triggers are untested I/O."
 
 (edm-engine:register-game
  "Wordle"
- (lambda () (make-wordle-game (nth (random (length *corpus*)) *corpus*))))
+ (lambda () (make-wordle-game (nth (random (length *corpus*)) *corpus*)))
+ :restore-fn #'wordle-restore-game)

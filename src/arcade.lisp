@@ -11,7 +11,11 @@
   (table-index 0 :type fixnum)
   (current-game nil)
   (current-table-title nil)
-  (ruleset-handle nil))
+  (ruleset-handle nil)
+  (total-score 0 :type fixnum)
+  (volume 1.0 :type single-float)
+  (popup-open nil :type boolean)
+  (popup-index 0 :type fixnum))
 
 ;;; Top-level main menu: Tables / Engine Options / Save-Load
 
@@ -33,6 +37,17 @@
 (defun arcade-back-to-main-menu (state)
   (setf (arcade-state-mode state) :main-menu))
 
+;;; Engine Options — real, minimal: master volume
+
+(declaim (ftype (function (single-float) single-float) clamp-volume))
+(defun clamp-volume (v) (max 0.0 (min 1.0 v)))
+
+(defun arcade-increase-volume (state)
+  (setf (arcade-state-volume state) (clamp-volume (+ (arcade-state-volume state) 0.1))))
+
+(defun arcade-decrease-volume (state)
+  (setf (arcade-state-volume state) (clamp-volume (- (arcade-state-volume state) 0.1))))
+
 ;;; Tables (game selection)
 
 (defun arcade-select-next-table (state)
@@ -52,14 +67,44 @@
         (setf (arcade-state-current-game state) game
               (arcade-state-current-table-title state) (game-entry-title entry)
               (arcade-state-ruleset-handle state) (ruleset-load game)
-              (arcade-state-mode state) :playing)))))
+              (arcade-state-mode state) :playing
+              (arcade-state-popup-open state) nil
+              (arcade-state-popup-index state) 0)))))
 
-;;; Playing: restart, return to table select
+;;; Playing: pause/outcome popup, scoring, save, restart, return to table select
+
+(defun arcade-popup-items (game)
+  "RESUME is only offered while GAME is still in progress — nothing to
+resume once it's over."
+  (if (game-outcome game)
+      '("New Game" "Save State" "Return to Tables")
+      '("Resume" "New Game" "Save State" "Return to Tables")))
+
+(defun arcade-open-popup (state)
+  (setf (arcade-state-popup-open state) t
+        (arcade-state-popup-index state) 0))
+
+(defun arcade-popup-next (state)
+  (let ((n (length (arcade-popup-items (arcade-state-current-game state)))))
+    (setf (arcade-state-popup-index state) (mod (1+ (arcade-state-popup-index state)) n))))
+
+(defun arcade-popup-previous (state)
+  (let ((n (length (arcade-popup-items (arcade-state-current-game state)))))
+    (setf (arcade-state-popup-index state) (mod (1- (arcade-state-popup-index state)) n))))
+
+(defun arcade-bank-score (state)
+  "Adds the current game's score to the running total. Safe to call
+unconditionally — GAME-SCORE's default is 0, and a game that hasn't
+concluded yet also scores 0, so this never double-counts or counts
+early; it only ever adds something on a genuine win."
+  (when (arcade-state-current-game state)
+    (incf (arcade-state-total-score state) (game-score (arcade-state-current-game state)))))
 
 (defun arcade-restart-current (state)
   "Relaunches the table STATE was already playing — looked up by the
 title recorded at launch, not by calling GAME-TITLE on the (possibly
 finished, possibly a test double) current instance."
+  (arcade-bank-score state)
   (let ((entry (find (arcade-state-current-table-title state) *games*
                       :key #'game-entry-title :test #'string=)))
     (when entry
@@ -67,11 +112,62 @@ finished, possibly a test double) current instance."
       (let ((game (funcall (game-entry-constructor entry))))
         (setf (arcade-state-current-game state) game
               (arcade-state-ruleset-handle state) (ruleset-load game)
-              (arcade-state-mode state) :playing)))))
+              (arcade-state-mode state) :playing
+              (arcade-state-popup-open state) nil
+              (arcade-state-popup-index state) 0)))))
 
 (defun arcade-return-to-table-select (state)
+  (arcade-bank-score state)
   (ruleset-unload (arcade-state-current-game state) (arcade-state-ruleset-handle state))
   (setf (arcade-state-current-game state) nil
         (arcade-state-current-table-title state) nil
         (arcade-state-ruleset-handle state) nil
-        (arcade-state-mode state) :tables))
+        (arcade-state-mode state) :tables
+        (arcade-state-popup-open state) nil
+        (arcade-state-popup-index state) 0))
+
+(defun arcade-save-current (state &optional (path *default-save-path*))
+  "Saves the in-progress table to disk, then returns to table select —
+mirrors a standard 'save & quit', and avoids needing extra UI state to
+show a lingering confirmation message."
+  (when (arcade-state-current-game state)
+    (save-game-to-file (arcade-state-current-table-title state)
+                        (arcade-state-current-game state)
+                        (arcade-state-total-score state)
+                        path))
+  (arcade-return-to-table-select state))
+
+(defun arcade-popup-confirm (state &optional (save-path *default-save-path*))
+  "Dispatches on the highlighted popup item's TEXT, not a raw index —
+RESUME only exists in the in-progress variant of ARCADE-POPUP-ITEMS, so
+indexing by position alone would pick the wrong action once the two
+variants' lengths differ."
+  (let* ((game (arcade-state-current-game state))
+         (item (nth (arcade-state-popup-index state) (arcade-popup-items game))))
+    (cond
+      ((string= item "Resume") (setf (arcade-state-popup-open state) nil))
+      ((string= item "New Game") (arcade-restart-current state))
+      ((string= item "Save State") (arcade-save-current state save-path))
+      ((string= item "Return to Tables") (arcade-return-to-table-select state)))))
+
+;;; Save/Load main-menu screen
+
+(defun arcade-load-saved-game (state &optional (path *default-save-path*))
+  "Loads PATH's save file and resumes play. Returns T on success, NIL if
+there's no save, or the saved table no longer supports RESTORE-FN
+(dropped that support, or was never registered — a stale save from a
+build that no longer matches this one)."
+  (multiple-value-bind (title score data) (load-game-from-file path)
+    (when title
+      (let ((entry (find title *games* :key #'game-entry-title :test #'string=)))
+        (when (and entry (game-entry-restore-fn entry))
+          (ruleset-unload (arcade-state-current-game state) (arcade-state-ruleset-handle state))
+          (let ((game (funcall (game-entry-restore-fn entry) data)))
+            (setf (arcade-state-current-game state) game
+                  (arcade-state-current-table-title state) title
+                  (arcade-state-total-score state) (or score 0)
+                  (arcade-state-ruleset-handle state) (ruleset-load game)
+                  (arcade-state-mode state) :playing
+                  (arcade-state-popup-open state) nil
+                  (arcade-state-popup-index state) 0)
+            t))))))

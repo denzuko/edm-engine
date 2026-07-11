@@ -125,3 +125,74 @@
     (is (= 0 (fill-pointer (wordle-game-input game))))
     (try-submit game)
     (is (= 1 (length (wordle-game-history game))))))
+
+;; corpus/dictionary validation — a guess must be a real word, not just
+;; the right length. Flagged as untested: previously ANY 5-letter string
+;; was accepted.
+(test valid-word-p-true-for-corpus-member
+  (is (valid-word-p "CRANE" '("CRANE" "TRAIN"))))
+
+(test valid-word-p-false-for-non-member
+  (is (not (valid-word-p "ZZZZZ" '("CRANE" "TRAIN")))))
+
+(test valid-word-p-case-insensitive
+  (is (valid-word-p "crane" '("CRANE" "TRAIN"))))
+
+(test submit-guess-signals-invalid-word-for-non-corpus-guess
+  (let ((game (make-wordle-game "CRANE" :corpus '("CRANE" "TRAIN"))))
+    (signals invalid-word (submit-guess game "ZZZZZ"))))
+
+(test submit-guess-does-not-mutate-state-on-invalid-word
+  (let ((game (make-wordle-game "CRANE" :corpus '("CRANE" "TRAIN"))))
+    (handler-case (submit-guess game "ZZZZZ") (invalid-word ()))
+    (is (= 0 (length (wordle-game-history game))))
+    (is (eq :playing (wordle-game-status game)))))
+
+(test try-submit-returns-rejected-and-keeps-input-on-invalid-word
+  (let ((game (make-wordle-game "CRANE" :corpus '("CRANE" "TRAIN"))))
+    (loop for ch across "ZZZZZ" do (push-letter game ch))
+    (is (eq :rejected (try-submit game)))
+    (is (= 5 (fill-pointer (wordle-game-input game))))
+    (is (= 0 (length (wordle-game-history game))))))
+
+(test try-submit-returns-submitted-on-valid-word
+  (let ((game (make-wordle-game "CRANE" :corpus '("CRANE" "TRAIN"))))
+    (loop for ch across "TRAIN" do (push-letter game ch))
+    (is (eq :submitted (try-submit game)))))
+
+(test try-submit-returns-not-ready-when-input-incomplete
+  (let ((game (make-wordle-game "CRANE")))
+    (push-letter game #\C)
+    (is (eq :not-ready (try-submit game)))))
+
+;; scoring
+(test game-score-zero-while-playing
+  (let ((game (make-wordle-game "CRANE" :corpus '("CRANE"))))
+    (is (= 0 (edm-engine:game-score game)))))
+
+(test game-score-zero-on-loss
+  (let ((game (make-wordle-game "CRANE" :max-rows 1 :corpus '("CRANE" "STEED"))))
+    (submit-guess game "STEED")
+    (is (eq :lost (wordle-game-status game)))
+    (is (= 0 (edm-engine:game-score game)))))
+
+(test game-score-rewards-fewer-guesses
+  (let ((fast (make-wordle-game "CRANE" :max-rows 6 :corpus '("CRANE" "STEED" "TRAIN" "SPARE")))
+        (slow (make-wordle-game "CRANE" :max-rows 6 :corpus '("CRANE" "STEED" "TRAIN" "SPARE"))))
+    (submit-guess fast "CRANE")
+    (submit-guess slow "STEED")
+    (submit-guess slow "TRAIN")
+    (submit-guess slow "SPARE")
+    (submit-guess slow "CRANE")
+    (is (> (edm-engine:game-score fast) (edm-engine:game-score slow)))
+    (is (> (edm-engine:game-score slow) 0))))
+
+;; save/restore round trip
+(test game-save-data-round-trips-through-wordle-restore-game
+  (let ((game (make-wordle-game "CRANE" :corpus '("CRANE" "STEED"))))
+    (submit-guess game "STEED")
+    (let* ((saved (edm-engine:game-save-data game))
+           (restored (wordle-restore-game saved)))
+      (is (string= (wordle-game-answer game) (wordle-game-answer restored)))
+      (is (equalp (wordle-game-history game) (wordle-game-history restored)))
+      (is (eq (wordle-game-status game) (wordle-game-status restored))))))

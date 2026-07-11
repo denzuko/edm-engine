@@ -14,10 +14,13 @@
    ;; ruleset
    #:ruleset-load #:ruleset-unload
    ;; game protocol
-   #:game-title #:game-update #:game-render #:game-outcome
-   #:game-entry #:game-entry-title #:game-entry-constructor #:*games* #:register-game
+   #:game-title #:game-update #:game-render #:game-outcome #:game-score #:game-save-data
+   #:game-entry #:game-entry-title #:game-entry-constructor #:game-entry-restore-fn
+   #:*games* #:register-game
    ;; tick
    #:tick #:make-tick #:tick-frame #:advance-tick #:ensure-kernel
+   ;; save/load
+   #:*default-save-path* #:save-game-to-file #:load-game-from-file
    ;; render (defined in edm-engine/render; declared here so main can call them)
    #:open-window #:close-window #:window-should-close-p #:draw-arena
    ;; arcade state machine (pure; the raylib update/render loop lives in
@@ -26,10 +29,15 @@
    #:arcade-state #:make-arcade-state
    #:arcade-state-mode #:arcade-state-main-menu-index #:arcade-state-table-index
    #:arcade-state-current-game #:arcade-state-current-table-title #:arcade-state-ruleset-handle
+   #:arcade-state-total-score #:arcade-state-volume
+   #:arcade-state-popup-open #:arcade-state-popup-index
    #:arcade-select-next-main-menu #:arcade-select-previous-main-menu
    #:arcade-drill-into-main-menu-selection #:arcade-back-to-main-menu
+   #:clamp-volume #:arcade-increase-volume #:arcade-decrease-volume
    #:arcade-select-next-table #:arcade-select-previous-table
    #:arcade-launch-selected #:arcade-restart-current #:arcade-return-to-table-select
+   #:arcade-popup-items #:arcade-open-popup #:arcade-popup-next #:arcade-popup-previous
+   #:arcade-popup-confirm #:arcade-bank-score #:arcade-save-current #:arcade-load-saved-game
    ;; arcade entry point (defined in the primary edm-engine system)
    #:main))
 

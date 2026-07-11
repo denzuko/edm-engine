@@ -25,3 +25,22 @@
 
 (test game-outcome-default-method-is-nil
   (is (null (game-outcome :some-arbitrary-game))))
+
+(test save-and-load-game-round-trips
+  (let ((path (merge-pathnames (format nil "edm-engine-test-~A.sexp" (random 1000000))
+                                (uiop:temporary-directory))))
+    (unwind-protect
+         (progn
+           (save-game-to-file "Wordle" :fake-game-instance 340 path)
+           (multiple-value-bind (title score data) (load-game-from-file path)
+             (is (string= "Wordle" title))
+             (is (= 340 score))
+             ;; GAME-SAVE-DATA's default method is NIL for anything
+             ;; without a specialized method, like this plain keyword
+             (is (null data))))
+      (when (probe-file path) (delete-file path)))))
+
+(test load-game-from-file-returns-nil-for-a-missing-path
+  (let ((path (merge-pathnames "edm-engine-definitely-does-not-exist.sexp"
+                                (uiop:temporary-directory))))
+    (is (null (load-game-from-file path)))))
