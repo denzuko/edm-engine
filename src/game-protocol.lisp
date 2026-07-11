@@ -15,6 +15,13 @@ untested I/O, same boundary as RENDER.LISP."))
   (:documentation "Called once per frame after GAME-UPDATE. Draws GAME's
 current state. No logic — GAME-UPDATE already decided what state to draw."))
 
+(defgeneric game-outcome (game)
+  (:documentation "NIL while GAME is still in progress, or one of
+:WIN/:LOSE/:TIE once it's over. The arcade shell uses this — not any
+per-game code — to trigger the outcome overlay and restart prompt, so
+every table gets that feedback for free by implementing this method.")
+  (:method (game) (declare (ignore game)) nil))
+
 (defstruct game-entry
   "One arcade menu entry. CONSTRUCTOR takes no args and returns a fresh
 game instance — called on selection, not at registration, so games with

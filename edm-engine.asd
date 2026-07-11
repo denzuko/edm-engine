@@ -12,6 +12,7 @@
                (:file "src/arena")
                (:file "src/ruleset")
                (:file "src/game-protocol")
+               (:file "src/arcade")
                (:file "src/tick")))
 
 (defsystem "edm-engine/audio/tone"
@@ -101,6 +102,7 @@ a GLSL fragment-shader function of state, never a Lisp-side branch."
                (:file "t/arena-spec")
                (:file "t/ruleset-spec")
                (:file "t/game-registry-spec")
+               (:file "t/arcade-menu-spec")
                (:file "t/tick-spec"))
   :perform (test-op (o c)
              (unless (uiop:symbol-call :fiveam :run! :edm-engine)

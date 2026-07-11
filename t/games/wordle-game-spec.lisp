@@ -77,3 +77,51 @@
     (dotimes (i (+ +pulse-max+ 3))
       (tick-pulse game))
     (is (= 0 (wordle-game-pulse game)))))
+
+(test game-outcome-nil-while-playing
+  (let ((game (make-wordle-game "CRANE")))
+    (is (null (edm-engine:game-outcome game)))))
+
+(test game-outcome-win-when-status-won
+  (let ((game (make-wordle-game "CRANE" :max-rows 1)))
+    (submit-guess game "CRANE")
+    (is (eq :win (edm-engine:game-outcome game)))))
+
+(test game-outcome-lose-when-status-lost
+  (let ((game (make-wordle-game "CRANE" :max-rows 1)))
+    (submit-guess game "STEED")
+    (is (eq :lost (wordle-game-status game)))
+    (is (eq :lose (edm-engine:game-outcome game)))))
+
+;; boundary case flagged as undertested: winning on the very last
+;; available row should still resolve to :won, not :lost — the win
+;; check in submit-guess must run before the max-rows exhaustion check.
+(test winning-on-the-final-row-resolves-to-won-not-lost
+  (let ((game (make-wordle-game "CRANE" :max-rows 1)))
+    (submit-guess game "CRANE")
+    (is (eq :won (wordle-game-status game)))
+    (is (eq :win (edm-engine:game-outcome game)))))
+
+;; boundary: exhausting all rows on the LAST allowed guess without
+;; matching must resolve to :lost, not stay :playing due to an
+;; off-by-one in the >= comparison.
+(test losing-exactly-at-the-final-row-resolves-to-lost
+  (let ((game (make-wordle-game "CRANE" :max-rows 3)))
+    (submit-guess game "STEED")
+    (submit-guess game "TRAIN")
+    (is (eq :playing (wordle-game-status game)))
+    (submit-guess game "SPARE")
+    (is (eq :lost (wordle-game-status game)))))
+
+;; push-letter/pop-letter/try-submit must all become no-ops once the
+;; game has an outcome — this was asserted individually before but
+;; never as a single "finished game is fully frozen" scenario.
+(test finished-game-ignores-all-further-input
+  (let ((game (make-wordle-game "CRANE" :max-rows 1)))
+    (submit-guess game "CRANE")
+    (push-letter game #\X)
+    (is (= 0 (fill-pointer (wordle-game-input game))))
+    (pop-letter game)
+    (is (= 0 (fill-pointer (wordle-game-input game))))
+    (try-submit game)
+    (is (= 1 (length (wordle-game-history game))))))

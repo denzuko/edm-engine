@@ -14,12 +14,22 @@
    ;; ruleset
    #:ruleset-load #:ruleset-unload
    ;; game protocol
-   #:game-title #:game-update #:game-render
+   #:game-title #:game-update #:game-render #:game-outcome
    #:game-entry #:game-entry-title #:game-entry-constructor #:*games* #:register-game
    ;; tick
    #:tick #:make-tick #:tick-frame #:advance-tick #:ensure-kernel
    ;; render (defined in edm-engine/render; declared here so main can call them)
    #:open-window #:close-window #:window-should-close-p #:draw-arena
+   ;; arcade state machine (pure; the raylib update/render loop lives in
+   ;; the primary edm-engine system's main.lisp, not here)
+   #:+engine-name+ #:+main-menu-items+
+   #:arcade-state #:make-arcade-state
+   #:arcade-state-mode #:arcade-state-main-menu-index #:arcade-state-table-index
+   #:arcade-state-current-game #:arcade-state-current-table-title #:arcade-state-ruleset-handle
+   #:arcade-select-next-main-menu #:arcade-select-previous-main-menu
+   #:arcade-drill-into-main-menu-selection #:arcade-back-to-main-menu
+   #:arcade-select-next-table #:arcade-select-previous-table
+   #:arcade-launch-selected #:arcade-restart-current #:arcade-return-to-table-select
    ;; arcade entry point (defined in the primary edm-engine system)
    #:main))
 

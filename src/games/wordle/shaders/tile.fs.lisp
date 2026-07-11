@@ -1,9 +1,12 @@
 (decl ((in vec2 fragTexCoord)))
 (decl ((in vec4 fragColor)))
 (decl ((uniform int state)))
+(decl ((uniform int outcome)))
+(decl ((uniform float time)))
 (decl ((out vec4 finalColor)))
 
 ;; state: 0=empty 1=gray 2=yellow 3=green
+;; outcome: 0=none 1=win 2=lose 3=tie
 (function main () -> void
   (decl ((vec3 color)))
   (if (== state 3)
@@ -13,4 +16,15 @@
           (if (== state 1)
               (set color (vec3 0.471 0.478 0.494))
               (set color (vec3 0.086 0.090 0.102)))))
+  (decl ((float pulse)))
+  (decl ((float gray)))
+  (set pulse (+ 0.5 (* 0.5 (sin (* time 4.0)))))
+  (set gray (dot color (vec3 0.299 0.587 0.114)))
+  (if (== outcome 1)
+      (set color (mix color (vec3 1.0 0.85 0.3) (* 0.35 pulse)))
+      (if (== outcome 2)
+          (set color (mix (vec3 gray gray gray) color 0.6))
+          (if (== outcome 3)
+              (set color (mix color (vec3 0.4 0.6 0.9) (* 0.3 pulse)))
+              (set color color))))
   (set finalColor (vec4 color 1.0)))

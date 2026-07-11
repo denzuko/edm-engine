@@ -22,3 +22,6 @@
     (is (= 0 calls))
     (funcall (game-entry-constructor (first *games*)))
     (is (= 1 calls))))
+
+(test game-outcome-default-method-is-nil
+  (is (null (game-outcome :some-arbitrary-game))))

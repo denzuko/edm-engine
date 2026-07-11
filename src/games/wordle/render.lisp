@@ -9,6 +9,8 @@
 
 (defvar *tile-shader* nil)
 (defvar *tile-state-loc* nil)
+(defvar *tile-outcome-loc* nil)
+(defvar *tile-time-loc* nil)
 
 (defun tile-shader-path (extension)
   (namestring (asdf:system-relative-pathname
@@ -22,7 +24,13 @@ convention) doesn't translate to NULL here — the vertex shader is a
 standard raylib passthrough, loaded explicitly instead."
   (unless *tile-shader*
     (setf *tile-shader* (raylib:load-shader (tile-shader-path "vs") (tile-shader-path "fs")))
-    (setf *tile-state-loc* (raylib:get-shader-location *tile-shader* "state"))))
+    (setf *tile-state-loc* (raylib:get-shader-location *tile-shader* "state"))
+    (setf *tile-outcome-loc* (raylib:get-shader-location *tile-shader* "outcome"))
+    (setf *tile-time-loc* (raylib:get-shader-location *tile-shader* "time"))))
+
+(declaim (ftype (function ((member nil :win :lose :tie)) (integer 0 3)) outcome-code))
+(defun outcome-code (outcome)
+  (ecase outcome ((nil) 0) (:win 1) (:lose 2) (:tie 3)))
 
 (declaim (ftype (function ((member :empty :gray :yellow :green)) (integer 0 3)) state-code))
 (defun state-code (state)
@@ -36,16 +44,23 @@ WINDOW-HEIGHT window."
     (values (/ (- window-width total-w) 2.0)
             (/ (- window-height total-h) 2.0))))
 
-(defun draw-tile (x y state letter &optional (highlight 0.0))
+(defun draw-tile (x y state letter &optional (highlight 0.0) (outcome nil) (elapsed 0.0))
   "Draws one tile. Color comes entirely from the fragment shader via the
 STATE uniform — the tile-state-to-color mapping lives in GLSL, not here.
 HIGHLIGHT (0.0-1.0) draws a fading white outline, used for the
-just-typed pulse animation."
+just-typed pulse animation. OUTCOME/ELAPSED drive the field-wide
+win/lose/tie pulse — same shader, same mechanism as tile-state color."
   (ensure-tile-shader)
   (cffi:with-foreign-object (state-ptr :int)
     (setf (cffi:mem-ref state-ptr :int) (state-code state))
     (raylib:begin-shader-mode *tile-shader*)
     (raylib:set-shader-value *tile-shader* *tile-state-loc* state-ptr :shader-uniform-int)
+    (cffi:with-foreign-object (outcome-ptr :int)
+      (setf (cffi:mem-ref outcome-ptr :int) (outcome-code outcome))
+      (raylib:set-shader-value *tile-shader* *tile-outcome-loc* outcome-ptr :shader-uniform-int))
+    (cffi:with-foreign-object (time-ptr :float)
+      (setf (cffi:mem-ref time-ptr :float) (float elapsed 1.0))
+      (raylib:set-shader-value *tile-shader* *tile-time-loc* time-ptr :shader-uniform-float))
     (raylib:draw-rectangle (round x) (round y) (round +tile-size+) (round +tile-size+) :white)
     (raylib:end-shader-mode))
   (when (plusp highlight)
@@ -62,12 +77,14 @@ just-typed pulse animation."
                          (round (+ y (/ (- +tile-size+ font-size) 2.0)))
                          font-size :white))))
 
-(defun draw-grid (window-width window-height rows-data &key pulse-row pulse-col (pulse-fraction 0.0))
+(defun draw-grid (window-width window-height rows-data
+                   &key pulse-row pulse-col (pulse-fraction 0.0) outcome (elapsed 0.0))
   "ROWS-DATA is a list of rows; each row is a list of (LETTER . STATE)
 cells, or NIL for an unfilled tile. STATE is one of
 :EMPTY/:GRAY/:YELLOW/:GREEN. The grid is centered in the window.
 PULSE-ROW/PULSE-COL/PULSE-FRACTION highlight one tile — the just-typed
-letter's pop animation."
+letter's pop animation. OUTCOME/ELAPSED drive the field-wide win/lose/tie
+pulse across every tile."
   (multiple-value-bind (ox oy)
       (grid-origin window-width window-height (length rows-data) +cols+)
     (loop for row in rows-data
@@ -80,7 +97,9 @@ letter's pop animation."
                                   (if cell (car cell) nil)
                                   (if (and (eql row-i pulse-row) (eql col-i pulse-col))
                                       pulse-fraction
-                                      0.0))))))
+                                      0.0)
+                                  outcome
+                                  elapsed)))))
 
 (defmethod edm-engine:game-title ((game wordle-game))
   "Wordle")
@@ -116,7 +135,9 @@ triggers are untested I/O."
     (draw-grid window-width window-height (rows-for-render game)
                :pulse-row (when (and (plusp (wordle-game-pulse game)) (>= pulse-col 0)) pulse-row)
                :pulse-col (when (>= pulse-col 0) pulse-col)
-               :pulse-fraction (/ (wordle-game-pulse game) (float +pulse-max+)))))
+               :pulse-fraction (/ (wordle-game-pulse game) (float +pulse-max+))
+               :outcome (edm-engine:game-outcome game)
+               :elapsed (raylib:get-time))))
 
 (edm-engine:register-game
  "Wordle"

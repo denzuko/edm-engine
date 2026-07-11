@@ -2,72 +2,80 @@
 
 (declaim (optimize (speed 3) (safety 3)))
 
-(defstruct (arcade-state (:constructor make-arcade-state))
-  (mode :menu :type (member :menu :playing))
-  (menu-index 0 :type fixnum)
-  (current-game nil)
-  (ruleset-handle nil))
-
-(defun arcade-select-next (state)
-  (when *games*
-    (setf (arcade-state-menu-index state)
-          (mod (1+ (arcade-state-menu-index state)) (length *games*)))))
-
-(defun arcade-select-previous (state)
-  (when *games*
-    (setf (arcade-state-menu-index state)
-          (mod (1- (arcade-state-menu-index state)) (length *games*)))))
-
-(defun arcade-launch-selected (state)
-  (let ((entry (nth (arcade-state-menu-index state) *games*)))
-    (when entry
-      (let ((game (funcall (game-entry-constructor entry))))
-        (setf (arcade-state-current-game state) game
-              (arcade-state-ruleset-handle state) (ruleset-load game)
-              (arcade-state-mode state) :playing)))))
-
-(defun arcade-return-to-menu (state)
-  (ruleset-unload (arcade-state-current-game state) (arcade-state-ruleset-handle state))
-  (setf (arcade-state-current-game state) nil
-        (arcade-state-ruleset-handle state) nil
-        (arcade-state-mode state) :menu))
-
 (defun arcade-update (state)
   (ecase (arcade-state-mode state)
-    (:menu
-     (when (raylib:is-key-pressed :key-down) (arcade-select-next state))
-     (when (raylib:is-key-pressed :key-up) (arcade-select-previous state))
-     (when (raylib:is-key-pressed :key-enter) (arcade-launch-selected state)))
+    (:main-menu
+     (when (raylib:is-key-pressed :key-down) (arcade-select-next-main-menu state))
+     (when (raylib:is-key-pressed :key-up) (arcade-select-previous-main-menu state))
+     (when (raylib:is-key-pressed :key-enter) (arcade-drill-into-main-menu-selection state)))
+    (:tables
+     (when (raylib:is-key-pressed :key-down) (arcade-select-next-table state))
+     (when (raylib:is-key-pressed :key-up) (arcade-select-previous-table state))
+     (when (raylib:is-key-pressed :key-enter) (arcade-launch-selected state))
+     (when (raylib:is-key-pressed :key-escape) (arcade-back-to-main-menu state)))
+    ((:options :save-load)
+     (when (raylib:is-key-pressed :key-escape) (arcade-back-to-main-menu state)))
     (:playing
-     (if (raylib:is-key-pressed :key-escape)
-         (arcade-return-to-menu state)
-         (game-update (arcade-state-current-game state))))))
+     (let ((game (arcade-state-current-game state)))
+       (if (game-outcome game)
+           (cond ((raylib:is-key-pressed :key-enter) (arcade-restart-current state))
+                 ((raylib:is-key-pressed :key-escape) (arcade-return-to-table-select state)))
+           (if (raylib:is-key-pressed :key-escape)
+               (arcade-return-to-table-select state)
+               (game-update game)))))))
+
+(defun draw-outcome-overlay (outcome window-width window-height)
+  (let ((label (ecase outcome (:win "YOU WON") (:lose "YOU LOST") (:tie "TIE GAME"))))
+    (raylib:draw-rectangle 0 0 window-width window-height (raylib:fade :black 0.55))
+    (let ((tw (raylib:measure-text label 48)))
+      (raylib:draw-text label (round (/ (- window-width tw) 2))
+                         (round (- (/ window-height 2) 60)) 48 :white))
+    (let* ((hint "ENTER: New Game    ESC: Table Select")
+           (hw (raylib:measure-text hint 22)))
+      (raylib:draw-text hint (round (/ (- window-width hw) 2))
+                         (round (+ (/ window-height 2) 10)) 22 :gray))))
 
 (defun arcade-render (state window-width window-height)
   "One BeginDrawing/EndDrawing per frame, established here — GAME-RENDER
 methods (e.g. DRAW-GRID) assume they're already inside a drawing context
-and never call WITH-DRAWING themselves. Missing this wrapper for the
-:PLAYING branch was a real bug: the arcade drew the menu correctly but
-never issued a single draw call once a game was launched, since
-GAME-RENDER's draw-rectangle/draw-text calls outside BeginDrawing/
-EndDrawing don't reach the screen."
+and never call WITH-DRAWING themselves."
   (raylib:with-drawing
     (raylib:clear-background :black)
     (ecase (arcade-state-mode state)
-      (:menu
+      (:main-menu
+       (raylib:draw-text +engine-name+ 40 30 34 :green)
+       (loop for item in +main-menu-items+
+             for i from 0
+             do (raylib:draw-text item 40 (+ 100 (* i 40)) 28
+                                   (if (= i (arcade-state-main-menu-index state)) :green :gray))))
+      (:tables
+       (raylib:draw-text "TABLES" 40 30 30 :green)
        (loop for entry in *games*
              for i from 0
-             do (raylib:draw-text (game-entry-title entry) 40 (+ 40 (* i 36)) 28
-                                   (if (= i (arcade-state-menu-index state)) :green :gray))))
+             do (raylib:draw-text (game-entry-title entry) 40 (+ 90 (* i 36)) 26
+                                   (if (= i (arcade-state-table-index state)) :green :gray)))
+       (raylib:draw-text "ESC: Back" 40 (- window-height 40) 18 :gray))
+      (:options
+       (raylib:draw-text "ENGINE OPTIONS" 40 30 30 :green)
+       (raylib:draw-text "Coming soon." 40 100 22 :gray)
+       (raylib:draw-text "ESC: Back" 40 (- window-height 40) 18 :gray))
+      (:save-load
+       (raylib:draw-text "SAVE / LOAD" 40 30 30 :green)
+       (raylib:draw-text "Coming soon." 40 100 22 :gray)
+       (raylib:draw-text "ESC: Back" 40 (- window-height 40) 18 :gray))
       (:playing
-       (game-render (arcade-state-current-game state) window-width window-height)))))
+       (let ((game (arcade-state-current-game state)))
+         (game-render game window-width window-height)
+         (let ((outcome (game-outcome game)))
+           (when outcome (draw-outcome-overlay outcome window-width window-height))))))))
 
 (defun main (&rest argv)
-  "Boots the arcade: a menu over every REGISTER-GAME entry, dispatching
-to the selected game's GAME-UPDATE/GAME-RENDER each frame. This file has
-no knowledge of any specific game — that's the whole point."
+  "Boots the arcade: a main menu (Tables / Engine Options / Save-Load)
+over every REGISTER-GAME entry, dispatching to the selected table's
+GAME-UPDATE/GAME-RENDER each frame. This file has no knowledge of any
+specific table — that's the whole point."
   (declare (ignore argv))
-  (open-window "EDM Arcade" 800 700)
+  (open-window (format nil "~A" +engine-name+) 800 700)
   (unwind-protect
        (let ((state (make-arcade-state)))
          (loop until (window-should-close-p)

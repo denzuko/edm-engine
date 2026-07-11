@@ -96,3 +96,9 @@ at zero. Call once per GAME-UPDATE frame."
   (when (plusp (wordle-game-pulse game))
     (decf (wordle-game-pulse game)))
   game)
+
+(defmethod edm-engine:game-outcome ((game wordle-game))
+  (case (wordle-game-status game)
+    (:won :win)
+    (:lost :lose)
+    (t nil)))
