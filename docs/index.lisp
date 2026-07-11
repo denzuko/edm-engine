@@ -1,0 +1,25 @@
+(defpackage :edm-engine/docs
+  (:use :cl :40ants-doc))
+(in-package :edm-engine/docs)
+
+(defsection @edm-engine-manual (:title "EDM Engine")
+  "Pure-CL game engine core. Rendering lives in EDM-ENGINE/RENDER, kept thin
+and untested by design; everything below this line is unit-tested."
+  (edm-engine:handle type)
+  (edm-engine:handle= function)
+  (edm-engine:bus type)
+  (edm-engine:make-bus function)
+  (edm-engine:bus-push function)
+  (edm-engine:bus-pop function)
+  (edm-engine:bus-try-pop function)
+  (edm-engine:arena type)
+  (edm-engine:make-arena function)
+  (edm-engine:arena-spawn function)
+  (edm-engine:arena-despawn function)
+  (edm-engine:arena-alive-p function)
+  (edm-engine:arena-live-handles function)
+  (edm-engine:ruleset-load generic-function)
+  (edm-engine:ruleset-unload generic-function)
+  (edm-engine:tick type)
+  (edm-engine:make-tick function)
+  (edm-engine:advance-tick function))

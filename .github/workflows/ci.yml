@@ -1,0 +1,58 @@
+name: ci
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denzuko/dps-meta@v1
+        # reads git config meta.* keys (meta.org, meta.project, meta.namespace,
+        # meta.license, meta.owner) committed to this repo; scaffolds
+        # org.cispec.* CMDB identity headers + governance files.
+
+  gate:
+    needs: meta
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install opa
+        run: |
+          curl -sL -o /usr/local/bin/opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static
+          chmod +x /usr/local/bin/opa
+
+      - name: run structural gate
+        run: |
+          python3 - <<'PY'
+          import json, glob
+          files = {}
+          for pattern in ["src/*.lisp", "t/*.lisp", "docs/*.lisp", "CHANGELOG.md", "LICENSE", "README.md", "qlfile", "*.asd"]:
+              for f in glob.glob(pattern):
+                  files[f] = open(f).read()
+          json.dump({"files": files}, open("/tmp/gate-input.json", "w"))
+          PY
+          opa eval -i /tmp/gate-input.json -d policy/gate.rego "data.edm.engine.gate.deny" --format pretty | tee /tmp/deny.json
+          test "$(jq 'length' /tmp/deny.json 2>/dev/null || echo 1)" = "0" || (echo "gate failed" && exit 1)
+
+      - name: install sbcl + roswell + qlot
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq sbcl curl libcurl4-openssl-dev
+          curl -L https://github.com/roswell/roswell/releases/latest/download/roswell_linux_amd64.tar.gz | tar xz -C /tmp
+          sudo /tmp/roswell/bin/ros setup
+          /tmp/roswell/bin/ros install qlot || true
+          echo "$HOME/.roswell/bin" >> "$GITHUB_PATH"
+
+      - name: qlot install
+        run: qlot install
+
+      - name: run FiveAM suite
+        run: |
+          qlot exec sbcl --non-interactive \
+            --eval '(asdf:load-system :edm-engine/tests)' \
+            --eval '(if (fiveam:run! :edm-engine) (sb-ext:exit :code 0) (sb-ext:exit :code 1))'
