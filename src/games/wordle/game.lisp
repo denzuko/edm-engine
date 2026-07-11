@@ -6,7 +6,8 @@
   (answer "" :type string)
   (history nil :type list)
   (max-rows 6 :type fixnum)
-  (status :playing :type (member :playing :won :lost)))
+  (status :playing :type (member :playing :won :lost))
+  (input (make-array 0 :element-type 'character :adjustable t :fill-pointer 0)))
 
 (declaim (ftype (function (string &key (:max-rows fixnum)) wordle-game) make-wordle-game))
 (defun make-wordle-game (answer &key (max-rows 6))
@@ -45,3 +46,28 @@ unplayed guesses."
     (append played
             (make-list (- (wordle-game-max-rows game) (length played))
                        :initial-element nil))))
+
+(defun push-letter (game ch)
+  "Appends CH (uppercased) to GAME's in-progress input, if GAME is
+still playable, CH is a letter, and there's room for it."
+  (when (and (eq (wordle-game-status game) :playing)
+             (alpha-char-p ch)
+             (< (fill-pointer (wordle-game-input game)) (length (wordle-game-answer game))))
+    (vector-push-extend (char-upcase ch) (wordle-game-input game)))
+  game)
+
+(defun pop-letter (game)
+  "Removes the last typed letter, if any."
+  (when (plusp (fill-pointer (wordle-game-input game)))
+    (decf (fill-pointer (wordle-game-input game))))
+  game)
+
+(defun try-submit (game)
+  "Submits GAME's in-progress input as a guess if it's exactly the
+answer's length, then clears it. No-ops otherwise — an incomplete guess
+just stays on screen."
+  (when (and (eq (wordle-game-status game) :playing)
+             (= (fill-pointer (wordle-game-input game)) (length (wordle-game-answer game))))
+    (submit-guess game (coerce (wordle-game-input game) 'string))
+    (setf (fill-pointer (wordle-game-input game)) 0))
+  game)

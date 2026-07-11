@@ -2,36 +2,69 @@
 
 (declaim (optimize (speed 3) (safety 3)))
 
+(defstruct (arcade-state (:constructor make-arcade-state))
+  (mode :menu :type (member :menu :playing))
+  (menu-index 0 :type fixnum)
+  (current-game nil)
+  (ruleset-handle nil))
+
+(defun arcade-select-next (state)
+  (when *games*
+    (setf (arcade-state-menu-index state)
+          (mod (1+ (arcade-state-menu-index state)) (length *games*)))))
+
+(defun arcade-select-previous (state)
+  (when *games*
+    (setf (arcade-state-menu-index state)
+          (mod (1- (arcade-state-menu-index state)) (length *games*)))))
+
+(defun arcade-launch-selected (state)
+  (let ((entry (nth (arcade-state-menu-index state) *games*)))
+    (when entry
+      (let ((game (funcall (game-entry-constructor entry))))
+        (setf (arcade-state-current-game state) game
+              (arcade-state-ruleset-handle state) (ruleset-load game)
+              (arcade-state-mode state) :playing)))))
+
+(defun arcade-return-to-menu (state)
+  (ruleset-unload (arcade-state-current-game state) (arcade-state-ruleset-handle state))
+  (setf (arcade-state-current-game state) nil
+        (arcade-state-ruleset-handle state) nil
+        (arcade-state-mode state) :menu))
+
+(defun arcade-update (state)
+  (ecase (arcade-state-mode state)
+    (:menu
+     (when (raylib:is-key-pressed :key-down) (arcade-select-next state))
+     (when (raylib:is-key-pressed :key-up) (arcade-select-previous state))
+     (when (raylib:is-key-pressed :key-enter) (arcade-launch-selected state)))
+    (:playing
+     (if (raylib:is-key-pressed :key-escape)
+         (arcade-return-to-menu state)
+         (game-update (arcade-state-current-game state))))))
+
+(defun arcade-render (state window-width window-height)
+  (ecase (arcade-state-mode state)
+    (:menu
+     (raylib:with-drawing
+       (raylib:clear-background :black)
+       (loop for entry in *games*
+             for i from 0
+             do (raylib:draw-text (game-entry-title entry) 40 (+ 40 (* i 36)) 28
+                                   (if (= i (arcade-state-menu-index state)) :green :gray)))))
+    (:playing
+     (game-render (arcade-state-current-game state) window-width window-height))))
+
 (defun main (&rest argv)
-  "Boots the arcade: opens a window, plays Wordle until close.
-Per-game rulesets attach via RULESET-LOAD/RULESET-UNLOAD — Wordle needs
-neither (see edm-engine/ruleset docstring), so this loop talks to
-WORDLE-GAME directly. Future constraint-based games route through the
-ruleset protocol instead."
+  "Boots the arcade: a menu over every REGISTER-GAME entry, dispatching
+to the selected game's GAME-UPDATE/GAME-RENDER each frame. This file has
+no knowledge of any specific game — that's the whole point."
   (declare (ignore argv))
-  (open-window "EDM Arcade — Wordle" 800 700)
+  (open-window "EDM Arcade" 800 700)
   (unwind-protect
-       (let ((game (edm-engine/games/wordle:make-wordle-game
-                    (nth (random (length edm-engine/games/wordle:*corpus*))
-                         edm-engine/games/wordle:*corpus*)))
-             (input (make-array 0 :element-type 'character :adjustable t :fill-pointer 0)))
+       (let ((state (make-arcade-state)))
          (loop until (window-should-close-p)
-               do (loop for code = (raylib:get-char-pressed)
-                        while (plusp code)
-                        do (let ((ch (char-upcase (code-char code))))
-                             (when (and (alpha-char-p ch) (< (fill-pointer input) 5))
-                               (vector-push-extend ch input))))
-                  (when (and (raylib:is-key-pressed :key-backspace)
-                             (plusp (fill-pointer input)))
-                    (decf (fill-pointer input)))
-                  (when (and (raylib:is-key-pressed :key-enter)
-                             (= 5 (fill-pointer input))
-                             (eq :playing (edm-engine/games/wordle:wordle-game-status game)))
-                    (edm-engine/games/wordle:submit-guess game (coerce input 'string))
-                    (setf (fill-pointer input) 0))
-                  (raylib:with-drawing
-                    (raylib:clear-background :black)
-                    (edm-engine/games/wordle:draw-grid
-                     800 700 (edm-engine/games/wordle:rows-for-render game)))))
+               do (arcade-update state)
+                  (arcade-render state 800 700)))
     (close-window))
   (uiop:quit 0))

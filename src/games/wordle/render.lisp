@@ -69,3 +69,25 @@ cells, or NIL for an unfilled tile. STATE is one of
                                   (+ oy (* row-i (+ +tile-size+ +tile-gap+)))
                                   (if cell (cdr cell) :empty)
                                   (if cell (car cell) nil))))))
+
+(defmethod edm-engine:game-title ((game wordle-game))
+  "Wordle")
+
+(defmethod edm-engine:game-update ((game wordle-game))
+  "Reads keyboard input and drives GAME's incremental-typing state
+machine. The typing logic itself (PUSH-LETTER/POP-LETTER/TRY-SUBMIT) is
+pure and FiveAM-tested; only these raylib reads are untested I/O."
+  (loop for code = (raylib:get-char-pressed)
+        while (plusp code)
+        do (push-letter game (code-char code)))
+  (when (raylib:is-key-pressed :key-backspace)
+    (pop-letter game))
+  (when (raylib:is-key-pressed :key-enter)
+    (try-submit game)))
+
+(defmethod edm-engine:game-render ((game wordle-game) window-width window-height)
+  (draw-grid window-width window-height (rows-for-render game)))
+
+(edm-engine:register-game
+ "Wordle"
+ (lambda () (make-wordle-game (nth (random (length *corpus*)) *corpus*))))

@@ -13,6 +13,9 @@
    #:arena-live-handles
    ;; ruleset
    #:ruleset-load #:ruleset-unload
+   ;; game protocol
+   #:game-title #:game-update #:game-render
+   #:game-entry #:game-entry-title #:game-entry-constructor #:*games* #:register-game
    ;; tick
    #:tick #:make-tick #:tick-frame #:advance-tick #:ensure-kernel
    ;; render (defined in edm-engine/render; declared here so main can call them)
