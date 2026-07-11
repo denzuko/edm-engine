@@ -50,6 +50,12 @@ edm-engine/ruleset docstring for when constraint engines are warranted."
                (:file "src/games/wordle/corpus")
                (:file "src/games/wordle/guess")))
 
+(defsystem "edm-engine/games/wordle/render"
+  :description "Wordle tile-grid renderer. Screen-centered; tile color is
+a GLSL fragment-shader function of state, never a Lisp-side branch."
+  :depends-on ("edm-engine/games/wordle" "edm-engine/render" "cffi")
+  :components ((:file "src/games/wordle/render")))
+
 (defsystem "edm-engine/games/wordle/tests"
   :description "FiveAM spec suite for edm-engine/games/wordle."
   :depends-on ("edm-engine/games/wordle" "fiveam")
