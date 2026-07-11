@@ -1,5 +1,5 @@
-(defsystem "edm-engine"
-  :description "EDM game engine core: arena, bus, tick — pure logic, no I/O."
+(defsystem "edm-engine/core"
+  :description "Pure engine logic: handle, bus, arena, ruleset, tick. No I/O."
   :author "Dwight Spencer <denzuko@dapla.net>"
   :license "MIT"
   :version "0.1.0"
@@ -15,23 +15,35 @@
 
 (defsystem "edm-engine/render"
   :description "cl-raylib I/O boundary. Never unit-tested; kept thin by design."
-  :depends-on ("edm-engine" "cl-raylib")
+  :depends-on ("edm-engine/core" "cl-raylib")
   :serial t
   :components ((:file "src/render")))
 
+(defsystem "edm-engine"
+  :description "EDM Arcade: tabletop/arcade game simulator binary. dps-meta lisp-actor artifact."
+  :author "Dwight Spencer <denzuko@dapla.net>"
+  :license "MIT"
+  :version "0.1.0"
+  :depends-on ("edm-engine/core" "edm-engine/render")
+  :build-operation "program-op"
+  :build-pathname "edm-engine"
+  :entry-point "edm-engine:main"
+  :components ((:file "src/main")))
+
 (defsystem "edm-engine/docs"
   :description "40ants-doc documentation page."
-  :depends-on ("edm-engine" "40ants-doc")
+  :depends-on ("edm-engine/core" "40ants-doc")
   :components ((:file "docs/index")))
 
 (defsystem "edm-engine/ci"
-  :description "40ants-ci workflow generator — no hand-written YAML."
-  :depends-on ("edm-engine" "40ants-ci")
+  :description "40ants-ci workflow generator — superseded by dps-meta scaffolding.
+Kept for reference; dps-meta owns .github/workflows/ci.yml generation now."
+  :depends-on ("edm-engine/core" "40ants-ci")
   :components ((:file "ci/package")))
 
 (defsystem "edm-engine/tests"
-  :description "FiveAM spec suite. Written before implementation, per BDD gate."
-  :depends-on ("edm-engine" "fiveam")
+  :description "FiveAM spec suite over edm-engine/core. Written before implementation, per BDD gate."
+  :depends-on ("edm-engine/core" "fiveam")
   :serial t
   :components ((:file "t/package")
                (:file "t/handle-spec")

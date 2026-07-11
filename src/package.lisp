@@ -14,7 +14,11 @@
    ;; ruleset
    #:ruleset-load #:ruleset-unload
    ;; tick
-   #:tick #:make-tick #:tick-frame #:advance-tick #:ensure-kernel))
+   #:tick #:make-tick #:tick-frame #:advance-tick #:ensure-kernel
+   ;; render (defined in edm-engine/render; declared here so main can call them)
+   #:open-window #:close-window #:window-should-close-p #:draw-arena
+   ;; arcade entry point (defined in the primary edm-engine system)
+   #:main))
 
 (in-package :edm-engine)
 
