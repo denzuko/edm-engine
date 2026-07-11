@@ -44,16 +44,23 @@
          (game-update (arcade-state-current-game state))))))
 
 (defun arcade-render (state window-width window-height)
-  (ecase (arcade-state-mode state)
-    (:menu
-     (raylib:with-drawing
-       (raylib:clear-background :black)
+  "One BeginDrawing/EndDrawing per frame, established here — GAME-RENDER
+methods (e.g. DRAW-GRID) assume they're already inside a drawing context
+and never call WITH-DRAWING themselves. Missing this wrapper for the
+:PLAYING branch was a real bug: the arcade drew the menu correctly but
+never issued a single draw call once a game was launched, since
+GAME-RENDER's draw-rectangle/draw-text calls outside BeginDrawing/
+EndDrawing don't reach the screen."
+  (raylib:with-drawing
+    (raylib:clear-background :black)
+    (ecase (arcade-state-mode state)
+      (:menu
        (loop for entry in *games*
              for i from 0
              do (raylib:draw-text (game-entry-title entry) 40 (+ 40 (* i 36)) 28
-                                   (if (= i (arcade-state-menu-index state)) :green :gray)))))
-    (:playing
-     (game-render (arcade-state-current-game state) window-width window-height))))
+                                   (if (= i (arcade-state-menu-index state)) :green :gray))))
+      (:playing
+       (game-render (arcade-state-current-game state) window-width window-height)))))
 
 (defun main (&rest argv)
   "Boots the arcade: a menu over every REGISTER-GAME entry, dispatching
