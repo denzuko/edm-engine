@@ -14,7 +14,7 @@
   "Draws every live entity in ARENA as a filled circle at its position.
 No logic here; ARENA state is produced entirely by ADVANCE-TICK."
   (raylib:with-drawing
-    (raylib:clear-background raylib:+black+)
+    (raylib:clear-background :black)
     (dolist (h (arena-live-handles arena))
       (multiple-value-bind (x y) (arena-position arena h)
-        (raylib:draw-circle (round x) (round y) 4.0 raylib:+green+)))))
+        (raylib:draw-circle (round x) (round y) 4.0 :green)))))
