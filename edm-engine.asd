@@ -4,6 +4,7 @@
   :license "MIT"
   :version "0.1.0"
   :depends-on ("alexandria" "serapeum" "transducers" "chanl" "lparallel")
+  :in-order-to ((test-op (test-op "edm-engine/tests")))
   :serial t
   :components ((:file "src/package")
                (:file "src/handle")
@@ -23,6 +24,11 @@
   :depends-on ("edm-engine" "40ants-doc")
   :components ((:file "docs/index")))
 
+(defsystem "edm-engine/ci"
+  :description "40ants-ci workflow generator — no hand-written YAML."
+  :depends-on ("edm-engine" "40ants-ci")
+  :components ((:file "ci/package")))
+
 (defsystem "edm-engine/tests"
   :description "FiveAM spec suite. Written before implementation, per BDD gate."
   :depends-on ("edm-engine" "fiveam")
@@ -32,4 +38,7 @@
                (:file "t/bus-spec")
                (:file "t/arena-spec")
                (:file "t/ruleset-spec")
-               (:file "t/tick-spec")))
+               (:file "t/tick-spec"))
+  :perform (test-op (o c)
+             (unless (uiop:symbol-call :fiveam :run! :edm-engine)
+               (error "edm-engine FiveAM suite failed"))))

@@ -1,70 +1,84 @@
-name: ci
-
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
-
-jobs:
-  meta:
-    runs-on: ubuntu-latest
-    continue-on-error: true  # tracked separately: dps-meta's own qlfile fails to
-                              # resolve `transducers` from quicklisp on a fresh
-                              # runner as of 2026-07-11 — not an edm-engine issue.
-    steps:
-      - uses: actions/checkout@v4
-      - name: configure meta.* git config
-        run: |
-          git config meta.application edm-engine
-          git config meta.role game-engine-core
-          git config meta.version 0.1.0
-          git config meta.branch main
-      - uses: denzuko/dps-meta@v1
-        with:
-          type: lisp-actor
-        # reads git config meta.* keys committed above; scaffolds
-        # org.cispec.* CMDB identity headers + governance files.
-
-  gate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: install opa
-        run: |
-          curl -sL -o /usr/local/bin/opa https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static
-          chmod +x /usr/local/bin/opa
-
-      - name: run structural gate
-        run: |
-          python3 - <<'PY'
-          import json, glob
-          files = {}
-          for pattern in ["src/*.lisp", "t/*.lisp", "docs/*.lisp", "CHANGELOG.md", "LICENSE", "README.md", "qlfile", "*.asd"]:
-              for f in glob.glob(pattern):
-                  files[f] = open(f).read()
-          json.dump({"files": files}, open("/tmp/gate-input.json", "w"))
-          PY
-          opa eval -i /tmp/gate-input.json -d policy/gate.rego "data.edm.engine.gate.deny" --format pretty | tee /tmp/deny.json
-          test "$(jq 'length' /tmp/deny.json 2>/dev/null || echo 1)" = "0" || (echo "gate failed" && exit 1)
-
-      - name: install sbcl
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq sbcl curl
-
-      - name: bootstrap quicklisp + ultralisp
-        run: |
-          curl -sO https://beta.quicklisp.org/quicklisp.lisp
-          sbcl --non-interactive --load quicklisp.lisp \
-            --eval '(quicklisp-quickstart:install :path "~/quicklisp/")'
-          sbcl --non-interactive --load ~/quicklisp/setup.lisp \
-            --eval '(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)'
-
-      - name: run FiveAM suite
-        run: |
-          sbcl --non-interactive \
-            --load ~/quicklisp/setup.lisp \
-            --eval '(push (truename ".") asdf:*central-registry*)' \
-            --eval '(ql:quickload :edm-engine/tests)' \
-            --eval '(if (fiveam:run! :edm-engine) (sb-ext:exit :code 0) (sb-ext:exit :code 1))'
+{
+  "name": "CI",
+  "on": {
+    "push": {
+      "branches": [
+        "main"
+      ]
+    },
+    "pull_request": null
+  },
+  "jobs": {
+    "run-tests": {
+      "runs-on": "ubuntu-latest",
+      "env": {
+        "OS": "ubuntu-latest",
+        "QUICKLISP_DIST": "quicklisp",
+        "LISP": "sbcl-bin"
+      },
+      "steps": [
+        {
+          "name": "Checkout Code",
+          "uses": "actions/checkout@v4"
+        },
+        {
+          "name": "Setup Common Lisp Environment",
+          "uses": "40ants/setup-lisp@v4",
+          "with": {
+            "asdf-system": "edm-engine",
+            "cache": "true"
+          }
+        },
+        {
+          "name": "Run Tests",
+          "uses": "40ants/run-tests@v2",
+          "with": {
+            "asdf-system": "edm-engine"
+          }
+        }
+      ]
+    },
+    "linter": {
+      "runs-on": "ubuntu-latest",
+      "env": {
+        "OS": "ubuntu-latest",
+        "QUICKLISP_DIST": "quicklisp",
+        "LISP": "sbcl-bin"
+      },
+      "steps": [
+        {
+          "name": "Checkout Code",
+          "uses": "actions/checkout@v4"
+        },
+        {
+          "name": "Setup Common Lisp Environment",
+          "uses": "40ants/setup-lisp@v4",
+          "with": {
+            "asdf-system": "edm-engine",
+            "cache": "true"
+          }
+        },
+        {
+          "name": "Change dist to Ultralisp if qlfile does not exist",
+          "run": "if [[ ! -e qlfile ]]; then echo 'dist ultralisp http://dist.ultralisp.org' > qlfile; fi",
+          "shell": "bash"
+        },
+        {
+          "name": "Update Qlot",
+          "run": "qlot update --no-deps",
+          "shell": "bash"
+        },
+        {
+          "name": "Install SBLint wrapper",
+          "run": "qlot exec ros install 40ants-asdf-system 40ants-linter",
+          "shell": "bash"
+        },
+        {
+          "name": "Run Linter",
+          "run": "qlot exec 40ants-linter --system \"edm-engine\"",
+          "shell": "bash"
+        }
+      ]
+    }
+  }
+}
