@@ -11,6 +11,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: denzuko/dps-meta@v1
+        with:
+          type: lisp-actor
         # reads git config meta.* keys (meta.org, meta.project, meta.namespace,
         # meta.license, meta.owner) committed to this repo; scaffolds
         # org.cispec.* CMDB identity headers + governance files.
