@@ -6,5 +6,5 @@ ql transducers
 ql chanl
 ql lparallel
 ql fiveam
-ql cl-raylib
-ql 40ants-doc
+ultralisp cl-raylib
+ultralisp 40ants-doc
