@@ -41,4 +41,39 @@
                          for st across expected-feedback
                          collect (cons ch st))
                   (first rows)))
-      (is (every #'null (rest rows))))))
+      ;; padding rows are always COLS-wide with NIL cells, never a bare
+      ;; NIL row — draw-grid's per-row loop draws zero tiles for a bare
+      ;; NIL row, silently skipping unplayed rows entirely.
+      (is (every (lambda (row) (and (= 5 (length row)) (every #'null row)))
+                 (rest rows))))))
+
+(test rows-for-render-shows-in-progress-input-as-a-row
+  (let ((game (make-wordle-game "CRANE")))
+    (push-letter game #\S)
+    (push-letter game #\T)
+    (let ((row (first (rows-for-render game))))
+      (is (equal (cons #\S :empty) (first row)))
+      (is (equal (cons #\T :empty) (second row)))
+      (is (null (third row)))
+      (is (= 5 (length row))))))
+
+(test rows-for-render-in-progress-row-follows-played-rows
+  (let ((game (make-wordle-game "CRANE" :max-rows 6)))
+    (submit-guess game "STEED")
+    (push-letter game #\C)
+    (let ((rows (rows-for-render game)))
+      (is (equal (cons #\C :empty) (first (second rows))))
+      (is (= 6 (length rows))))))
+
+(test push-letter-resets-pulse-to-max
+  (let ((game (make-wordle-game "CRANE")))
+    (is (= 0 (wordle-game-pulse game)))
+    (push-letter game #\C)
+    (is (= +pulse-max+ (wordle-game-pulse game)))))
+
+(test tick-pulse-decrements-toward-zero-and-stops
+  (let ((game (make-wordle-game "CRANE")))
+    (push-letter game #\C)
+    (dotimes (i (+ +pulse-max+ 3))
+      (tick-pulse game))
+    (is (= 0 (wordle-game-pulse game)))))

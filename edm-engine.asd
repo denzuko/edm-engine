@@ -14,6 +14,26 @@
                (:file "src/game-protocol")
                (:file "src/tick")))
 
+(defsystem "edm-engine/audio/tone"
+  :description "Pure on-the-fly waveform sample generation. No raylib, no I/O —
+this is what the generative audio DSL is for, not pre-recorded samples."
+  :components ((:file "src/audio/package")
+               (:file "src/audio/tone")))
+
+(defsystem "edm-engine/audio"
+  :description "raylib playback boundary for generated tones. Untested I/O,
+same convention as render.lisp."
+  :depends-on ("edm-engine/audio/tone" "cl-raylib" "cffi")
+  :components ((:file "src/audio/playback")))
+
+(defsystem "edm-engine/audio/tests"
+  :description "FiveAM spec suite for edm-engine/audio/tone."
+  :depends-on ("edm-engine/audio/tone" "fiveam")
+  :components ((:file "t/audio/tone-spec"))
+  :perform (test-op (o c)
+             (unless (uiop:symbol-call :fiveam :run! :edm-engine-audio)
+               (error "edm-engine/audio FiveAM suite failed"))))
+
 (defsystem "edm-engine/render"
   :description "cl-raylib I/O boundary. Never unit-tested; kept thin by design."
   :depends-on ("edm-engine/core" "cl-raylib")
@@ -56,7 +76,7 @@ edm-engine/ruleset docstring for when constraint engines are warranted."
 (defsystem "edm-engine/games/wordle/render"
   :description "Wordle tile-grid renderer. Screen-centered; tile color is
 a GLSL fragment-shader function of state, never a Lisp-side branch."
-  :depends-on ("edm-engine/games/wordle" "edm-engine/render" "cffi")
+  :depends-on ("edm-engine/games/wordle" "edm-engine/render" "edm-engine/audio" "cffi")
   :components ((:file "src/games/wordle/render")))
 
 (defsystem "edm-engine/games/wordle/tests"
