@@ -41,6 +41,25 @@ Kept for reference; dps-meta owns .github/workflows/ci.yml generation now."
   :depends-on ("edm-engine/core" "40ants-ci")
   :components ((:file "ci/package")))
 
+(defsystem "edm-engine/games/wordle"
+  :description "Wordle: transducers:filter over a corpus. No screamer — see
+edm-engine/ruleset docstring for when constraint engines are warranted."
+  :depends-on ("edm-engine/core" "transducers")
+  :serial t
+  :components ((:file "src/games/wordle/package")
+               (:file "src/games/wordle/corpus")
+               (:file "src/games/wordle/guess")))
+
+(defsystem "edm-engine/games/wordle/tests"
+  :description "FiveAM spec suite for edm-engine/games/wordle."
+  :depends-on ("edm-engine/games/wordle" "fiveam")
+  :serial t
+  :components ((:file "t/games/package")
+               (:file "t/games/wordle-spec"))
+  :perform (test-op (o c)
+             (unless (uiop:symbol-call :fiveam :run! :edm-engine-wordle)
+               (error "edm-engine/games/wordle FiveAM suite failed"))))
+
 (defsystem "edm-engine/tests"
   :description "FiveAM spec suite over edm-engine/core. Written before implementation, per BDD gate."
   :depends-on ("edm-engine/core" "fiveam")
