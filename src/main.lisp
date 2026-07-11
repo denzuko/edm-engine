@@ -5,7 +5,7 @@
 (defun main (&rest argv)
   "Boots the arcade: opens a window, ticks a demo arena until close.
 Per-game rulesets attach via RULESET-LOAD/RULESET-UNLOAD; none is loaded
-here yet — this is the bare cabinet shell."
+here yet — this is the host shell with no game populated."
   (declare (ignore argv))
   (open-window "EDM Arcade" 800 600)
   (unwind-protect
