@@ -24,7 +24,8 @@
   :author "Dwight Spencer <denzuko@dapla.net>"
   :license "MIT"
   :version "0.1.0"
-  :depends-on ("edm-engine/core" "edm-engine/render")
+  :depends-on ("edm-engine/core" "edm-engine/render"
+               "edm-engine/games/wordle" "edm-engine/games/wordle/render")
   :build-operation "program-op"
   :build-pathname "edm-engine"
   :entry-point "edm-engine:main"
@@ -48,7 +49,8 @@ edm-engine/ruleset docstring for when constraint engines are warranted."
   :serial t
   :components ((:file "src/games/wordle/package")
                (:file "src/games/wordle/corpus")
-               (:file "src/games/wordle/guess")))
+               (:file "src/games/wordle/guess")
+               (:file "src/games/wordle/game")))
 
 (defsystem "edm-engine/games/wordle/render"
   :description "Wordle tile-grid renderer. Screen-centered; tile color is
@@ -61,7 +63,8 @@ a GLSL fragment-shader function of state, never a Lisp-side branch."
   :depends-on ("edm-engine/games/wordle" "fiveam")
   :serial t
   :components ((:file "t/games/package")
-               (:file "t/games/wordle-spec"))
+               (:file "t/games/wordle-spec")
+               (:file "t/games/wordle-game-spec"))
   :perform (test-op (o c)
              (unless (uiop:symbol-call :fiveam :run! :edm-engine-wordle)
                (error "edm-engine/games/wordle FiveAM suite failed"))))
