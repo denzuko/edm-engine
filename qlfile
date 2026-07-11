@@ -2,7 +2,7 @@ dist ultralisp https://dist.ultralisp.org/
 
 ql alexandria
 ql serapeum
-ql transducers
+ultralisp transducers
 ql chanl
 ql lparallel
 ql fiveam
