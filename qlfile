@@ -1,10 +1,8 @@
-dist ultralisp https://dist.ultralisp.org/
-
 ql alexandria
 ql serapeum
-ultralisp transducers
 ql chanl
 ql lparallel
 ql fiveam
-ultralisp cl-raylib
-ultralisp 40ants-doc
+git transducers https://github.com/fosskers/cl-transducers.git
+git cl-raylib https://github.com/longlene/cl-raylib.git
+git 40ants-doc https://github.com/40ants/doc.git
