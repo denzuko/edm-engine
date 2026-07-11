@@ -48,3 +48,24 @@ sbcl --non-interactive \
 circle at (200, 150). Colors are plain keywords (`:black`, `:green`),
 not `raylib:+black+`-style constants — that mistake shipped uncaught
 until this smoke test actually ran the code.
+
+## Regenerating shaders from c-mera source
+
+`shaders/*.fs`/`*.vs` are generated output, not hand-edited. The source
+of truth is `shaders/*.fs.lisp`/`*.vs.lisp` — c-mera GLSL S-expressions,
+so state-to-color mappings and other shader logic get the same macro
+system as the rest of the engine, not raw string-templated GLSL.
+
+```sh
+git clone https://github.com/kiselgra/c-mera.git ~/quicklisp/local-projects/c-mera
+sbcl --non-interactive --load ~/quicklisp/setup.lisp --load tools/build-shaders.lisp
+```
+
+c-mera isn't on Quicklisp or Ultralisp — clone it into `local-projects`.
+Its own CLI (`roswell/cm.ros`) parses argv via `net.didierverna.clon`,
+which only works against a real process argv; it silently reports
+"No input specified" when driven programmatically. `tools/build-shaders.lisp`
+instead calls c-mera's read/traverse/pretty-print pipeline directly,
+bypassing the CLI layer. It also prepends `#version 330` itself — c-mera's
+GLSL backend has no node for preprocessor pragmas, so that line is the
+build script's job, not the DSL's.

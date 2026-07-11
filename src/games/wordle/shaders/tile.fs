@@ -2,17 +2,19 @@
 
 in vec2 fragTexCoord;
 in vec4 fragColor;
-
-uniform int state; // 0=empty 1=gray 2=yellow 3=green
-
+uniform int state;
 out vec4 finalColor;
 
-void main()
+void main(void)
 {
-    vec3 color;
-    if (state == 3) color = vec3(0.416, 0.667, 0.392);      // green
-    else if (state == 2) color = vec3(0.788, 0.706, 0.345); // yellow
-    else if (state == 1) color = vec3(0.471, 0.478, 0.494); // gray
-    else color = vec3(0.086, 0.090, 0.102);                  // empty
-    finalColor = vec4(color, 1.0);
+	vec3 color;
+	if (state == 3)
+		color = vec3(4.16000000e-1, 6.67000000e-1, 3.92000000e-1);
+	else if (state == 2)
+		color = vec3(7.88000000e-1, 7.06000000e-1, 3.45000000e-1);
+	else if (state == 1)
+		color = vec3(4.71000000e-1, 4.78000000e-1, 4.94000000e-1);
+	else
+		color = vec3(8.60000000e-2, 9.00000040e-2, 1.02000000e-1);
+	finalColor = vec4(color, 1.00000000e+0);
 }
