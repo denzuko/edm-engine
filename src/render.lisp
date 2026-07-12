@@ -4,7 +4,12 @@
 
 (defun open-window (title width height)
   (raylib:init-window width height title)
-  (raylib:set-target-fps 60))
+  (raylib:set-target-fps 60)
+  ;; raylib's default: ESC sets WINDOW-SHOULD-CLOSE regardless of any
+  ;; is-key-pressed check elsewhere. The arcade uses ESC for its own
+  ;; pause-menu/back-navigation — left at the default, every ESC press
+  ;; would silently terminate the whole loop out from under it.
+  (raylib:set-exit-key :key-null))
 
 (defun close-window () (raylib:close-window))
 
