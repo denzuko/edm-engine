@@ -15,6 +15,24 @@
 
 (defun window-should-close-p () (raylib:window-should-close))
 
+;;; Shared shader-uniform-setting ceremony. Every shader in this engine
+;;; (tile.fs's state/outcome/time, chrome.fs's hue/saturation/value/alpha,
+;;; and whatever a future table's own shader pack needs) sets scalar
+;;; uniforms the same way: allocate a foreign scalar, write the value,
+;;; hand it to SET-SHADER-VALUE. That ceremony was duplicated verbatim
+;;; three times in draw-tile and four times in draw-chrome-rect before
+;;; this; one definition now, reused everywhere.
+
+(defun set-shader-int (shader location value)
+  (cffi:with-foreign-object (ptr :int)
+    (setf (cffi:mem-ref ptr :int) value)
+    (raylib:set-shader-value shader location ptr :shader-uniform-int)))
+
+(defun set-shader-float (shader location value)
+  (cffi:with-foreign-object (ptr :float)
+    (setf (cffi:mem-ref ptr :float) (float value 1.0))
+    (raylib:set-shader-value shader location ptr :shader-uniform-float)))
+
 (defun draw-arena (arena)
   "Draws every live entity in ARENA as a filled circle at its position.
 No logic here; ARENA state is produced entirely by ADVANCE-TICK."
@@ -58,15 +76,11 @@ pre-computed RGB literal. Retheming the whole engine is changing
 +THEME-HUE+, not editing draw calls."
   (ensure-chrome-shader)
   (multiple-value-bind (h s v) (theme-hsv role)
-    (flet ((set-float (loc value)
-             (cffi:with-foreign-object (ptr :float)
-               (setf (cffi:mem-ref ptr :float) (float value 1.0))
-               (raylib:set-shader-value *chrome-shader* loc ptr :shader-uniform-float))))
-      (raylib:begin-shader-mode *chrome-shader*)
-      (set-float *chrome-hue-loc* h)
-      (set-float *chrome-saturation-loc* s)
-      (set-float *chrome-value-loc* v)
-      (set-float *chrome-alpha-loc* alpha)
-      (raylib:draw-rectangle x y width height :white)
-      (raylib:end-shader-mode)))
+    (raylib:begin-shader-mode *chrome-shader*)
+    (set-shader-float *chrome-shader* *chrome-hue-loc* h)
+    (set-shader-float *chrome-shader* *chrome-saturation-loc* s)
+    (set-shader-float *chrome-shader* *chrome-value-loc* v)
+    (set-shader-float *chrome-shader* *chrome-alpha-loc* alpha)
+    (raylib:draw-rectangle x y width height :white)
+    (raylib:end-shader-mode))
   nil)

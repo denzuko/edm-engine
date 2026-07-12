@@ -13,6 +13,12 @@ raylib color — the same tokens the tile shader uses, applied to the
 chrome (menus, backgrounds) so the whole arcade shares one palette."
   (raylib:get-color (rgb-float->hex triple alpha)))
 
+(defun menu-item-color (selected-p)
+  "Accent when SELECTED-P, muted otherwise — this exact
+selected/unselected branch was duplicated across the main menu and
+the tables list."
+  (rgb-color (theme-color (if selected-p :accent :muted))))
+
 (defun arcade-update (state)
   (ecase (arcade-state-mode state)
     (:main-menu
@@ -64,9 +70,7 @@ the item list comes from ARCADE-POPUP-ITEMS, driven by GAME-OUTCOME."
           for i from 0
           for y = (+ 260 (* i 40))
           do (raylib:draw-text item (round (- (/ window-width 2) 90)) y 28
-                                (if (= i (arcade-state-popup-index state))
-                                    (rgb-color (theme-color :accent))
-                                    (rgb-color (theme-color :muted)))))))
+                                (menu-item-color (= i (arcade-state-popup-index state)))))))
 
 (defun arcade-render (state window-width window-height)
   "One BeginDrawing/EndDrawing per frame, established here — GAME-RENDER
@@ -85,17 +89,13 @@ retheming the whole engine is +THEME-HUE+, not draw-call edits."
        (loop for item in +main-menu-items+
              for i from 0
              do (raylib:draw-text item 40 (+ 100 (* i 40)) 28
-                                   (if (= i (arcade-state-main-menu-index state))
-                                       (rgb-color (theme-color :accent))
-                                       (rgb-color (theme-color :muted))))))
+                                   (menu-item-color (= i (arcade-state-main-menu-index state))))))
       (:tables
        (raylib:draw-text "TABLES" 40 30 30 (rgb-color (theme-color :accent)))
        (loop for entry in *games*
              for i from 0
              do (raylib:draw-text (game-entry-title entry) 40 (+ 90 (* i 36)) 26
-                                   (if (= i (arcade-state-table-index state))
-                                       (rgb-color (theme-color :accent))
-                                       (rgb-color (theme-color :muted)))))
+                                   (menu-item-color (= i (arcade-state-table-index state)))))
        (raylib:draw-text "ESC: Back" 40 (- window-height 40) 18 (rgb-color (theme-color :muted))))
       (:options
        (raylib:draw-text "ENGINE OPTIONS" 40 30 30 (rgb-color (theme-color :accent)))
