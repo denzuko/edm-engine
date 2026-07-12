@@ -39,7 +39,7 @@
    #:arcade-popup-items #:arcade-open-popup #:arcade-popup-next #:arcade-popup-previous
    #:arcade-popup-confirm #:arcade-bank-score #:arcade-save-current #:arcade-load-saved-game
    ;; arcade entry point (defined in the primary edm-engine system)
-   #:main))
+   #:main #:arcade-update #:arcade-render))
 
 (in-package :edm-engine)
 

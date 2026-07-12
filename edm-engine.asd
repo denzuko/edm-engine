@@ -93,6 +93,17 @@ a GLSL fragment-shader function of state, never a Lisp-side branch."
              (unless (uiop:symbol-call :fiveam :run! :edm-engine-wordle)
                (error "edm-engine/games/wordle FiveAM suite failed"))))
 
+(defsystem "edm-engine/e2e"
+  :description "Real end-to-end tests: drives the actual arcade (on a
+thread, same process) via CLX + the XTEST X11 extension — genuine
+synthesized input, not a shortcut through the pure state-transition
+functions FiveAM already covers. Requires a running X server (Xvfb is
+fine) with the XTEST extension available; not run by the default test
+suite since it needs that plus a full raylib build."
+  :depends-on ("edm-engine" "clx" "bordeaux-threads" "fiveam")
+  :components ((:file "t/e2e/support")
+               (:file "t/e2e/menu-e2e")))
+
 (defsystem "edm-engine/tests"
   :description "FiveAM spec suite over edm-engine/core. Written before implementation, per BDD gate."
   :depends-on ("edm-engine/core" "fiveam")
