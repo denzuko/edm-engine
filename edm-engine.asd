@@ -18,10 +18,13 @@
                (:file "src/tick")))
 
 (defsystem "edm-engine/audio/tone"
-  :description "Pure on-the-fly waveform sample generation. No raylib, no I/O —
-this is what the generative audio DSL is for, not pre-recorded samples."
+  :description "Pure on-the-fly waveform sample generation and tracker-style
+pattern sequencing. No raylib, no I/O — this is what the generative audio
+DSL is for, not pre-recorded samples."
+  :serial t
   :components ((:file "src/audio/package")
-               (:file "src/audio/tone")))
+               (:file "src/audio/tone")
+               (:file "src/audio/tracker")))
 
 (defsystem "edm-engine/audio"
   :description "raylib playback boundary for generated tones. Untested I/O,
@@ -32,7 +35,8 @@ same convention as render.lisp."
 (defsystem "edm-engine/audio/tests"
   :description "FiveAM spec suite for edm-engine/audio/tone."
   :depends-on ("edm-engine/audio/tone" "fiveam")
-  :components ((:file "t/audio/tone-spec"))
+  :components ((:file "t/audio/tone-spec")
+               (:file "t/audio/tracker-spec"))
   :perform (test-op (o c)
              (unless (uiop:symbol-call :fiveam :run! :edm-engine-audio)
                (error "edm-engine/audio FiveAM suite failed"))))
