@@ -94,3 +94,38 @@ by hand)."
          (setf result (wait-for (lambda () edm-engine/audio:*audio-device-ready*) :timeout 5)))
        (funcall stop)))
     (fiveam:is (not (null result)))))
+
+(fiveam:test escape-opens-pause-popup-and-resume-does-not-kill-the-loop
+  "Regression guard: raylib's default ESC-closes-window silently killed
+the whole arcade loop the instant a pause-menu ESC fired, since
+WINDOW-SHOULD-CLOSE-P returns T on ESC independent of any
+IS-KEY-PRESSED check. Every gameplay action sent after that point went
+into a loop that had already stopped updating state — three
+unrelated-looking symptoms (a full loss, a win, and volume adjustment
+all silently failing) turned out to be this one bug."
+  (let (popup-opened-correctly resumed-correctly typed-after-resume history-after)
+    (run-arcade-with-driver
+     (lambda (state stop)
+       (with-x-display (display (e2e-display-name))
+         (find-window-by-name display edm-engine:+engine-name+ :timeout 20)
+         (send-key display +key-return+)
+         (wait-for (lambda () (eq :tables (edm-engine:arcade-state-mode state))))
+         (send-key display +key-return+)
+         (wait-for (lambda () (eq :playing (edm-engine:arcade-state-mode state))))
+         (let ((game (edm-engine:arcade-state-current-game state)))
+           (setf (edm-engine/games/wordle::wordle-game-answer game) "CRANE")
+           (send-key display +key-escape+)
+           (setf popup-opened-correctly (wait-for (lambda () (edm-engine:arcade-state-popup-open state))))
+           (send-key display +key-return+) ; Resume
+           (setf resumed-correctly (wait-for (lambda () (not (edm-engine:arcade-state-popup-open state)))))
+           (send-text display "train")
+           (setf typed-after-resume
+                 (wait-for (lambda () (= 5 (fill-pointer (edm-engine/games/wordle:wordle-game-input game))))))
+           (send-key display +key-return+)
+           (setf history-after
+                 (wait-for (lambda () (= 1 (length (edm-engine/games/wordle:wordle-game-history game))))))))
+       (funcall stop)))
+    (fiveam:is (not (null popup-opened-correctly)))
+    (fiveam:is (not (null resumed-correctly)))
+    (fiveam:is (not (null typed-after-resume)))
+    (fiveam:is (not (null history-after)))))
