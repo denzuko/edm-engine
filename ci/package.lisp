@@ -35,6 +35,7 @@ sbcl --non-interactive --load quicklisp.lisp \\
 sbcl --non-interactive \\
   --load ~/quicklisp/setup.lisp \\
   --eval '(push (truename \".\") asdf:*central-registry*)' \\
+  --eval '(ql:quickload :edm-engine/tests/all)' \\
   --eval '(asdf:test-system :edm-engine/tests/all)'")
 
 (defworkflow ci
