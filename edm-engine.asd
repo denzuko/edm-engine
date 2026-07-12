@@ -118,14 +118,16 @@ Wordle never needed one."
                (error "edm-engine/games/wordle FiveAM suite failed"))))
 
 (defsystem "edm-engine/tests/all"
-  :description "Aggregates all three pure-logic FiveAM suites (core, wordle,
-audio) into one ASDF test-op — none of them depend on raylib, so this is
-what CI actually runs, not just edm-engine/core."
-  :depends-on ("edm-engine/tests" "edm-engine/games/wordle/tests" "edm-engine/audio/tests")
+  :description "Aggregates all four pure-logic FiveAM suites (core, wordle,
+audio, queens) into one ASDF test-op — none of them depend on raylib, so
+this is what CI actually runs, not just edm-engine/core."
+  :depends-on ("edm-engine/tests" "edm-engine/games/wordle/tests" "edm-engine/audio/tests"
+               "edm-engine/games/queens/tests")
   :perform (test-op (o c)
              (let ((results (list (uiop:symbol-call :fiveam :run! :edm-engine)
                                    (uiop:symbol-call :fiveam :run! :edm-engine-wordle)
-                                   (uiop:symbol-call :fiveam :run! :edm-engine-audio))))
+                                   (uiop:symbol-call :fiveam :run! :edm-engine-audio)
+                                   (uiop:symbol-call :fiveam :run! :edm-engine-queens))))
                (unless (every #'identity results)
                  (error "one or more edm-engine FiveAM suites failed")))))
 
