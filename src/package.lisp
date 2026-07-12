@@ -19,8 +19,11 @@
    #:*games* #:register-game
    ;; tick
    #:tick #:make-tick #:tick-frame #:advance-tick #:ensure-kernel
-   ;; save/load
-   #:*default-save-path* #:save-game-to-file #:load-game-from-file
+   ;; save/load — 10 slots, each with metadata + a screenshot
+   #:*save-slot-count* #:*save-directory*
+   #:save-slot-data-path #:save-slot-screenshot-path #:ensure-save-directory
+   #:save-game-to-slot #:load-game-from-slot #:delete-save-slot
+   #:list-save-slots #:format-save-timestamp
    ;; palette (chrome tokens + Okabe-Ito for functional state color)
    #:+color-dim+ #:+color-panel+ #:+color-brand-green+ #:+color-brand-green2+
    #:+color-amber+ #:+color-red+
@@ -38,14 +41,16 @@
    #:arcade-state-mode #:arcade-state-main-menu-index #:arcade-state-table-index
    #:arcade-state-current-game #:arcade-state-current-table-title #:arcade-state-ruleset-handle
    #:arcade-state-total-score #:arcade-state-volume
-   #:arcade-state-popup-open #:arcade-state-popup-index
+   #:arcade-state-popup-open #:arcade-state-popup-index #:arcade-state-save-slot-index
    #:arcade-select-next-main-menu #:arcade-select-previous-main-menu
    #:arcade-drill-into-main-menu-selection #:arcade-back-to-main-menu
    #:clamp-volume #:arcade-increase-volume #:arcade-decrease-volume
    #:arcade-select-next-table #:arcade-select-previous-table
    #:arcade-launch-selected #:arcade-restart-current #:arcade-return-to-table-select
    #:arcade-popup-items #:arcade-open-popup #:arcade-popup-next #:arcade-popup-previous
-   #:arcade-popup-confirm #:arcade-bank-score #:arcade-save-current #:arcade-load-saved-game
+   #:arcade-popup-confirm #:arcade-bank-score #:arcade-save-current
+   #:arcade-select-next-save-slot #:arcade-select-previous-save-slot
+   #:arcade-load-selected-save-slot
    ;; arcade entry point (defined in the primary edm-engine system)
    #:main #:arcade-update #:arcade-render #:rgb-color #:rgb-float->hex))
 

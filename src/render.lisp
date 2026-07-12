@@ -52,14 +52,23 @@ No logic here; ARENA state is produced entirely by ADVANCE-TICK."
 (defvar *chrome-value-loc* nil)
 (defvar *chrome-alpha-loc* nil)
 
-(defun chrome-shader-path (extension)
-  (namestring (asdf:system-relative-pathname
-               :edm-engine (format nil "src/shaders/chrome.~A" extension))))
+(defun chrome-fragment-shader-path ()
+  (namestring (asdf:system-relative-pathname :edm-engine "src/shaders/chrome.fs")))
+
+(defun chrome-vertex-shader-path ()
+  "PASSTHROUGH.VS is shared — chrome.fs.lisp never had its own paired
+.vs; the vertex-shader half is identical to what tile.vs.lisp does,
+so it's one shared file, not a same-named chrome.vs that never
+actually got generated. (LOAD-SHADER silently falls back to raylib's
+own default vertex shader when this path doesn't resolve, which is
+functionally close enough to go unnoticed visually — but silently
+wrong is still wrong.)"
+  (namestring (asdf:system-relative-pathname :edm-engine "src/shaders/passthrough.vs")))
 
 (defun ensure-chrome-shader ()
   (unless *chrome-shader*
     (setf *chrome-shader*
-          (raylib:load-shader (chrome-shader-path "vs") (chrome-shader-path "fs")))
+          (raylib:load-shader (chrome-vertex-shader-path) (chrome-fragment-shader-path)))
     (setf *chrome-hue-loc* (raylib:get-shader-location *chrome-shader* "hue"))
     (setf *chrome-saturation-loc* (raylib:get-shader-location *chrome-shader* "saturation"))
     (setf *chrome-value-loc* (raylib:get-shader-location *chrome-shader* "value"))

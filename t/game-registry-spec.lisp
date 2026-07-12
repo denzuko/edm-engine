@@ -26,21 +26,55 @@
 (test game-outcome-default-method-is-nil
   (is (null (game-outcome :some-arbitrary-game))))
 
-(test save-and-load-game-round-trips
-  (let ((path (merge-pathnames (format nil "edm-engine-test-~A.sexp" (random 1000000))
-                                (uiop:temporary-directory))))
-    (unwind-protect
-         (progn
-           (save-game-to-file "Wordle" :fake-game-instance 340 path)
-           (multiple-value-bind (title score data) (load-game-from-file path)
-             (is (string= "Wordle" title))
-             (is (= 340 score))
-             ;; GAME-SAVE-DATA's default method is NIL for anything
-             ;; without a specialized method, like this plain keyword
-             (is (null data))))
-      (when (probe-file path) (delete-file path)))))
+(defmacro with-temp-save-directory (&body body)
+  `(let ((*save-directory* (merge-pathnames
+                             (format nil "edm-engine-test-saves-~A/" (random 1000000))
+                             (uiop:temporary-directory))))
+     (unwind-protect (progn ,@body)
+       (when (probe-file *save-directory*)
+         (uiop:delete-directory-tree *save-directory* :validate t)))))
 
-(test load-game-from-file-returns-nil-for-a-missing-path
-  (let ((path (merge-pathnames "edm-engine-definitely-does-not-exist.sexp"
-                                (uiop:temporary-directory))))
-    (is (null (load-game-from-file path)))))
+(test save-and-load-slot-round-trips
+  (with-temp-save-directory
+    (save-game-to-slot 0 "Wordle" :fake-game-instance 340)
+    (multiple-value-bind (title score timestamp data) (load-game-from-slot 0)
+      (is (string= "Wordle" title))
+      (is (= 340 score))
+      (is (integerp timestamp))
+      ;; GAME-SAVE-DATA's default method is NIL for anything without a
+      ;; specialized method, like this plain keyword
+      (is (null data)))))
+
+(test load-game-from-slot-returns-nil-for-an-empty-slot
+  (with-temp-save-directory
+    (is (null (load-game-from-slot 5)))))
+
+(test slots-are-independent-of-each-other
+  (with-temp-save-directory
+    (save-game-to-slot 0 "Wordle" :fake-a 100)
+    (save-game-to-slot 3 "Queens" :fake-b 200)
+    (is (null (load-game-from-slot 1)))
+    (multiple-value-bind (title0) (load-game-from-slot 0) (is (string= "Wordle" title0)))
+    (multiple-value-bind (title3) (load-game-from-slot 3) (is (string= "Queens" title3)))))
+
+(test delete-save-slot-clears-it
+  (with-temp-save-directory
+    (save-game-to-slot 2 "Wordle" :fake-game-instance 50)
+    (delete-save-slot 2)
+    (is (null (load-game-from-slot 2)))))
+
+(test list-save-slots-reports-all-ten-with-empties-as-nil
+  (with-temp-save-directory
+    (save-game-to-slot 0 "Wordle" :fake-a 10)
+    (save-game-to-slot 7 "Queens" :fake-b 20)
+    (let ((slots (list-save-slots)))
+      (is (= 10 (length slots)))
+      (is (getf (nth 0 slots) :table-title))
+      (is (string= "Wordle" (getf (nth 0 slots) :table-title)))
+      (is (null (nth 1 slots)))
+      (is (string= "Queens" (getf (nth 7 slots) :table-title))))))
+
+(test format-save-timestamp-produces-a-sortable-string
+  ;; 2026-01-15 10:30:00 UTC-ish, exact value doesn't matter — format shape does
+  (let ((s (format-save-timestamp (encode-universal-time 0 30 10 15 1 2026 0))))
+    (is (string= "2026-01-15 10:30" s))))

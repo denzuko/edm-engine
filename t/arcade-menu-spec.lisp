@@ -163,61 +163,66 @@
     (arcade-return-to-table-select state) ; banks another 100
     (is (= 200 (arcade-state-total-score state)))))
 
-;;; Save via popup
+;;; Save via popup (10-slot system)
 
-(test popup-save-state-writes-file-and-returns-to-tables
-  (let ((edm-engine::*games* nil)
-        (state (make-arcade-state))
-        (path (merge-pathnames (format nil "edm-engine-popup-save-~A.sexp" (random 1000000))
-                                (uiop:temporary-directory))))
-    (unwind-protect
-         (progn
-           (register-game "Stub" (lambda () (make-instance 'spec-outcome-game)))
-           (setf (arcade-state-mode state) :tables)
-           (arcade-launch-selected state)
-           (arcade-open-popup state)
-           (setf (arcade-state-popup-index state) 2) ; "Save State" in the in-progress variant
-           (arcade-popup-confirm state path)
-           (is (probe-file path))
-           (is (eq :tables (arcade-state-mode state)))
-           (multiple-value-bind (title) (load-game-from-file path)
-             (is (string= "Stub" title))))
-      (when (probe-file path) (delete-file path)))))
+(defmacro with-temp-save-directory-for-arcade (&body body)
+  `(let ((edm-engine::*save-directory* (merge-pathnames
+                                         (format nil "edm-engine-arcade-test-saves-~A/" (random 1000000))
+                                         (uiop:temporary-directory))))
+     (unwind-protect (progn ,@body)
+       (when (probe-file edm-engine::*save-directory*)
+         (uiop:delete-directory-tree edm-engine::*save-directory* :validate t)))))
 
-(test load-saved-game-returns-nil-when-nothing-saved
-  (let ((edm-engine::*games* nil)
-        (state (make-arcade-state))
-        (path (merge-pathnames (format nil "edm-engine-load-empty-~A.sexp" (random 1000000))
-                                (uiop:temporary-directory))))
-    (register-game "Stub" (lambda () (make-instance 'spec-outcome-game))
-                    :restore-fn (lambda (data) (declare (ignore data)) (make-instance 'spec-outcome-game)))
-    (is (null (arcade-load-saved-game state path)))))
+(test popup-save-state-writes-to-the-browsed-slot-and-returns-to-tables
+  (with-temp-save-directory-for-arcade
+    (let ((edm-engine::*games* nil)
+          (state (make-arcade-state)))
+      (register-game "Stub" (lambda () (make-instance 'spec-outcome-game)))
+      (setf (arcade-state-mode state) :tables)
+      (arcade-launch-selected state)
+      (setf (arcade-state-save-slot-index state) 3)
+      (arcade-open-popup state)
+      (setf (arcade-state-popup-index state) 2) ; "Save State" in the in-progress variant
+      (arcade-popup-confirm state)
+      (is (probe-file (save-slot-data-path 3)))
+      (is (eq :tables (arcade-state-mode state)))
+      (multiple-value-bind (title) (load-game-from-slot 3)
+        (is (string= "Stub" title))))))
 
-(test load-saved-game-round-trips-title-and-score-and-resumes-play
-  (let ((edm-engine::*games* nil)
-        (state (make-arcade-state))
-        (path (merge-pathnames (format nil "edm-engine-load-~A.sexp" (random 1000000))
-                                (uiop:temporary-directory))))
-    (unwind-protect
-         (progn
-           (register-game "Stub" (lambda () (make-instance 'spec-outcome-game))
-                           :restore-fn (lambda (data) (declare (ignore data))
-                                         (make-instance 'spec-outcome-game)))
-           (save-game-to-file "Stub" (make-instance 'spec-outcome-game) 777 path)
-           (is (eq t (arcade-load-saved-game state path)))
-           (is (eq :playing (arcade-state-mode state)))
-           (is (string= "Stub" (arcade-state-current-table-title state)))
-           (is (= 777 (arcade-state-total-score state))))
-      (when (probe-file path) (delete-file path)))))
+(test save-slot-browsing-wraps-through-all-ten
+  (let ((state (make-arcade-state)))
+    (is (= 0 (arcade-state-save-slot-index state)))
+    (arcade-select-previous-save-slot state)
+    (is (= 9 (arcade-state-save-slot-index state)))
+    (arcade-select-next-save-slot state)
+    (is (= 0 (arcade-state-save-slot-index state)))))
 
-(test load-saved-game-returns-nil-when-table-has-no-restore-fn
-  (let ((edm-engine::*games* nil)
-        (state (make-arcade-state))
-        (path (merge-pathnames (format nil "edm-engine-load-norestore-~A.sexp" (random 1000000))
-                                (uiop:temporary-directory))))
-    (unwind-protect
-         (progn
-           (register-game "Stub" (lambda () (make-instance 'spec-outcome-game))) ; no :restore-fn
-           (save-game-to-file "Stub" (make-instance 'spec-outcome-game) 50 path)
-           (is (null (arcade-load-saved-game state path))))
-      (when (probe-file path) (delete-file path)))))
+(test load-selected-save-slot-returns-nil-when-that-slot-is-empty
+  (with-temp-save-directory-for-arcade
+    (let ((edm-engine::*games* nil)
+          (state (make-arcade-state)))
+      (register-game "Stub" (lambda () (make-instance 'spec-outcome-game))
+                      :restore-fn (lambda (data) (declare (ignore data)) (make-instance 'spec-outcome-game)))
+      (is (null (arcade-load-selected-save-slot state))))))
+
+(test load-selected-save-slot-round-trips-title-and-score-and-resumes-play
+  (with-temp-save-directory-for-arcade
+    (let ((edm-engine::*games* nil)
+          (state (make-arcade-state)))
+      (register-game "Stub" (lambda () (make-instance 'spec-outcome-game))
+                      :restore-fn (lambda (data) (declare (ignore data))
+                                    (make-instance 'spec-outcome-game)))
+      (save-game-to-slot 5 "Stub" (make-instance 'spec-outcome-game) 777)
+      (setf (arcade-state-save-slot-index state) 5)
+      (is (eq t (arcade-load-selected-save-slot state)))
+      (is (eq :playing (arcade-state-mode state)))
+      (is (string= "Stub" (arcade-state-current-table-title state)))
+      (is (= 777 (arcade-state-total-score state))))))
+
+(test load-selected-save-slot-returns-nil-when-table-has-no-restore-fn
+  (with-temp-save-directory-for-arcade
+    (let ((edm-engine::*games* nil)
+          (state (make-arcade-state)))
+      (register-game "Stub" (lambda () (make-instance 'spec-outcome-game))) ; no :restore-fn
+      (save-game-to-slot 0 "Stub" (make-instance 'spec-outcome-game) 50)
+      (is (null (arcade-load-selected-save-slot state))))))

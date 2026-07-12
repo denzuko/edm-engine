@@ -15,7 +15,8 @@
   (total-score 0 :type fixnum)
   (volume 1.0 :type single-float)
   (popup-open nil :type boolean)
-  (popup-index 0 :type fixnum))
+  (popup-index 0 :type fixnum)
+  (save-slot-index 0 :type fixnum))
 
 ;;; Top-level main menu: Tables / Engine Options / Save-Load
 
@@ -126,18 +127,20 @@ finished, possibly a test double) current instance."
         (arcade-state-popup-open state) nil
         (arcade-state-popup-index state) 0))
 
-(defun arcade-save-current (state &optional (path *default-save-path*))
-  "Saves the in-progress table to disk, then returns to table select —
-mirrors a standard 'save & quit', and avoids needing extra UI state to
-show a lingering confirmation message."
+(defun arcade-save-current (state)
+  "Saves the in-progress table into STATE's currently browsed slot
+(ARCADE-STATE-SAVE-SLOT-INDEX — pick a different one first via the
+Save/Load screen's up/down, same navigation as everywhere else), then
+returns to table select. Returns the slot index."
   (when (arcade-state-current-game state)
-    (save-game-to-file (arcade-state-current-table-title state)
+    (save-game-to-slot (arcade-state-save-slot-index state)
+                        (arcade-state-current-table-title state)
                         (arcade-state-current-game state)
-                        (arcade-state-total-score state)
-                        path))
-  (arcade-return-to-table-select state))
+                        (arcade-state-total-score state)))
+  (arcade-return-to-table-select state)
+  (arcade-state-save-slot-index state))
 
-(defun arcade-popup-confirm (state &optional (save-path *default-save-path*))
+(defun arcade-popup-confirm (state)
   "Dispatches on the highlighted popup item's TEXT, not a raw index —
 RESUME only exists in the in-progress variant of ARCADE-POPUP-ITEMS, so
 indexing by position alone would pick the wrong action once the two
@@ -147,17 +150,27 @@ variants' lengths differ."
     (cond
       ((string= item "Resume") (setf (arcade-state-popup-open state) nil))
       ((string= item "New Game") (arcade-restart-current state))
-      ((string= item "Save State") (arcade-save-current state save-path))
+      ((string= item "Save State") (arcade-save-current state))
       ((string= item "Return to Tables") (arcade-return-to-table-select state)))))
 
-;;; Save/Load main-menu screen
+;;; Save/Load main-menu screen — browse up to *SAVE-SLOT-COUNT* slots
 
-(defun arcade-load-saved-game (state &optional (path *default-save-path*))
-  "Loads PATH's save file and resumes play. Returns T on success, NIL if
-there's no save, or the saved table no longer supports RESTORE-FN
-(dropped that support, or was never registered — a stale save from a
-build that no longer matches this one)."
-  (multiple-value-bind (title score data) (load-game-from-file path)
+(defun arcade-select-next-save-slot (state)
+  (setf (arcade-state-save-slot-index state)
+        (mod (1+ (arcade-state-save-slot-index state)) *save-slot-count*)))
+
+(defun arcade-select-previous-save-slot (state)
+  (setf (arcade-state-save-slot-index state)
+        (mod (1- (arcade-state-save-slot-index state)) *save-slot-count*)))
+
+(defun arcade-load-selected-save-slot (state)
+  "Loads STATE's currently browsed slot and resumes play. Returns T on
+success, NIL if the slot is empty, or the saved table no longer
+supports RESTORE-FN (dropped that support, or was never registered — a
+stale save from a build that no longer matches this one)."
+  (multiple-value-bind (title score timestamp data)
+      (load-game-from-slot (arcade-state-save-slot-index state))
+    (declare (ignore timestamp))
     (when title
       (let ((entry (find title *games* :key #'game-entry-title :test #'string=)))
         (when (and entry (game-entry-restore-fn entry))
