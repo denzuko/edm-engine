@@ -19,6 +19,12 @@ selected/unselected branch was duplicated across the main menu and
 the tables list."
   (rgb-color (theme-color (if selected-p :accent :muted))))
 
+(defun draw-section-title (text)
+  (raylib:draw-text text 40 30 30 (rgb-color (theme-color :accent))))
+
+(defun draw-back-hint (window-height)
+  (raylib:draw-text "ESC: Back" 40 (- window-height 40) 18 (rgb-color (theme-color :muted))))
+
 (defun arcade-update (state)
   (ecase (arcade-state-mode state)
     (:main-menu
@@ -91,24 +97,24 @@ retheming the whole engine is +THEME-HUE+, not draw-call edits."
              do (raylib:draw-text item 40 (+ 100 (* i 40)) 28
                                    (menu-item-color (= i (arcade-state-main-menu-index state))))))
       (:tables
-       (raylib:draw-text "TABLES" 40 30 30 (rgb-color (theme-color :accent)))
+       (draw-section-title "TABLES")
        (loop for entry in *games*
              for i from 0
              do (raylib:draw-text (game-entry-title entry) 40 (+ 90 (* i 36)) 26
                                    (menu-item-color (= i (arcade-state-table-index state)))))
-       (raylib:draw-text "ESC: Back" 40 (- window-height 40) 18 (rgb-color (theme-color :muted))))
+       (draw-back-hint window-height))
       (:options
-       (raylib:draw-text "ENGINE OPTIONS" 40 30 30 (rgb-color (theme-color :accent)))
+       (draw-section-title "ENGINE OPTIONS")
        (raylib:draw-text (format nil "Master Volume: ~D%" (round (* 100 (arcade-state-volume state))))
                           40 100 22 (rgb-color (theme-color :info)))
        (raylib:draw-text "LEFT / RIGHT: Adjust" 40 140 18 (rgb-color (theme-color :muted)))
-       (raylib:draw-text "ESC: Back" 40 (- window-height 40) 18 (rgb-color (theme-color :muted))))
+       (draw-back-hint window-height))
       (:save-load
-       (raylib:draw-text "SAVE / LOAD" 40 30 30 (rgb-color (theme-color :accent)))
+       (draw-section-title "SAVE / LOAD")
        (if (probe-file *default-save-path*)
            (raylib:draw-text "ENTER: Load saved game" 40 100 22 (rgb-color (theme-color :info)))
            (raylib:draw-text "No saved game found." 40 100 22 (rgb-color (theme-color :muted))))
-       (raylib:draw-text "ESC: Back" 40 (- window-height 40) 18 (rgb-color (theme-color :muted))))
+       (draw-back-hint window-height))
       (:playing
        (let ((game (arcade-state-current-game state)))
          (game-render game window-width window-height)
