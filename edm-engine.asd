@@ -116,6 +116,7 @@ suite since it needs that plus a full raylib build."
                (:file "t/ruleset-spec")
                (:file "t/game-registry-spec")
                (:file "t/arcade-menu-spec")
+               (:file "t/theme-spec")
                (:file "t/tick-spec"))
   :perform (test-op (o c)
              (unless (uiop:symbol-call :fiveam :run! :edm-engine)

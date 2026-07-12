@@ -26,8 +26,11 @@
    #:+color-amber+ #:+color-red+
    #:+okabe-ito-orange+ #:+okabe-ito-bluish-green+ #:+okabe-ito-sky-blue+
    #:rgb-scaled
+   ;; monochromatic HSV theme system (chrome only — see palette.lisp)
+   #:hsv->rgb #:rgb->hsv #:+theme-hue+ #:theme-color #:theme-hsv
    ;; render (defined in edm-engine/render; declared here so main can call them)
    #:open-window #:close-window #:window-should-close-p #:draw-arena
+   #:draw-chrome-rect #:ensure-chrome-shader
    ;; arcade state machine (pure; the raylib update/render loop lives in
    ;; the primary edm-engine system's main.lisp, not here)
    #:+engine-name+ #:+main-menu-items+

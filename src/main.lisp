@@ -55,57 +55,60 @@ the item list comes from ARCADE-POPUP-ITEMS, driven by GAME-OUTCOME."
   (let* ((game (arcade-state-current-game state))
          (items (arcade-popup-items game))
          (outcome (game-outcome game)))
-    (raylib:draw-rectangle 0 0 window-width window-height (rgb-color +color-panel+ 200))
+    (raylib:draw-rectangle 0 0 window-width window-height (rgb-color (theme-color :panel) 200))
     (when outcome
       (let* ((label (ecase outcome (:win "YOU WON") (:lose "YOU LOST") (:tie "TIE GAME")))
              (tw (raylib:measure-text label 44)))
-        (raylib:draw-text label (round (/ (- window-width tw) 2)) 140 44 (rgb-color +color-brand-green+))))
+        (raylib:draw-text label (round (/ (- window-width tw) 2)) 140 44 (rgb-color (theme-color :accent)))))
     (loop for item in items
           for i from 0
           for y = (+ 260 (* i 40))
           do (raylib:draw-text item (round (- (/ window-width 2) 90)) y 28
                                 (if (= i (arcade-state-popup-index state))
-                                    (rgb-color +color-brand-green+)
-                                    (rgb-color (rgb-scaled +color-panel+ 6.0)))))))
+                                    (rgb-color (theme-color :accent))
+                                    (rgb-color (theme-color :muted)))))))
 
 (defun arcade-render (state window-width window-height)
   "One BeginDrawing/EndDrawing per frame, established here — GAME-RENDER
 methods (e.g. DRAW-GRID) assume they're already inside a drawing context
-and never call WITH-DRAWING themselves."
+and never call WITH-DRAWING themselves. The background is drawn via the
+chrome shader (genuinely GPU HSV-driven), not a flat CLEAR-BACKGROUND —
+retheming the whole engine is +THEME-HUE+, not draw-call edits."
   (raylib:with-drawing
-    (raylib:clear-background (rgb-color +color-dim+))
+    (raylib:clear-background :black) ; opaque base the shaded rect composites over
+    (draw-chrome-rect 0 0 window-width window-height :dim)
     (ecase (arcade-state-mode state)
       (:main-menu
-       (raylib:draw-text +engine-name+ 40 30 34 (rgb-color +color-brand-green+))
+       (raylib:draw-text +engine-name+ 40 30 34 (rgb-color (theme-color :accent)))
        (raylib:draw-text (format nil "Score: ~D" (arcade-state-total-score state))
-                          40 (- window-height 40) 18 (rgb-color (rgb-scaled +color-panel+ 6.0)))
+                          40 (- window-height 40) 18 (rgb-color (theme-color :muted)))
        (loop for item in +main-menu-items+
              for i from 0
              do (raylib:draw-text item 40 (+ 100 (* i 40)) 28
                                    (if (= i (arcade-state-main-menu-index state))
-                                       (rgb-color +color-brand-green+)
-                                       (rgb-color (rgb-scaled +color-panel+ 6.0))))))
+                                       (rgb-color (theme-color :accent))
+                                       (rgb-color (theme-color :muted))))))
       (:tables
-       (raylib:draw-text "TABLES" 40 30 30 (rgb-color +color-brand-green+))
+       (raylib:draw-text "TABLES" 40 30 30 (rgb-color (theme-color :accent)))
        (loop for entry in *games*
              for i from 0
              do (raylib:draw-text (game-entry-title entry) 40 (+ 90 (* i 36)) 26
                                    (if (= i (arcade-state-table-index state))
-                                       (rgb-color +color-brand-green+)
-                                       (rgb-color (rgb-scaled +color-panel+ 6.0)))))
-       (raylib:draw-text "ESC: Back" 40 (- window-height 40) 18 (rgb-color (rgb-scaled +color-panel+ 6.0))))
+                                       (rgb-color (theme-color :accent))
+                                       (rgb-color (theme-color :muted)))))
+       (raylib:draw-text "ESC: Back" 40 (- window-height 40) 18 (rgb-color (theme-color :muted))))
       (:options
-       (raylib:draw-text "ENGINE OPTIONS" 40 30 30 (rgb-color +color-brand-green+))
+       (raylib:draw-text "ENGINE OPTIONS" 40 30 30 (rgb-color (theme-color :accent)))
        (raylib:draw-text (format nil "Master Volume: ~D%" (round (* 100 (arcade-state-volume state))))
-                          40 100 22 (rgb-color '(0.9 0.9 0.9)))
-       (raylib:draw-text "LEFT / RIGHT: Adjust" 40 140 18 (rgb-color (rgb-scaled +color-panel+ 6.0)))
-       (raylib:draw-text "ESC: Back" 40 (- window-height 40) 18 (rgb-color (rgb-scaled +color-panel+ 6.0))))
+                          40 100 22 (rgb-color (theme-color :info)))
+       (raylib:draw-text "LEFT / RIGHT: Adjust" 40 140 18 (rgb-color (theme-color :muted)))
+       (raylib:draw-text "ESC: Back" 40 (- window-height 40) 18 (rgb-color (theme-color :muted))))
       (:save-load
-       (raylib:draw-text "SAVE / LOAD" 40 30 30 (rgb-color +color-brand-green+))
+       (raylib:draw-text "SAVE / LOAD" 40 30 30 (rgb-color (theme-color :accent)))
        (if (probe-file *default-save-path*)
-           (raylib:draw-text "ENTER: Load saved game" 40 100 22 (rgb-color '(0.9 0.9 0.9)))
-           (raylib:draw-text "No saved game found." 40 100 22 (rgb-color (rgb-scaled +color-panel+ 6.0))))
-       (raylib:draw-text "ESC: Back" 40 (- window-height 40) 18 (rgb-color (rgb-scaled +color-panel+ 6.0))))
+           (raylib:draw-text "ENTER: Load saved game" 40 100 22 (rgb-color (theme-color :info)))
+           (raylib:draw-text "No saved game found." 40 100 22 (rgb-color (theme-color :muted))))
+       (raylib:draw-text "ESC: Back" 40 (- window-height 40) 18 (rgb-color (theme-color :muted))))
       (:playing
        (let ((game (arcade-state-current-game state)))
          (game-render game window-width window-height)

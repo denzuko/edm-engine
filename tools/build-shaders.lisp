@@ -45,7 +45,9 @@
 
 (let ((*package* (find-package :cmu-glsl)))
   (setf (readtable-case *readtable*) :invert)
-  (dolist (source (directory (merge-pathnames "src/games/*/shaders/*.*.lisp" (uiop:getcwd))))
+  (dolist (source (append
+                    (directory (merge-pathnames "src/games/*/shaders/*.*.lisp" (uiop:getcwd)))
+                    (directory (merge-pathnames "src/shaders/*.*.lisp" (uiop:getcwd)))))
     (let* ((namestring (namestring source))
            (output (parse-namestring (subseq namestring 0 (- (length namestring) 5))))) ; strip ".lisp"
       (compile-glsl-file source output))))
