@@ -65,9 +65,9 @@ same convention as render.lisp."
   :components ((:file "docs/index")))
 
 (defsystem "edm-engine/ci"
-  :description "40ants-ci workflow generator — superseded by dps-meta scaffolding.
-Kept for reference; dps-meta owns .github/workflows/ci.yml generation now."
-  :depends-on ("edm-engine/core" "40ants-ci")
+  :description "40ants-ci workflow generator — reuses dps-meta's own job
+classes (dps.meta.ci.jobs), not hand-rolled steps."
+  :depends-on ("edm-engine/core" "40ants-ci" "dps-meta")
   :components ((:file "ci/package")))
 
 (defsystem "edm-engine/games/wordle"

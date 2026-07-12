@@ -6,3 +6,4 @@ ql fiveam
 git transducers https://github.com/fosskers/cl-transducers.git
 git cl-raylib https://github.com/longlene/cl-raylib.git
 git 40ants-doc https://github.com/40ants/doc.git
+git dps-meta https://github.com/denzuko/dps-meta.git
