@@ -72,3 +72,35 @@ instead calls c-mera's read/traverse/pretty-print pipeline directly,
 bypassing the CLI layer. It also prepends `#version 330` itself — c-mera's
 GLSL backend has no node for preprocessor pragmas, so that line is the
 build script's job, not the DSL's.
+
+## Audio: dummy PulseAudio sink for capture/testing
+
+raylib's audio device fails to initialize against bare ALSA in a
+container with no sound hardware ("Failed to initialize playback
+device"). A dummy PulseAudio sink fixes this — and it's a *real* fix,
+not a workaround: raylib genuinely plays through it, confirmed by
+`AUDIO: Device initialized successfully` in the log and by capturing
+actual non-silent signal (`ffmpeg -af volumedetect`).
+
+```sh
+apt-get install -y pulseaudio
+pulseaudio --start --exit-idle-time=-1
+pactl load-module module-null-sink sink_name=dummy_speaker \
+  sink_properties=device.description=DummySpeaker
+pactl set-default-sink dummy_speaker
+```
+
+Capture both video and audio together:
+
+```sh
+ffmpeg -f x11grab -video_size 1024x768 -framerate 20 -i :99.0 \
+       -f pulse -i dummy_speaker.monitor \
+       -c:v libvpx -c:a libvorbis out.webm
+```
+
+**Important**: audio only plays through real input. `play-tone` calls
+live inside `game-update`'s raylib key-read branches — a script that
+drives state by calling `push-letter`/`try-submit` directly (bypassing
+`game-update`) never triggers a single sound, no matter how the
+recording is set up. Use the `edm-engine/e2e` CLX+XTEST driver (real
+synthesized keypresses) to actually exercise or capture audio.

@@ -74,3 +74,23 @@ this same way."
                 :timeout 5)))
        (funcall stop)))
     (fiveam:is (not (null result)))))
+
+(fiveam:test wordle-real-typed-letter-actually-triggers-audio-device-init
+  "AUDIO:*AUDIO-DEVICE-READY* only flips T inside PLAY-TONE, called only
+from GAME-UPDATE's real key-read branches — a regression guard against
+silently breaking the audio wiring the way the direct-call demo scripts
+did (they never triggered it at all, discovered only by grepping logs
+by hand)."
+  (let (result)
+    (run-arcade-with-driver
+     (lambda (state stop)
+       (with-x-display (display (e2e-display-name))
+         (find-window-by-name display edm-engine:+engine-name+ :timeout 20)
+         (send-key display +key-return+)
+         (wait-for (lambda () (eq :tables (edm-engine:arcade-state-mode state))))
+         (send-key display +key-return+)
+         (wait-for (lambda () (eq :playing (edm-engine:arcade-state-mode state))))
+         (send-char display #\a)
+         (setf result (wait-for (lambda () edm-engine/audio:*audio-device-ready*) :timeout 5)))
+       (funcall stop)))
+    (fiveam:is (not (null result)))))
