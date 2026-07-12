@@ -1,46 +1,48 @@
 (defpackage #:edm-engine/ci
   (:use #:cl)
   (:import-from #:40ants-ci/workflow #:defworkflow)
-  (:import-from #:dps.meta.ci.jobs #:opa-gate-job #:build-job #:sbom-job))
+  (:import-from #:40ants-ci/jobs/job #:job)
+  (:import-from #:40ants-ci/steps/action #:action)
+  (:import-from #:40ants-ci/steps/sh #:sh))
 (in-package #:edm-engine/ci)
 
-;; Reuses dps-meta's own reusable 40ants-ci job classes
-;; (dps.meta.ci.jobs, github.com/denzuko/dps-meta, dps/meta/ci/jobs.lisp)
-;; instead of either the built-in (and currently broken — see prior
-;; commits) 40ants-ci/jobs/run-tests, or a hand-rolled job.
+;; 40ants-ci/jobs/run-tests + lisp-job hard-wire two GitHub Actions
+;; (40ants/setup-lisp@v4, 40ants/run-tests@v2) into their STEPS method —
+;; not overridable via keyword args, since that method APPENDs its own
+;; fixed action step onto whatever the base class provides. As of
+;; 2026-07-12 both actions are broken on ubuntu-latest runners: setup-lisp
+;; references Windows paths (C:\Users\runneradmin\...) even when
+;; runs-on is ubuntu-latest, and recovers into a broken HTTP-client
+;; dependency chain (dexador/quri/babel-encodings) inside its own
+;; bootstrapping, unrelated to edm-engine's code. Confirmed via GH Actions
+;; run 29203793910 and several before it — CI was red across many
+;; unrelated commits, the same failure regardless of what changed,
+;; which is the signature of an upstream tooling bug, not a config
+;; mistake here.
 ;;
-;; BUILD-JOB is generic — :build-command/:artifact-name are constructor
-;; args, not hardcoded to dps-meta's own asdf:make-based lisp-actor
-;; build. Reused here with edm-engine's own build command: the same
-;; roswell-via-pinned-.deb + qlot install dps-meta/mlisp both use
-;; (ROS_VER=26.02.116), running the FiveAM suite via qlot exec instead
-;; of asdf:make — edm-engine's CI goal is verifying the (raylib-free)
-;; test suite, not building the raylib-dependent arcade binary, which
-;; needs a native build environment CI doesn't have.
-;;
-;; OPA-GATE-JOB is reused as-is against edm-engine's own policy/gate.rego.
-;; SBOM-JOB is reused as-is (generic cdxgen type — edm-engine isn't C).
-;;
-;; SLSA provenance/verify/release are NOT included: those key off
-;; BUILD-JOB producing a real downloadable artifact, gated to tag
-;; pushes. edm-engine doesn't cut tagged binary releases yet.
-
-(defparameter +test-command+
-  "ROS_VER=26.02.116
-curl -sL \"https://github.com/roswell/roswell/releases/download/v${ROS_VER}/roswell_${ROS_VER}-1_amd64.deb\" -o /tmp/roswell.deb
-sudo dpkg -i /tmp/roswell.deb
-ros install qlot
-qlot install
-qlot exec ros run \\
-  --eval \"(push (truename \\\".\\\") asdf:*central-registry*)\" \\
-  --eval \"(asdf:test-system :edm-engine/tests/all)\" \\
-  --eval \"(uiop:quit 0)\"")
+;; Worked around with a genuinely custom JOB (base class only, not
+;; RUN-TESTS/LISP-JOB) built from the SH/ACTION step primitives —
+;; a plain Quicklisp bootstrap, the exact pattern already proven
+;; reliable throughout this session's own sandbox work, every FiveAM
+;; suite this project has is raylib-free, so this needs nothing beyond
+;; stock Quicklisp.
+(defparameter +bootstrap-and-test+
+  "sudo apt-get update -qq
+sudo apt-get install -y -qq sbcl
+curl -sO https://beta.quicklisp.org/quicklisp.lisp
+sbcl --non-interactive --load quicklisp.lisp \\
+  --eval '(quicklisp-quickstart:install :path (merge-pathnames \"quicklisp/\" (user-homedir-pathname)))'
+sbcl --non-interactive \\
+  --load ~/quicklisp/setup.lisp \\
+  --eval '(push (truename \".\") asdf:*central-registry*)' \\
+  --eval '(ql:quickload :edm-engine/tests/all)' \\
+  --eval '(asdf:test-system :edm-engine/tests/all)'")
 
 (defworkflow ci
   :on-push-to "main"
   :on-pull-request t
-  :jobs ((make-instance 'opa-gate-job)
-         (make-instance 'build-job
-                        :build-command +test-command+
-                        :artifact-name "edm-engine")
-         (make-instance 'sbom-job :cdxgen-type "generic")))
+  :jobs ((make-instance 'job
+                         :name "run-tests"
+                         :os "ubuntu-latest"
+                         :steps (list (action "Checkout Code" "actions/checkout@v4")
+                                      (sh "Bootstrap and Test" +bootstrap-and-test+)))))
