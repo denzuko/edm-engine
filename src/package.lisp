@@ -42,6 +42,7 @@
    #:arcade-state-current-game #:arcade-state-current-table-title #:arcade-state-ruleset-handle
    #:arcade-state-total-score #:arcade-state-volume
    #:arcade-state-popup-open #:arcade-state-popup-index #:arcade-state-save-slot-index
+   #:cycle-index
    #:arcade-select-next-main-menu #:arcade-select-previous-main-menu
    #:arcade-drill-into-main-menu-selection #:arcade-back-to-main-menu
    #:clamp-volume #:arcade-increase-volume #:arcade-decrease-volume

@@ -19,6 +19,14 @@ PLAY-TONE and PLAY-PATTERN."
       (dotimes (i n) (setf (cffi:mem-aref buf :unsigned-char i) (aref bytes i)))
       (raylib:load-sound-from-wave (raylib:load-wave-from-memory ".wav" buf n)))))
 
+(defun cached-or-compute (cache key compute-fn)
+  "Looks up KEY in CACHE (an EQUAL hash-table); computes via COMPUTE-FN
+and stores it if absent. The 'look up or compute+store' shape TONE-
+SOUND and PATTERN-SOUND both had duplicated, differing only in which
+cache table and what to compute."
+  (or (gethash key cache)
+      (setf (gethash key cache) (funcall compute-fn))))
+
 (defvar *tone-cache* (make-hash-table :test #'equal)
   "Sounds are generated once per distinct (waveform freq duration amplitude)
 and reused — regenerating PCM samples every frame would be wasteful, and
@@ -26,12 +34,12 @@ raylib Sound objects are native resources, not something to churn.")
 
 (defun tone-sound (waveform frequency duration &key (amplitude 0.5))
   (ensure-audio-device)
-  (let ((key (list waveform frequency duration amplitude)))
-    (or (gethash key *tone-cache*)
-        (setf (gethash key *tone-cache*)
-              (samples->raylib-sound
-               (generate-samples waveform (float frequency 1.0)
-                                  (float duration 1.0) :amplitude (float amplitude 1.0)))))))
+  (cached-or-compute
+   *tone-cache* (list waveform frequency duration amplitude)
+   (lambda ()
+     (samples->raylib-sound
+      (generate-samples waveform (float frequency 1.0)
+                         (float duration 1.0) :amplitude (float amplitude 1.0))))))
 
 (defun play-tone (waveform frequency duration &key (amplitude 0.5))
   "Plays a WAVEFORM tone at FREQUENCY Hz for DURATION seconds — generated
@@ -45,11 +53,11 @@ shouldn't re-render its PCM data on every loop.")
 
 (defun pattern-sound (pattern row-duration &key (amplitude 0.5))
   (ensure-audio-device)
-  (let ((key (list pattern row-duration amplitude)))
-    (or (gethash key *pattern-cache*)
-        (setf (gethash key *pattern-cache*)
-              (samples->raylib-sound
-               (render-pattern pattern (float row-duration 1.0) :amplitude (float amplitude 1.0)))))))
+  (cached-or-compute
+   *pattern-cache* (list pattern row-duration amplitude)
+   (lambda ()
+     (samples->raylib-sound
+      (render-pattern pattern (float row-duration 1.0) :amplitude (float amplitude 1.0))))))
 
 (defun play-pattern (pattern row-duration &key (amplitude 0.5))
   "Plays a whole tracker PATTERN — the same GENERATE-SAMPLES/PLAY-TONE

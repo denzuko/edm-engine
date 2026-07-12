@@ -24,14 +24,20 @@
 (ql:register-local-projects)
 (ql:quickload (list :c-mera :cm-c :cmu-c :cm-glsl :cmu-glsl :cms-glsl) :silent t)
 
+(defparameter +glsl-traverser-pipeline+
+  '(cm-c::nested-nodelist-remover cm-c::else-if-traverser cm-c::if-blocker
+    cm-c::decl-blocker cm-c::renamer)
+  "The same five traversers, in the same order, c-mera's own
+DEFINE-PROCESSOR runs for every backend (C, C++, CUDA, GLSL — confirmed
+by reading each backend's own :extra-traverser list). Encoding this as
+data once, driven by a loop, instead of five near-identical unrolled
+calls differing only in class name.")
+
 (defun compile-glsl-file (source-path output-path)
   (let ((tree (cm-glsl::read-in-file (namestring source-path)))
         (pp (make-instance 'c-mera::pretty-printer)))
-    (c-mera::traverser (make-instance 'cm-c::nested-nodelist-remover) tree 0)
-    (c-mera::traverser (make-instance 'cm-c::else-if-traverser) tree 0)
-    (c-mera::traverser (make-instance 'cm-c::if-blocker) tree 0)
-    (c-mera::traverser (make-instance 'cm-c::decl-blocker) tree 0)
-    (c-mera::traverser (make-instance 'cm-c::renamer) tree 0)
+    (dolist (traverser-class +glsl-traverser-pipeline+)
+      (c-mera::traverser (make-instance traverser-class) tree 0))
     (with-open-file (out output-path :direction :output
                                       :if-exists :supersede
                                       :if-does-not-exist :create)

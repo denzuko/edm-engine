@@ -5,6 +5,14 @@
 (defparameter +engine-name+ "PARENCADE")
 (defparameter +main-menu-items+ '("Tables" "Engine Options" "Save / Load"))
 
+(declaim (ftype (function (fixnum fixnum fixnum) fixnum) cycle-index))
+(defun cycle-index (current delta bound)
+  "CURRENT shifted by DELTA (typically +1/-1), wrapped into [0, BOUND) —
+this exact MOD arithmetic was duplicated identically across all six
+ARCADE-SELECT-NEXT-*/ARCADE-SELECT-PREVIOUS-* functions, differing only
+in which struct slot and which bound."
+  (mod (+ current delta) bound))
+
 (defstruct (arcade-state (:constructor make-arcade-state))
   (mode :main-menu :type (member :main-menu :tables :playing :options :save-load))
   (main-menu-index 0 :type fixnum)
@@ -22,11 +30,11 @@
 
 (defun arcade-select-next-main-menu (state)
   (setf (arcade-state-main-menu-index state)
-        (mod (1+ (arcade-state-main-menu-index state)) (length +main-menu-items+))))
+        (cycle-index (arcade-state-main-menu-index state) 1 (length +main-menu-items+))))
 
 (defun arcade-select-previous-main-menu (state)
   (setf (arcade-state-main-menu-index state)
-        (mod (1- (arcade-state-main-menu-index state)) (length +main-menu-items+))))
+        (cycle-index (arcade-state-main-menu-index state) -1 (length +main-menu-items+))))
 
 (defun arcade-drill-into-main-menu-selection (state)
   (setf (arcade-state-mode state)
@@ -54,12 +62,12 @@
 (defun arcade-select-next-table (state)
   (when *games*
     (setf (arcade-state-table-index state)
-          (mod (1+ (arcade-state-table-index state)) (length *games*)))))
+          (cycle-index (arcade-state-table-index state) 1 (length *games*)))))
 
 (defun arcade-select-previous-table (state)
   (when *games*
     (setf (arcade-state-table-index state)
-          (mod (1- (arcade-state-table-index state)) (length *games*)))))
+          (cycle-index (arcade-state-table-index state) -1 (length *games*)))))
 
 (defun arcade-launch-selected (state)
   (let ((entry (nth (arcade-state-table-index state) *games*)))
@@ -157,11 +165,11 @@ variants' lengths differ."
 
 (defun arcade-select-next-save-slot (state)
   (setf (arcade-state-save-slot-index state)
-        (mod (1+ (arcade-state-save-slot-index state)) *save-slot-count*)))
+        (cycle-index (arcade-state-save-slot-index state) 1 *save-slot-count*)))
 
 (defun arcade-select-previous-save-slot (state)
   (setf (arcade-state-save-slot-index state)
-        (mod (1- (arcade-state-save-slot-index state)) *save-slot-count*)))
+        (cycle-index (arcade-state-save-slot-index state) -1 *save-slot-count*)))
 
 (defun arcade-load-selected-save-slot (state)
   "Loads STATE's currently browsed slot and resumes play. Returns T on
