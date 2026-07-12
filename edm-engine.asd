@@ -12,6 +12,7 @@
                (:file "src/arena")
                (:file "src/ruleset")
                (:file "src/game-protocol")
+               (:file "src/palette")
                (:file "src/save")
                (:file "src/arcade")
                (:file "src/tick")))

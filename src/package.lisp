@@ -21,6 +21,11 @@
    #:tick #:make-tick #:tick-frame #:advance-tick #:ensure-kernel
    ;; save/load
    #:*default-save-path* #:save-game-to-file #:load-game-from-file
+   ;; palette (chrome tokens + Okabe-Ito for functional state color)
+   #:+color-dim+ #:+color-panel+ #:+color-brand-green+ #:+color-brand-green2+
+   #:+color-amber+ #:+color-red+
+   #:+okabe-ito-orange+ #:+okabe-ito-bluish-green+ #:+okabe-ito-sky-blue+
+   #:rgb-scaled
    ;; render (defined in edm-engine/render; declared here so main can call them)
    #:open-window #:close-window #:window-should-close-p #:draw-arena
    ;; arcade state machine (pure; the raylib update/render loop lives in
@@ -39,7 +44,7 @@
    #:arcade-popup-items #:arcade-open-popup #:arcade-popup-next #:arcade-popup-previous
    #:arcade-popup-confirm #:arcade-bank-score #:arcade-save-current #:arcade-load-saved-game
    ;; arcade entry point (defined in the primary edm-engine system)
-   #:main #:arcade-update #:arcade-render))
+   #:main #:arcade-update #:arcade-render #:rgb-color #:rgb-float->hex))
 
 (in-package :edm-engine)
 

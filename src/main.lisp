@@ -2,6 +2,17 @@
 
 (declaim (optimize (speed 3) (safety 3)))
 
+(declaim (ftype (function (list &optional (unsigned-byte 8)) (unsigned-byte 32)) rgb-float->hex))
+(defun rgb-float->hex (triple &optional (alpha 255))
+  (destructuring-bind (r g b) triple
+    (logior (ash (round (* r 255)) 24) (ash (round (* g 255)) 16) (ash (round (* b 255)) 8) alpha)))
+
+(defun rgb-color (triple &optional (alpha 255))
+  "Converts one of src/palette.lisp's 0.0-1.0 float triples into a
+raylib color — the same tokens the tile shader uses, applied to the
+chrome (menus, backgrounds) so the whole arcade shares one palette."
+  (raylib:get-color (rgb-float->hex triple alpha)))
+
 (defun arcade-update (state)
   (ecase (arcade-state-mode state)
     (:main-menu
@@ -44,51 +55,57 @@ the item list comes from ARCADE-POPUP-ITEMS, driven by GAME-OUTCOME."
   (let* ((game (arcade-state-current-game state))
          (items (arcade-popup-items game))
          (outcome (game-outcome game)))
-    (raylib:draw-rectangle 0 0 window-width window-height (raylib:fade :black 0.6))
+    (raylib:draw-rectangle 0 0 window-width window-height (rgb-color +color-panel+ 200))
     (when outcome
       (let* ((label (ecase outcome (:win "YOU WON") (:lose "YOU LOST") (:tie "TIE GAME")))
              (tw (raylib:measure-text label 44)))
-        (raylib:draw-text label (round (/ (- window-width tw) 2)) 140 44 :white)))
+        (raylib:draw-text label (round (/ (- window-width tw) 2)) 140 44 (rgb-color +color-brand-green+))))
     (loop for item in items
           for i from 0
           for y = (+ 260 (* i 40))
           do (raylib:draw-text item (round (- (/ window-width 2) 90)) y 28
-                                (if (= i (arcade-state-popup-index state)) :green :gray)))))
+                                (if (= i (arcade-state-popup-index state))
+                                    (rgb-color +color-brand-green+)
+                                    (rgb-color (rgb-scaled +color-panel+ 6.0)))))))
 
 (defun arcade-render (state window-width window-height)
   "One BeginDrawing/EndDrawing per frame, established here — GAME-RENDER
 methods (e.g. DRAW-GRID) assume they're already inside a drawing context
 and never call WITH-DRAWING themselves."
   (raylib:with-drawing
-    (raylib:clear-background :black)
+    (raylib:clear-background (rgb-color +color-dim+))
     (ecase (arcade-state-mode state)
       (:main-menu
-       (raylib:draw-text +engine-name+ 40 30 34 :green)
+       (raylib:draw-text +engine-name+ 40 30 34 (rgb-color +color-brand-green+))
        (raylib:draw-text (format nil "Score: ~D" (arcade-state-total-score state))
-                          40 (- window-height 40) 18 :gray)
+                          40 (- window-height 40) 18 (rgb-color (rgb-scaled +color-panel+ 6.0)))
        (loop for item in +main-menu-items+
              for i from 0
              do (raylib:draw-text item 40 (+ 100 (* i 40)) 28
-                                   (if (= i (arcade-state-main-menu-index state)) :green :gray))))
+                                   (if (= i (arcade-state-main-menu-index state))
+                                       (rgb-color +color-brand-green+)
+                                       (rgb-color (rgb-scaled +color-panel+ 6.0))))))
       (:tables
-       (raylib:draw-text "TABLES" 40 30 30 :green)
+       (raylib:draw-text "TABLES" 40 30 30 (rgb-color +color-brand-green+))
        (loop for entry in *games*
              for i from 0
              do (raylib:draw-text (game-entry-title entry) 40 (+ 90 (* i 36)) 26
-                                   (if (= i (arcade-state-table-index state)) :green :gray)))
-       (raylib:draw-text "ESC: Back" 40 (- window-height 40) 18 :gray))
+                                   (if (= i (arcade-state-table-index state))
+                                       (rgb-color +color-brand-green+)
+                                       (rgb-color (rgb-scaled +color-panel+ 6.0)))))
+       (raylib:draw-text "ESC: Back" 40 (- window-height 40) 18 (rgb-color (rgb-scaled +color-panel+ 6.0))))
       (:options
-       (raylib:draw-text "ENGINE OPTIONS" 40 30 30 :green)
+       (raylib:draw-text "ENGINE OPTIONS" 40 30 30 (rgb-color +color-brand-green+))
        (raylib:draw-text (format nil "Master Volume: ~D%" (round (* 100 (arcade-state-volume state))))
-                          40 100 22 :white)
-       (raylib:draw-text "LEFT / RIGHT: Adjust" 40 140 18 :gray)
-       (raylib:draw-text "ESC: Back" 40 (- window-height 40) 18 :gray))
+                          40 100 22 (rgb-color '(0.9 0.9 0.9)))
+       (raylib:draw-text "LEFT / RIGHT: Adjust" 40 140 18 (rgb-color (rgb-scaled +color-panel+ 6.0)))
+       (raylib:draw-text "ESC: Back" 40 (- window-height 40) 18 (rgb-color (rgb-scaled +color-panel+ 6.0))))
       (:save-load
-       (raylib:draw-text "SAVE / LOAD" 40 30 30 :green)
+       (raylib:draw-text "SAVE / LOAD" 40 30 30 (rgb-color +color-brand-green+))
        (if (probe-file *default-save-path*)
-           (raylib:draw-text "ENTER: Load saved game" 40 100 22 :white)
-           (raylib:draw-text "No saved game found." 40 100 22 :gray))
-       (raylib:draw-text "ESC: Back" 40 (- window-height 40) 18 :gray))
+           (raylib:draw-text "ENTER: Load saved game" 40 100 22 (rgb-color '(0.9 0.9 0.9)))
+           (raylib:draw-text "No saved game found." 40 100 22 (rgb-color (rgb-scaled +color-panel+ 6.0))))
+       (raylib:draw-text "ESC: Back" 40 (- window-height 40) 18 (rgb-color (rgb-scaled +color-panel+ 6.0))))
       (:playing
        (let ((game (arcade-state-current-game state)))
          (game-render game window-width window-height)
