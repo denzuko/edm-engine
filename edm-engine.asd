@@ -98,6 +98,18 @@ a GLSL fragment-shader function of state, never a Lisp-side branch."
              (unless (uiop:symbol-call :fiveam :run! :edm-engine-wordle)
                (error "edm-engine/games/wordle FiveAM suite failed"))))
 
+(defsystem "edm-engine/tests/all"
+  :description "Aggregates all three pure-logic FiveAM suites (core, wordle,
+audio) into one ASDF test-op — none of them depend on raylib, so this is
+what CI actually runs, not just edm-engine/core."
+  :depends-on ("edm-engine/tests" "edm-engine/games/wordle/tests" "edm-engine/audio/tests")
+  :perform (test-op (o c)
+             (let ((results (list (uiop:symbol-call :fiveam :run! :edm-engine)
+                                   (uiop:symbol-call :fiveam :run! :edm-engine-wordle)
+                                   (uiop:symbol-call :fiveam :run! :edm-engine-audio))))
+               (unless (every #'identity results)
+                 (error "one or more edm-engine FiveAM suites failed")))))
+
 (defsystem "edm-engine/e2e"
   :description "Real end-to-end tests: drives the actual arcade (on a
 thread, same process) via CLX + the XTEST X11 extension — genuine
