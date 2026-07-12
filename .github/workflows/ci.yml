@@ -21,7 +21,7 @@
         },
         {
           "name": "Bootstrap and Test",
-          "run": "curl -sO https://beta.quicklisp.org/quicklisp.lisp\nsbcl --non-interactive --load quicklisp.lisp \\\n  --eval '(quicklisp-quickstart:install :path (merge-pathnames \"quicklisp/\" (user-homedir-pathname)))'\nsbcl --non-interactive \\\n  --load ~/quicklisp/setup.lisp \\\n  --eval '(push (truename \".\") asdf:*central-registry*)' \\\n  --eval '(asdf:test-system :edm-engine/tests/all)'",
+          "run": "sudo apt-get update -qq\nsudo apt-get install -y -qq sbcl\ncurl -sO https://beta.quicklisp.org/quicklisp.lisp\nsbcl --non-interactive --load quicklisp.lisp \\\n  --eval '(quicklisp-quickstart:install :path (merge-pathnames \"quicklisp/\" (user-homedir-pathname)))'\nsbcl --non-interactive \\\n  --load ~/quicklisp/setup.lisp \\\n  --eval '(push (truename \".\") asdf:*central-registry*)' \\\n  --eval '(asdf:test-system :edm-engine/tests/all)'",
           "shell": "bash"
         }
       ]

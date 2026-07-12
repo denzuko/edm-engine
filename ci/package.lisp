@@ -27,7 +27,9 @@
 ;; suite this project has is raylib-free, so this needs nothing beyond
 ;; stock Quicklisp.
 (defparameter +bootstrap-and-test+
-  "curl -sO https://beta.quicklisp.org/quicklisp.lisp
+  "sudo apt-get update -qq
+sudo apt-get install -y -qq sbcl
+curl -sO https://beta.quicklisp.org/quicklisp.lisp
 sbcl --non-interactive --load quicklisp.lisp \\
   --eval '(quicklisp-quickstart:install :path (merge-pathnames \"quicklisp/\" (user-homedir-pathname)))'
 sbcl --non-interactive \\
