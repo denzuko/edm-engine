@@ -86,6 +86,25 @@ a GLSL fragment-shader function of state, never a Lisp-side branch."
   :depends-on ("edm-engine/games/wordle" "edm-engine/render" "edm-engine/audio" "cffi")
   :components ((:file "src/games/wordle/render")))
 
+(defsystem "edm-engine/games/queens"
+  :description "Queens: one queen per row/column/region, no two adjacent
+(incl. diagonally). Board+region generation via SCREAMER (A-MEMBER-OF +
+ASSERT!) — the genuine first use of a constraint engine in this codebase;
+Wordle never needed one."
+  :depends-on ("edm-engine/core" "screamer")
+  :serial t
+  :components ((:file "src/games/queens/package")
+               (:file "src/games/queens/board")
+               (:file "src/games/queens/game")))
+
+(defsystem "edm-engine/games/queens/tests"
+  :description "FiveAM spec suite over edm-engine/games/queens."
+  :depends-on ("edm-engine/games/queens" "fiveam")
+  :serial t
+  :components ((:file "t/games/queens/package")
+               (:file "t/games/queens/board-spec")
+               (:file "t/games/queens/game-spec")))
+
 (defsystem "edm-engine/games/wordle/tests"
   :description "FiveAM spec suite for edm-engine/games/wordle."
   :depends-on ("edm-engine/games/wordle" "fiveam")
