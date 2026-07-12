@@ -1,27 +1,45 @@
 (defpackage #:edm-engine/ci
   (:use #:cl)
   (:import-from #:40ants-ci/workflow #:defworkflow)
-  (:import-from #:40ants-ci/jobs/run-tests)
-  (:import-from #:40ants-ci/jobs/linter))
+  (:import-from #:40ants-ci/jobs/job #:job)
+  (:import-from #:40ants-ci/steps/action #:action)
+  (:import-from #:40ants-ci/steps/sh #:sh))
 (in-package #:edm-engine/ci)
+
+;; 40ants-ci/jobs/run-tests + lisp-job hard-wire two GitHub Actions
+;; (40ants/setup-lisp@v4, 40ants/run-tests@v2) into their STEPS method —
+;; not overridable via keyword args, since that method APPENDs its own
+;; fixed action step onto whatever the base class provides. As of
+;; 2026-07-12 both actions are broken on ubuntu-latest runners: setup-lisp
+;; references Windows paths (C:\Users\runneradmin\...) even when
+;; runs-on is ubuntu-latest, and recovers into a broken HTTP-client
+;; dependency chain (dexador/quri/babel-encodings) inside its own
+;; bootstrapping, unrelated to edm-engine's code. Confirmed via GH Actions
+;; run 29203793910 and several before it — CI was red across many
+;; unrelated commits, the same failure regardless of what changed,
+;; which is the signature of an upstream tooling bug, not a config
+;; mistake here.
+;;
+;; Worked around with a genuinely custom JOB (base class only, not
+;; RUN-TESTS/LISP-JOB) built from the SH/ACTION step primitives —
+;; a plain Quicklisp bootstrap, the exact pattern already proven
+;; reliable throughout this session's own sandbox work, every FiveAM
+;; suite this project has is raylib-free, so this needs nothing beyond
+;; stock Quicklisp.
+(defparameter +bootstrap-and-test+
+  "curl -sO https://beta.quicklisp.org/quicklisp.lisp
+sbcl --non-interactive --load quicklisp.lisp \\
+  --eval '(quicklisp-quickstart:install :path (merge-pathnames \"quicklisp/\" (user-homedir-pathname)))'
+sbcl --non-interactive \\
+  --load ~/quicklisp/setup.lisp \\
+  --eval '(push (truename \".\") asdf:*central-registry*)' \\
+  --eval '(asdf:test-system :edm-engine/tests/all)'")
 
 (defworkflow ci
   :on-push-to "main"
   :on-pull-request t
-  :cache t
-  :jobs ((40ants-ci/jobs/run-tests:run-tests
-          :asdf-system "edm-engine/tests/all")))
-;; This whole generator is superseded by dps-meta scaffolding (lisp-actor
-;; type) — kept only so ci.yml isn't hand-edited directly if regenerated
-;; before the dps-meta migration lands. linter job dropped: 40ants-ci/jobs/linter
-;; generates `qlot exec ros install 40ants-asdf-system 40ants-linter`, but
-;; `40ants-linter` isn't a valid roswell-installable target (mismatches
-;; the project's own README, which documents `cxxxr/sblint`). Upstream
-;; bug in 40ants-ci itself, not edm-engine.
-;;
-;; edm-engine/tests/all aggregates all three pure-logic FiveAM suites
-;; (core/wordle/audio, 190 checks) — none of them depend on raylib by
-;; design, so this is the real test surface without needing libraylib/
-;; GLX built on the runner. edm-engine/e2e (real X11 input via CLX+XTEST)
-;; is NOT run here — it needs a full raylib build + Xvfb + XTEST on the
-;; runner, a real further step, not done yet.
+  :jobs ((make-instance 'job
+                         :name "run-tests"
+                         :os "ubuntu-latest"
+                         :steps (list (action "Checkout Code" "actions/checkout@v4")
+                                      (sh "Bootstrap and Test" +bootstrap-and-test+)))))

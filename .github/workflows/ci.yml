@@ -12,9 +12,7 @@
     "run-tests": {
       "runs-on": "ubuntu-latest",
       "env": {
-        "OS": "ubuntu-latest",
-        "QUICKLISP_DIST": "quicklisp",
-        "LISP": "sbcl-bin"
+        "OS": "ubuntu-latest"
       },
       "steps": [
         {
@@ -22,19 +20,9 @@
           "uses": "actions/checkout@v4"
         },
         {
-          "name": "Setup Common Lisp Environment",
-          "uses": "40ants/setup-lisp@v4",
-          "with": {
-            "asdf-system": "edm-engine/tests/all",
-            "cache": "true"
-          }
-        },
-        {
-          "name": "Run Tests",
-          "uses": "40ants/run-tests@v2",
-          "with": {
-            "asdf-system": "edm-engine/tests/all"
-          }
+          "name": "Bootstrap and Test",
+          "run": "curl -sO https://beta.quicklisp.org/quicklisp.lisp\nsbcl --non-interactive --load quicklisp.lisp \\\n  --eval '(quicklisp-quickstart:install :path (merge-pathnames \"quicklisp/\" (user-homedir-pathname)))'\nsbcl --non-interactive \\\n  --load ~/quicklisp/setup.lisp \\\n  --eval '(push (truename \".\") asdf:*central-registry*)' \\\n  --eval '(asdf:test-system :edm-engine/tests/all)'",
+          "shell": "bash"
         }
       ]
     }
