@@ -54,7 +54,8 @@ same convention as render.lisp."
   :version "0.1.0"
   :depends-on ("edm-engine/core" "edm-engine/render"
                "edm-engine/games/wordle" "edm-engine/games/wordle/render"
-               "edm-engine/games/queens" "edm-engine/games/queens/render")
+               "edm-engine/games/queens" "edm-engine/games/queens/render"
+               "edm-engine/games/hearts" "edm-engine/games/hearts/render")
   :build-operation "program-op"
   :build-pathname "edm-engine"
   :entry-point "edm-engine:main"
@@ -178,7 +179,13 @@ suite since it needs that plus a full raylib build."
   :serial t
   :components ((:file "src/games/hearts/package")
                (:file "src/games/hearts/rules")
-               (:file "src/games/hearts/game")))
+               (:file "src/games/hearts/game")
+               (:file "src/games/hearts/music")))
+
+(defsystem "edm-engine/games/hearts/render"
+  :description "Hearts table renderer."
+  :depends-on ("edm-engine/games/hearts" "edm-engine/render" "edm-engine/audio")
+  :components ((:file "src/games/hearts/render")))
 
 (defsystem "edm-engine/games/hearts/tests"
   :description "FiveAM spec suite over edm-engine/games/hearts."
@@ -186,4 +193,5 @@ suite since it needs that plus a full raylib build."
   :serial t
   :components ((:file "t/games/hearts/package")
                (:file "t/games/hearts/rules-spec")
-               (:file "t/games/hearts/game-spec")))
+               (:file "t/games/hearts/game-spec")
+               (:file "t/games/hearts/ui-helpers-spec")))

@@ -10,7 +10,11 @@
   (hearts-broken nil :type boolean)
   (round 1 :type fixnum)
   (phase :passing :type (member :passing :playing))
-  (passed-cards nil :type list))
+  (passed-cards nil :type list)
+  (cursor 0 :type fixnum)
+  (pass-selection nil :type list)
+  (status :playing :type (member :playing :won :lost))
+  (trick-pause-until 0.0d0 :type double-float))
 
 (defun find-two-of-clubs-holder (hands)
   (position-if (lambda (hand) (member (cons 2 :clubs) hand :test #'equal)) hands))
@@ -73,8 +77,71 @@ trick, and sets them as the next leader."
 (defun game-over-p (scores)
   (some (lambda (s) (>= s 100)) scores))
 
-;;; Simple heuristic AI — lowest legal card when playing, highest-ranked
-;;; cards (the most dangerous to hold) when passing.
+(defun target-player (player direction)
+  (ecase direction
+    (:left (mod (1+ player) 4))
+    (:right (mod (1- player) 4))
+    (:across (mod (+ player 2) 4))
+    (:none player)))
+
+(defun execute-pass (game)
+  "All 4 players pass simultaneously — human's choice comes from
+PASS-SELECTION, the other three from AI-CHOOSE-PASS — then transitions
+to :PLAYING with the 2-of-clubs holder leading."
+  (let* ((direction (pass-direction-for-round (hearts-game-round game)))
+         (chosen (loop for p from 0 below 4
+                       collect (if (= p 0)
+                                   (hearts-game-pass-selection game)
+                                   (ai-choose-pass (nth p (hearts-game-hands game)))))))
+    (dotimes (p 4)
+      (setf (nth p (hearts-game-hands game))
+            (set-difference (nth p (hearts-game-hands game)) (nth p chosen) :test #'equal)))
+    (dotimes (p 4)
+      (let ((target (target-player p direction)))
+        (setf (nth target (hearts-game-hands game))
+              (append (nth target (hearts-game-hands game)) (nth p chosen)))))
+    (setf (hearts-game-phase game) :playing
+          (hearts-game-pass-selection game) nil
+          (hearts-game-cursor game) 0)
+    (let ((leader (find-two-of-clubs-holder (hearts-game-hands game))))
+      (setf (hearts-game-leader game) leader (hearts-game-turn game) leader))))
+
+(defun toggle-pass-selection (game card)
+  (if (member card (hearts-game-pass-selection game) :test #'equal)
+      (setf (hearts-game-pass-selection game)
+            (remove card (hearts-game-pass-selection game) :test #'equal))
+      (when (< (length (hearts-game-pass-selection game)) 3)
+        (push card (hearts-game-pass-selection game)))))
+
+(defun move-hand-cursor (game delta hand-length)
+  (when (plusp hand-length)
+    (setf (hearts-game-cursor game) (mod (+ (hearts-game-cursor game) delta) hand-length))))
+
+(defun advance-round (game)
+  "Deals a fresh round, carrying SCORES forward — called once the
+previous round is scored and the game isn't over yet."
+  (let ((next (make-hearts-game :round (1+ (hearts-game-round game))
+                                 :scores (hearts-game-scores game))))
+    (setf (hearts-game-hands game) (hearts-game-hands next)
+          (hearts-game-round-points game) '(0 0 0 0)
+          (hearts-game-current-trick game) nil
+          (hearts-game-leader game) (hearts-game-leader next)
+          (hearts-game-turn game) (hearts-game-turn next)
+          (hearts-game-hearts-broken game) nil
+          (hearts-game-round game) (hearts-game-round next)
+          (hearts-game-phase game) (hearts-game-phase next)
+          (hearts-game-passed-cards game) nil
+          (hearts-game-cursor game) 0
+          (hearts-game-pass-selection game) nil)))
+
+(defmethod edm-engine:game-outcome ((game hearts-game))
+  (case (hearts-game-status game)
+    (:won :win)
+    (:lost :lose)
+    (t nil)))
+
+(defmethod edm-engine:game-score ((game hearts-game))
+  (max 0 (- 100 (first (hearts-game-scores game)))))
 
 (defun ai-choose-play (hand led-suit hearts-broken)
   (let ((choices (legal-plays hand :led-suit led-suit :hearts-broken hearts-broken :leading-p (null led-suit))))
