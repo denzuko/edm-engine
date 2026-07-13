@@ -6,4 +6,3 @@
    #:note-frequency #:mix-samples #:render-pattern #:play-pattern))
 (in-package :edm-engine/audio)
 
-(declaim (optimize (speed 3) (safety 3)))

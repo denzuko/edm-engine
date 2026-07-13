@@ -1,6 +1,5 @@
 (in-package :edm-engine)
 
-(declaim (optimize (speed 3) (safety 3)))
 
 (defgeneric game-title (game)
   (:documentation "Display name shown in the arcade menu."))

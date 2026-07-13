@@ -1,6 +1,5 @@
 (in-package :edm-engine)
 
-(declaim (optimize (speed 3) (safety 3)))
 
 (defstruct (bus (:constructor %make-bus))
   "Thin name table over per-topic ChanL channels.

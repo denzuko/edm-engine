@@ -6,7 +6,8 @@
   (level 1 :type fixnum)
   (score 0 :type fixnum)
   (board nil :type (or null queens-board))
-  (placed nil :type list)
+  (placed nil :type list)   ; queens
+  (marked nil :type list)   ; player X-marks — elimination notes, no rule significance
   (status :playing :type (member :playing :won))
   (cursor-row 0 :type fixnum)
   (cursor-col 0 :type fixnum))
@@ -16,6 +17,38 @@
   (%make-queens-game :level level
                       :board (generate-board (queens-board-size-for-level level)
                                               (queens-seed-for-level level))))
+
+(declaim (ftype (function (fixnum) fixnum) queens-game-points-for-level))
+(defun queens-game-points-for-level (level)
+  "Scales with board size (harder levels are worth more), 100 points per
+board-size unit."
+  (* 100 (queens-board-size-for-level level)))
+
+(declaim (ftype (function (queens-game fixnum fixnum) (member :empty :marked :queen)) cell-state))
+(defun cell-state (game row col)
+  (let ((cell (cons row col)))
+    (cond ((member cell (queens-game-placed game) :test #'equal) :queen)
+          ((member cell (queens-game-marked game) :test #'equal) :marked)
+          (t :empty))))
+
+(defun cycle-cell (game row col)
+  "The real LinkedIn-Queens interaction: EMPTY -> MARKED (an 'X', a
+non-committal elimination note with no rule significance) -> QUEEN ->
+EMPTY. Not a plain two-state toggle — a mark lets a player rule out a
+cell without committing to a queen there, exactly the 'miss-placed X'
+state that needs its own test coverage, not just queen placement."
+  (when (eq (queens-game-status game) :playing)
+    (let ((cell (cons row col)))
+      (ecase (cell-state game row col)
+        (:empty (push cell (queens-game-marked game)))
+        (:marked (setf (queens-game-marked game) (remove cell (queens-game-marked game) :test #'equal))
+                 (push cell (queens-game-placed game)))
+        (:queen (setf (queens-game-placed game) (remove cell (queens-game-placed game) :test #'equal))))
+      (maybe-advance game)))
+  game)
+
+(defun cycle-cell-at-cursor (game)
+  (cycle-cell game (queens-game-cursor-row game) (queens-game-cursor-col game)))
 
 (declaim (ftype (function (fixnum fixnum) fixnum) clamp-to-board))
 (defun clamp-to-board (value size)
@@ -33,40 +66,35 @@ wrap to the opposite side."
           (clamp-to-board (+ (queens-game-cursor-col game) d-col) size)))
   game)
 
-(defun toggle-queen-at-cursor (game)
-  (toggle-queen game (queens-game-cursor-row game) (queens-game-cursor-col game)))
-(defun queens-game-points-for-level (level)
-  "Scales with board size (harder levels are worth more), 100 points per
-board-size unit."
-  (* 100 (queens-board-size-for-level level)))
-
-(defun toggle-queen (game row col)
-  "Places a queen at (ROW . COL) if empty, removes it if occupied. No-op
-once GAME is :WON."
-  (when (eq (queens-game-status game) :playing)
-    (let ((cell (cons row col)))
-      (if (member cell (queens-game-placed game) :test #'equal)
-          (setf (queens-game-placed game) (remove cell (queens-game-placed game) :test #'equal))
-          (push cell (queens-game-placed game)))
-      (maybe-advance game)))
-  game)
+(declaim (ftype (function (queens-game) list) queens-conflicts))
+(defun queens-conflicts (game)
+  "The 'miss-placed queen' feedback: every currently PLACED queen that
+shares a row, column, region, or is king-move-adjacent with at least
+one other placed queen. Works at any point during play, not just on a
+full board — a genuine mid-game error state, not only a final-solution
+check."
+  (let ((board (queens-game-board game))
+        (placed (queens-game-placed game)))
+    (remove-if-not
+     (lambda (cell)
+       (destructuring-bind (r . c) cell
+         (some (lambda (other)
+                 (and (not (equal cell other))
+                      (destructuring-bind (r2 . c2) other
+                        (or (= r r2) (= c c2)
+                            (= (region-at board r c) (region-at board r2 c2))
+                            (<= (max (abs (- r r2)) (abs (- c c2))) 1)))))
+               placed)))
+     placed)))
 
 (declaim (ftype (function (queens-game) boolean) queens-solved-p))
 (defun queens-solved-p (game)
-  "T if GAME's current PLACED queens are a fully valid solution: one per
-row, one per column, one per region, no two in row-adjacent-and-column-
-adjacent cells."
-  (let* ((board (queens-game-board game))
-         (size (queens-board-size board))
-         (placed (queens-game-placed game)))
-    (and (= (length placed) size)
-         (= size (length (remove-duplicates placed :key #'car)))  ; one per row
-         (= size (length (remove-duplicates placed :key #'cdr)))  ; one per column
-         (= size (length (remove-duplicates placed :key (lambda (c) (region-at board (car c) (cdr c))))))
-         (loop for (r1 . c1) in placed
-               always (loop for (r2 . c2) in placed
-                            always (or (equal (cons r1 c1) (cons r2 c2))
-                                       (> (max (abs (- r1 r2)) (abs (- c1 c2))) 1)))))))
+  "T if GAME's current PLACED queens are a fully valid solution: exactly
+one per row/column/region, board-size many placed, and zero conflicts
+among them — defined in terms of QUEENS-CONFLICTS rather than a second,
+separately-maintained rule check."
+  (and (= (length (queens-game-placed game)) (queens-board-size (queens-game-board game)))
+       (null (queens-conflicts game))))
 
 (defun maybe-advance (game)
   "Checks whether GAME's current placement solves the level; if so,
@@ -82,6 +110,7 @@ solved) or moves to a fresh board for the next level."
                 (generate-board (queens-board-size-for-level (queens-game-level game))
                                  (queens-seed-for-level (queens-game-level game))))
           (setf (queens-game-placed game) nil)
+          (setf (queens-game-marked game) nil)
           (setf (queens-game-cursor-row game) 0)
           (setf (queens-game-cursor-col game) 0)))))
 

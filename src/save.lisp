@@ -1,6 +1,5 @@
 (in-package :edm-engine)
 
-(declaim (optimize (speed 3) (safety 3)))
 
 (defparameter *save-slot-count* 10)
 

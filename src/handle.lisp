@@ -1,6 +1,5 @@
 (in-package :edm-engine)
 
-(declaim (optimize (speed 3) (safety 3)))
 
 (defconstructor handle
   "An entity reference: a slot INDEX paired with a GENERATION counter.

@@ -1,6 +1,5 @@
 (in-package :edm-engine)
 
-(declaim (optimize (speed 3) (safety 3)))
 
 (declaim (ftype (function (list &optional (unsigned-byte 8)) (unsigned-byte 32)) rgb-float->hex))
 (defun rgb-float->hex (triple &optional (alpha 255))

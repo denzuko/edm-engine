@@ -1,6 +1,5 @@
 (in-package :edm-engine)
 
-(declaim (optimize (speed 3) (safety 3)))
 
 ;;; Chrome palette: the established DPS/denzuko terminal identity,
 ;;; slimmed down for game UI (menus, backgrounds, overlays). Functional

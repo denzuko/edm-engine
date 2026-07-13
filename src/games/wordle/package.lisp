@@ -10,4 +10,3 @@
    #:valid-word-p #:invalid-word #:invalid-word-guess #:wordle-restore-game))
 (in-package :edm-engine/games/wordle)
 
-(declaim (optimize (speed 3) (safety 3)))

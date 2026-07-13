@@ -1,6 +1,5 @@
 (in-package :edm-engine/games/wordle)
 
-(declaim (optimize (speed 3) (safety 3)))
 
 (defparameter +cols+ 5)
 (defparameter +rows+ 6)

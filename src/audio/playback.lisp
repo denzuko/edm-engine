@@ -1,6 +1,5 @@
 (in-package :edm-engine/audio)
 
-(declaim (optimize (speed 3) (safety 3)))
 
 (defvar *audio-device-ready* nil)
 (defun ensure-audio-device ()
