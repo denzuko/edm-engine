@@ -78,6 +78,8 @@ isn't worth chasing for a thumbnail)."
           (when (raylib:is-key-pressed :key-enter)
             (let* ((selected (nth (arcade-state-popup-index state) (arcade-popup-items game)))
                    (slot (arcade-state-save-slot-index state)))
+              (when (or (string= selected "New Game") (string= selected "Return to Tables"))
+                (edm-engine:game-stop-audio game))
               (arcade-popup-confirm state)
               (when (string= selected "Save State")
                 ;; raylib:take-screenshot always joins its path onto the

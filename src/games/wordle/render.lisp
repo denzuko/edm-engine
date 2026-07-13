@@ -146,6 +146,10 @@ triggers are untested I/O."
                :outcome (edm-engine:game-outcome game)
                :elapsed (raylib:get-time))))
 
+(defmethod edm-engine:game-stop-audio ((game wordle-game))
+  (declare (ignore game))
+  (when *theme-sound* (raylib:stop-sound *theme-sound*)))
+
 (edm-engine:register-game
  "Wordle"
  (lambda () (make-wordle-game (nth (random (length *corpus*)) *corpus*)))

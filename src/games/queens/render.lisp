@@ -125,6 +125,10 @@ which this engine doesn't use anywhere else."
 (defmethod edm-engine:game-render ((game queens-game) window-width window-height)
   (draw-queens-board game window-width window-height))
 
+(defmethod edm-engine:game-stop-audio ((game queens-game))
+  (declare (ignore game))
+  (when *theme-sound* (raylib:stop-sound *theme-sound*)))
+
 ;; No :RESTORE-FN yet — Queens doesn't support save/load resume in this
 ;; first playable pass. An honest scope cut, not an oversight: the
 ;; slot system's contract (GAME-ENTRY-RESTORE-FN nil = "this table

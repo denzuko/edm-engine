@@ -37,6 +37,14 @@ knowing the concrete type to reconstruct — a generic can't do that from
 a plist alone.")
   (:method (game) (declare (ignore game)) nil))
 
+(defgeneric game-stop-audio (game)
+  (:documentation "Called by the arcade shell when leaving GAME's table
+(new game, return to tables) — stops whatever background theme/sound
+GAME has playing, rather than leaving it to trail off on its own or
+overlap with the next table's theme. Default no-op; games without
+background audio don't need a method.")
+  (:method (game) (declare (ignore game)) nil))
+
 (defstruct game-entry
   "One arcade menu entry. CONSTRUCTOR takes no args and returns a fresh
 game instance — called on selection, not at registration, so games with
