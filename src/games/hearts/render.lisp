@@ -9,7 +9,7 @@
 ;;; not the card silhouette itself.
 
 (defvar *theme-sound* nil)
-(defvar *ai-next-action-time* 0.0d0)
+(defvar *ai-clock* (edm-engine:make-ai-timer))
 (defvar *card-tweens* (make-hash-table :test #'equal)
   "CARD -> TWEEN, for the 'floating card easing into place' effect when
 a card moves from a hand to the trick. Built on the shared
@@ -117,10 +117,17 @@ hand, plus a card-count label — not just 'AI-1: 13 cards' as bare text."
                               :highlight-p (= i (hearts-game-cursor game))
                               :alpha (if (or (null legal) playable) 1.0 0.35)))))
 
+(defparameter +hearts-ai-think-seconds+ 0.8d0)
+
 (defun maybe-run-ai-turn (game)
-  "AI players act after a short pause (>= +hearts-ai-think-seconds+) so a
-human can actually see what's happening, not an instant flurry of plays."
-  (when (and (/= (hearts-game-turn game) 0) (>= (raylib:get-time) *ai-next-action-time*))
+  "AI players act after a short pause (>= +HEARTS-AI-THINK-SECONDS+, via
+the shared EDM-ENGINE:AI-TIMER) so a human can actually see what's
+happening, not an instant flurry of plays. *AI-DIFFICULTY* is read here
+so the difficulty-selection screen's choice reaches this game — the
+actual DECISION logic below is still the one Novice-tier heuristic
+regardless of tier; Standard/Expert distinct behavior is real future
+work (see GH #3), not implemented yet. Not pretending otherwise."
+  (when (and (/= (hearts-game-turn game) 0) (edm-engine:ai-ready-p *ai-clock* (raylib:get-time)))
     (let* ((p (hearts-game-turn game))
            (led-suit (when (hearts-game-current-trick game) (cdr (first (hearts-game-current-trick game)))))
            (card (ai-choose-play (nth p (hearts-game-hands game)) led-suit (hearts-game-hearts-broken game)))
@@ -130,9 +137,7 @@ human can actually see what's happening, not an instant flurry of plays."
       (play-card game p card)
       (when (null (hearts-game-current-trick game)) (clrhash *card-tweens*))
       (edm-engine/audio:play-tone :square 500.0 0.04)
-      (setf *ai-next-action-time* (+ (raylib:get-time) 0.8)))))
-
-(defparameter +hearts-ai-think-seconds+ 0.8)
+      (edm-engine:ai-timer-reset *ai-clock* (raylib:get-time) +hearts-ai-think-seconds+))))
 
 (defmethod edm-engine:game-title ((game hearts-game)) "Hearts")
 
@@ -170,7 +175,7 @@ human can actually see what's happening, not an instant flurry of plays."
                     (when (null (hearts-game-current-trick game)) (clrhash *card-tweens*))
                     (setf (hearts-game-cursor game) 0)
                     (edm-engine/audio:play-tone :square 700.0 0.05)
-                    (setf *ai-next-action-time* (+ (raylib:get-time) 0.8))))))
+                    (edm-engine:ai-timer-reset *ai-clock* (raylib:get-time) +hearts-ai-think-seconds+)))))
             (maybe-run-ai-turn game))
         (when (round-over-p game)
           (score-round game)
@@ -190,4 +195,4 @@ human can actually see what's happening, not an instant flurry of plays."
   (declare (ignore game))
   (when *theme-sound* (raylib:stop-sound *theme-sound*)))
 
-(edm-engine:register-game "Hearts" (lambda () (make-hearts-game)))
+(edm-engine:register-game "Hearts" (lambda () (make-hearts-game)) :ai-capable-p t)

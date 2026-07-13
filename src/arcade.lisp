@@ -13,7 +13,7 @@ in which struct slot and which bound."
   (mod (+ current delta) bound))
 
 (defstruct (arcade-state (:constructor make-arcade-state))
-  (mode :main-menu :type (member :main-menu :tables :playing :options :save-load))
+  (mode :main-menu :type (member :main-menu :tables :playing :options :save-load :difficulty))
   (main-menu-index 0 :type fixnum)
   (table-index 0 :type fixnum)
   (current-game nil)
@@ -23,7 +23,9 @@ in which struct slot and which bound."
   (volume 1.0 :type single-float)
   (popup-open nil :type boolean)
   (popup-index 0 :type fixnum)
-  (save-slot-index 0 :type fixnum))
+  (save-slot-index 0 :type fixnum)
+  (difficulty-index 0 :type fixnum)
+  (pending-entry nil))
 
 ;;; Top-level main menu: Tables / Engine Options / Save-Load
 
@@ -68,16 +70,43 @@ in which struct slot and which bound."
     (setf (arcade-state-table-index state)
           (cycle-index (arcade-state-table-index state) -1 (length *games*)))))
 
+(defun arcade-complete-launch (state entry)
+  (let ((game (funcall (game-entry-constructor entry))))
+    (setf (arcade-state-current-game state) game
+          (arcade-state-current-table-title state) (game-entry-title entry)
+          (arcade-state-ruleset-handle state) (ruleset-load game)
+          (arcade-state-mode state) :playing
+          (arcade-state-popup-open state) nil
+          (arcade-state-popup-index state) 0)))
+
 (defun arcade-launch-selected (state)
   (let ((entry (nth (arcade-state-table-index state) *games*)))
     (when entry
-      (let ((game (funcall (game-entry-constructor entry))))
-        (setf (arcade-state-current-game state) game
-              (arcade-state-current-table-title state) (game-entry-title entry)
-              (arcade-state-ruleset-handle state) (ruleset-load game)
-              (arcade-state-mode state) :playing
-              (arcade-state-popup-open state) nil
-              (arcade-state-popup-index state) 0)))))
+      (if (game-entry-ai-capable-p entry)
+          (setf (arcade-state-pending-entry state) entry
+                (arcade-state-difficulty-index state) 0
+                (arcade-state-mode state) :difficulty)
+          (arcade-complete-launch state entry)))))
+
+;;; Difficulty selection — shown before launch for any AI-capable table
+
+(defun arcade-select-next-difficulty (state)
+  (setf (arcade-state-difficulty-index state)
+        (cycle-index (arcade-state-difficulty-index state) 1 (length +ai-difficulty-tiers+))))
+
+(defun arcade-select-previous-difficulty (state)
+  (setf (arcade-state-difficulty-index state)
+        (cycle-index (arcade-state-difficulty-index state) -1 (length +ai-difficulty-tiers+))))
+
+(defun arcade-confirm-difficulty (state)
+  "Binds *AI-DIFFICULTY* to the chosen tier for the duration of the
+constructor call — any AI-capable game's MAKE-<GAME> reads it there if
+its AI logic cares."
+  (let ((entry (arcade-state-pending-entry state))
+        (tier (nth (arcade-state-difficulty-index state) +ai-difficulty-tiers+)))
+    (let ((*ai-difficulty* tier))
+      (arcade-complete-launch state entry))
+    (setf (arcade-state-pending-entry state) nil)))
 
 ;;; Playing: pause/outcome popup, scoring, save, restart, return to table select
 

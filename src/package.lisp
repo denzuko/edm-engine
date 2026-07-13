@@ -17,6 +17,7 @@
    #:game-title #:game-update #:game-render #:game-outcome #:game-score #:game-save-data
    #:game-stop-audio
    #:game-entry #:game-entry-title #:game-entry-constructor #:game-entry-restore-fn
+   #:game-entry-ai-capable-p
    #:*games* #:register-game
    ;; tick
    #:tick #:make-tick #:tick-frame #:advance-tick #:ensure-kernel
@@ -46,6 +47,9 @@
    #:arcade-state-current-game #:arcade-state-current-table-title #:arcade-state-ruleset-handle
    #:arcade-state-total-score #:arcade-state-volume
    #:arcade-state-popup-open #:arcade-state-popup-index #:arcade-state-save-slot-index
+   #:arcade-state-difficulty-index #:arcade-state-pending-entry
+   #:arcade-select-next-difficulty #:arcade-select-previous-difficulty #:arcade-confirm-difficulty
+   #:arcade-complete-launch
    #:cycle-index
    #:arcade-select-next-main-menu #:arcade-select-previous-main-menu
    #:arcade-drill-into-main-menu-selection #:arcade-back-to-main-menu
@@ -57,7 +61,11 @@
    #:arcade-select-next-save-slot #:arcade-select-previous-save-slot
    #:arcade-load-selected-save-slot
    ;; arcade entry point (defined in the primary edm-engine system)
-   #:main #:arcade-update #:arcade-render #:rgb-color #:rgb-float->hex))
+   #:main #:arcade-update #:arcade-render #:rgb-color #:rgb-float->hex
+   ;; AI opponent library — pacing timer + difficulty tiers, shared
+   ;; across any AI-capable table
+   #:ai-timer #:make-ai-timer #:ai-ready-p #:ai-timer-reset
+   #:+ai-difficulty-tiers+ #:ai-difficulty-label #:*ai-difficulty*))
 
 (in-package :edm-engine)
 

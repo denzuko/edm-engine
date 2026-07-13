@@ -54,6 +54,12 @@ isn't worth chasing for a thumbnail)."
      (when (raylib:is-key-pressed :key-up) (arcade-select-previous-table state))
      (when (raylib:is-key-pressed :key-enter) (arcade-launch-selected state))
      (when (raylib:is-key-pressed :key-escape) (arcade-back-to-main-menu state)))
+    (:difficulty
+     (when (raylib:is-key-pressed :key-down) (arcade-select-next-difficulty state))
+     (when (raylib:is-key-pressed :key-up) (arcade-select-previous-difficulty state))
+     (when (raylib:is-key-pressed :key-enter) (arcade-confirm-difficulty state))
+     (when (raylib:is-key-pressed :key-escape)
+       (setf (arcade-state-pending-entry state) nil (arcade-state-mode state) :tables)))
     (:options
      (when (raylib:is-key-pressed :key-right)
        (arcade-increase-volume state)
@@ -137,6 +143,14 @@ retheming the whole engine is +THEME-HUE+, not draw-call edits."
              for i from 0
              do (raylib:draw-text (game-entry-title entry) 40 (+ 90 (* i 36)) 26
                                    (menu-item-color (= i (arcade-state-table-index state)))))
+       (draw-back-hint window-height))
+      (:difficulty
+       (draw-section-title (format nil "~A: CHOOSE OPPONENT SKILL"
+                                    (game-entry-title (arcade-state-pending-entry state))))
+       (loop for tier in +ai-difficulty-tiers+
+             for i from 0
+             do (raylib:draw-text (ai-difficulty-label tier) 40 (+ 100 (* i 40)) 28
+                                   (menu-item-color (= i (arcade-state-difficulty-index state)))))
        (draw-back-hint window-height))
       (:options
        (draw-section-title "ENGINE OPTIONS")

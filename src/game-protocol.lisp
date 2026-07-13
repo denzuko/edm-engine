@@ -51,19 +51,23 @@ game instance — called on selection, not at registration, so games with
 randomized setup (a fresh Wordle answer, a shuffled deck) get a new one
 each time they're launched, not once at load time. RESTORE-FN takes the
 plist a prior GAME-SAVE-DATA produced and returns a live instance; NIL
-means this table doesn't support save/load."
+means this table doesn't support save/load. AI-CAPABLE-P routes launch
+through the difficulty-selection screen first — see src/ai-opponent.lisp."
   (title "" :type string)
   (constructor (lambda () (error "no constructor")) :type function)
-  (restore-fn nil :type (or null function)))
+  (restore-fn nil :type (or null function))
+  (ai-capable-p nil :type boolean))
 
 (defvar *games* nil "Registered GAME-ENTRY list, menu order = registration order.")
 
-(defun register-game (title constructor &key restore-fn)
+(defun register-game (title constructor &key restore-fn ai-capable-p)
   "Adds TITLE to the arcade menu, backed by CONSTRUCTOR. Re-registering
 an existing TITLE replaces its entry in place rather than moving it."
   (let ((existing (find title *games* :key #'game-entry-title :test #'string=)))
     (if existing
         (setf (game-entry-constructor existing) constructor
-              (game-entry-restore-fn existing) restore-fn)
+              (game-entry-restore-fn existing) restore-fn
+              (game-entry-ai-capable-p existing) ai-capable-p)
         (setf *games* (append *games* (list (make-game-entry :title title :constructor constructor
-                                                               :restore-fn restore-fn)))))))
+                                                               :restore-fn restore-fn
+                                                               :ai-capable-p ai-capable-p)))))))
