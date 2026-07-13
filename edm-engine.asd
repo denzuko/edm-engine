@@ -96,7 +96,8 @@ Wordle never needed one."
   :serial t
   :components ((:file "src/games/queens/package")
                (:file "src/games/queens/board")
-               (:file "src/games/queens/game")))
+               (:file "src/games/queens/game")
+               (:file "src/games/queens/music")))
 
 (defsystem "edm-engine/games/queens/render"
   :description "Queens board renderer. Region colors reuse the engine's
@@ -111,7 +112,8 @@ shader copy of the same math."
   :serial t
   :components ((:file "t/games/queens/package")
                (:file "t/games/queens/board-spec")
-               (:file "t/games/queens/game-spec")))
+               (:file "t/games/queens/game-spec")
+               (:file "t/games/queens/music-spec")))
 
 (defsystem "edm-engine/games/wordle/tests"
   :description "FiveAM spec suite for edm-engine/games/wordle."

@@ -86,7 +86,23 @@ visible, not just silently non-advancing."
 (defmethod edm-engine:game-title ((game queens-game))
   "Queens")
 
+(defvar *theme-sound* nil)
+
+(defun ensure-theme-playing ()
+  "PATTERN-SOUND is cached (CACHED-OR-COMPUTE, in playback.lisp) — this
+gets the same Sound object every call, not a fresh render each time.
+Polling IS-SOUND-PLAYING and re-triggering PLAY-SOUND when it's false
+is how looping works without raylib's separate Music-streaming API,
+which this engine doesn't use anywhere else."
+  (unless *theme-sound*
+    (setf *theme-sound*
+          (edm-engine/audio:pattern-sound (queens-theme-pattern) +queens-theme-row-duration+
+                                           :amplitude 0.3)))
+  (unless (raylib:is-sound-playing *theme-sound*)
+    (raylib:play-sound *theme-sound*)))
+
 (defmethod edm-engine:game-update ((game queens-game))
+  (ensure-theme-playing)
   (let ((before-row (queens-game-cursor-row game))
         (before-col (queens-game-cursor-col game))
         (before-level (queens-game-level game)))

@@ -3,6 +3,6 @@
   (:export
    #:generate-samples #:wav-bytes-for-samples
    #:play-tone #:ensure-audio-device #:*audio-device-ready*
-   #:note-frequency #:mix-samples #:render-pattern #:play-pattern))
+   #:note-frequency #:mix-samples #:render-pattern #:play-pattern #:pattern-sound))
 (in-package :edm-engine/audio)
 
