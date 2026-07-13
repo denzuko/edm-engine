@@ -12,7 +12,7 @@
 (defun card-color (card)
   (if (member (cdr card) '(:hearts :diamonds))
       (edm-engine:rgb-color edm-engine:+color-red+)
-      :black))
+      (edm-engine:rgb-color (edm-engine:theme-color :info))))
 
 (defvar *theme-sound* nil)
 (defvar *ai-next-action-time* 0.0d0)
@@ -22,7 +22,10 @@ a card moves from a hand to the trick. Built on the shared
 src/tween.lisp engine — the first real consumer, not a Hearts-specific
 animation hack.")
 
-(defparameter +tween-duration+ 0.35)
+(defparameter +tween-duration+ 0.55
+  "Long enough to genuinely see the motion, not just technically animate
+it — 0.35s round-tripped through video compression reads as an instant
+cut more often than not, especially over a short start/end distance.")
 
 (defun start-card-tween (card start-x start-y end-x end-y)
   (setf (gethash card *card-tweens*)
@@ -121,7 +124,7 @@ individual card positions)."
                 2.0 :white))
              (edm-engine:draw-glyph-text (card-string card) (+ x 4) (- window-height 80) 22
                                 (if (or (null legal) playable) (card-color card)
-                                    (edm-engine:rgb-color (edm-engine:theme-color :muted)))))))
+                                    (raylib:fade (card-color card) 0.35))))))
 
 (defun maybe-run-ai-turn (game)
   "AI players act after a short pause (>= +hearts-ai-think-seconds+) so a
