@@ -35,10 +35,11 @@
    #:hsv->rgb #:rgb->hsv #:+theme-hue+ #:theme-color #:theme-hsv
    #:lerp #:ease-out-cubic #:tween #:make-tween #:tween-position #:tween-finished-p
    #:tween-start-x #:tween-start-y #:tween-end-x #:tween-end-y #:tween-start-time #:tween-duration
+   #:centered-row-positions #:wrap-text-lines
    ;; render (defined in edm-engine/render; declared here so main can call them)
    #:open-window #:close-window #:window-should-close-p #:draw-arena
    #:draw-chrome-rect #:ensure-chrome-shader #:set-shader-int #:set-shader-float
-   #:draw-glyph-text #:glyph-text-width #:ensure-glyph-font
+   #:draw-glyph-text #:glyph-text-width #:ensure-glyph-font #:draw-wrapped-text
    ;; arcade state machine (pure; the raylib update/render loop lives in
    ;; the primary edm-engine system's main.lisp, not here)
    #:+engine-name+ #:+main-menu-items+

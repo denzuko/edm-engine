@@ -137,3 +137,17 @@ RAYLIB:DRAW-TEXT is fine for ASCII-only UI text."
 (declaim (ftype (function (string fixnum) fixnum) glyph-text-width))
 (defun glyph-text-width (text font-size)
   (round (3d-vectors:vx (raylib:measure-text-ex (ensure-glyph-font) text (float font-size 1.0) 1.0))))
+
+(declaim (ftype (function (string fixnum fixnum fixnum fixnum t &key (:line-height fixnum)) fixnum)
+                draw-wrapped-text))
+(defun draw-wrapped-text (text x y max-width font-size color &key (line-height (round (* font-size 1.3))))
+  "Wraps TEXT to fit MAX-WIDTH using real measured glyph widths (not a
+character-count guess) and draws each line via DRAW-GLYPH-TEXT — the
+fix for the difficulty screen's description text running straight off
+one card's edge into the next. Returns the total height drawn, so a
+caller can lay out whatever comes after it."
+  (let ((lines (wrap-text-lines text (lambda (s) (glyph-text-width s font-size)) max-width)))
+    (loop for line in lines
+          for i from 0
+          do (draw-glyph-text line x (+ y (* i line-height)) font-size color))
+    (* (length lines) line-height)))

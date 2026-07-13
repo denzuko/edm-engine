@@ -147,13 +147,11 @@ retheming the whole engine is +THEME-HUE+, not draw-call edits."
       (:difficulty
        (draw-section-title (format nil "~A: CHOOSE OPPONENT SKILL"
                                     (game-entry-title (arcade-state-pending-entry state))))
-       (let* ((card-w 180) (card-h 200) (gap 30)
-              (total-w (+ (* 3 card-w) (* 2 gap)))
-              (start-x (round (/ (- window-width total-w) 2.0)))
-              (y 130))
+       (let* ((card-w 180) (card-h 200) (gap 30) (y 130)
+              (xs (centered-row-positions 3 card-w gap window-width)))
          (loop for tier in +ai-difficulty-tiers+
+               for x in xs
                for i from 0
-               for x = (+ start-x (* i (+ card-w gap)))
                for selected-p = (= i (arcade-state-difficulty-index state))
                do (draw-chrome-rect x y card-w card-h (if selected-p :accent :panel) (if selected-p 0.35 1.0))
                   (raylib:draw-rectangle-lines-ex
@@ -164,8 +162,8 @@ retheming the whole engine is +THEME-HUE+, not draw-call edits."
                                     (rgb-color (theme-color (if selected-p :accent :info))))
                   (raylib:draw-text (ai-difficulty-label tier) (+ x 20) (+ y 120) 24
                                      (menu-item-color selected-p))
-                  (raylib:draw-text (cdr (assoc tier +ai-difficulty-descriptions+ :test #'eq))
-                                     (+ x 12) (+ y 155) 12 (rgb-color (theme-color :muted)))))
+                  (draw-wrapped-text (cdr (assoc tier +ai-difficulty-descriptions+ :test #'eq))
+                                      (+ x 12) (+ y 155) (- card-w 24) 12 (rgb-color (theme-color :muted)))))
        (draw-back-hint window-height))
       (:options
        (draw-section-title "ENGINE OPTIONS")
