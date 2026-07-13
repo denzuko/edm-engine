@@ -79,7 +79,8 @@ edm-engine/ruleset docstring for when constraint engines are warranted."
   :components ((:file "src/games/wordle/package")
                (:file "src/games/wordle/corpus")
                (:file "src/games/wordle/guess")
-               (:file "src/games/wordle/game")))
+               (:file "src/games/wordle/game")
+               (:file "src/games/wordle/music")))
 
 (defsystem "edm-engine/games/wordle/render"
   :description "Wordle tile-grid renderer. Screen-centered; tile color is
@@ -122,7 +123,8 @@ shader copy of the same math."
   :components ((:file "t/games/package")
                (:file "t/games/wordle-spec")
                (:file "t/games/wordle-game-spec")
-               (:file "t/games/wordle-input-spec"))
+               (:file "t/games/wordle-input-spec")
+               (:file "t/games/wordle-music-spec"))
   :perform (test-op (o c)
              (unless (uiop:symbol-call :fiveam :run! :edm-engine-wordle)
                (error "edm-engine/games/wordle FiveAM suite failed"))))

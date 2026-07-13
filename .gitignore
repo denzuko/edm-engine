@@ -3,3 +3,4 @@
 .cache/
 **/shaders/*.fs
 **/shaders/*.vs
+edm-engine

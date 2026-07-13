@@ -97,11 +97,25 @@ pulse across every tile."
 (defmethod edm-engine:game-title ((game wordle-game))
   "Wordle")
 
+(defvar *theme-sound* nil)
+
+(defun ensure-theme-playing ()
+  "Same mechanism as Queens' ENSURE-THEME-PLAYING — PATTERN-SOUND is
+cached, poll IS-SOUND-PLAYING each frame and re-trigger when the loop
+finishes."
+  (unless *theme-sound*
+    (setf *theme-sound*
+          (edm-engine/audio:pattern-sound (wordle-theme-pattern) +wordle-theme-row-duration+
+                                           :amplitude 0.3)))
+  (unless (raylib:is-sound-playing *theme-sound*)
+    (raylib:play-sound *theme-sound*)))
+
 (defmethod edm-engine:game-update ((game wordle-game))
   "Reads keyboard input and drives GAME's incremental-typing state
 machine. The typing logic itself (PUSH-LETTER/POP-LETTER/TRY-SUBMIT) is
 pure and FiveAM-tested; only these raylib reads and the generated-tone
 triggers are untested I/O."
+  (ensure-theme-playing)
   (loop for code = (raylib:get-char-pressed)
         while (plusp code)
         do (let ((before (fill-pointer (wordle-game-input game))))
