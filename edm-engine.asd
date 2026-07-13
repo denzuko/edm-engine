@@ -134,12 +134,13 @@ shader copy of the same math."
 audio, queens) into one ASDF test-op — none of them depend on raylib, so
 this is what CI actually runs, not just edm-engine/core."
   :depends-on ("edm-engine/tests" "edm-engine/games/wordle/tests" "edm-engine/audio/tests"
-               "edm-engine/games/queens/tests")
+               "edm-engine/games/queens/tests" "edm-engine/games/hearts/tests")
   :perform (test-op (o c)
              (let ((results (list (uiop:symbol-call :fiveam :run! :edm-engine)
                                    (uiop:symbol-call :fiveam :run! :edm-engine-wordle)
                                    (uiop:symbol-call :fiveam :run! :edm-engine-audio)
-                                   (uiop:symbol-call :fiveam :run! :edm-engine-queens))))
+                                   (uiop:symbol-call :fiveam :run! :edm-engine-queens)
+                                   (uiop:symbol-call :fiveam :run! :edm-engine-hearts))))
                (unless (every #'identity results)
                  (error "one or more edm-engine FiveAM suites failed")))))
 
@@ -170,3 +171,19 @@ suite since it needs that plus a full raylib build."
   :perform (test-op (o c)
              (unless (uiop:symbol-call :fiveam :run! :edm-engine)
                (error "edm-engine FiveAM suite failed"))))
+
+(defsystem "edm-engine/games/hearts"
+  :description "Hearts: trick-taking, single human vs 3 AI opponents."
+  :depends-on ("edm-engine/core")
+  :serial t
+  :components ((:file "src/games/hearts/package")
+               (:file "src/games/hearts/rules")
+               (:file "src/games/hearts/game")))
+
+(defsystem "edm-engine/games/hearts/tests"
+  :description "FiveAM spec suite over edm-engine/games/hearts."
+  :depends-on ("edm-engine/games/hearts" "fiveam")
+  :serial t
+  :components ((:file "t/games/hearts/package")
+               (:file "t/games/hearts/rules-spec")
+               (:file "t/games/hearts/game-spec")))
