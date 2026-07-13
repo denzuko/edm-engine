@@ -13,6 +13,7 @@
                (:file "src/ruleset")
                (:file "src/game-protocol")
                (:file "src/palette")
+               (:file "src/tween")
                (:file "src/save")
                (:file "src/arcade")
                (:file "src/tick")))
@@ -43,7 +44,7 @@ same convention as render.lisp."
 
 (defsystem "edm-engine/render"
   :description "cl-raylib I/O boundary. Never unit-tested; kept thin by design."
-  :depends-on ("edm-engine/core" "cl-raylib")
+  :depends-on ("edm-engine/core" "cl-raylib" "3d-vectors")
   :serial t
   :components ((:file "src/render")))
 
@@ -55,7 +56,8 @@ same convention as render.lisp."
   :depends-on ("edm-engine/core" "edm-engine/render"
                "edm-engine/games/wordle" "edm-engine/games/wordle/render"
                "edm-engine/games/queens" "edm-engine/games/queens/render"
-               "edm-engine/games/hearts" "edm-engine/games/hearts/render")
+               "edm-engine/games/hearts" "edm-engine/games/hearts/render"
+               "swank")
   :build-operation "program-op"
   :build-pathname "edm-engine"
   :entry-point "edm-engine:main"
@@ -168,6 +170,7 @@ suite since it needs that plus a full raylib build."
                (:file "t/game-registry-spec")
                (:file "t/arcade-menu-spec")
                (:file "t/theme-spec")
+               (:file "t/tween-spec")
                (:file "t/tick-spec"))
   :perform (test-op (o c)
              (unless (uiop:symbol-call :fiveam :run! :edm-engine)

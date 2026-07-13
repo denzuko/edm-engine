@@ -92,3 +92,48 @@ pre-computed RGB literal. Retheming the whole engine is changing
     (raylib:draw-rectangle x y width height :white)
     (raylib:end-shader-mode))
   nil)
+
+;;; Glyph font: raylib's DEFAULT font's coverage of card-suit
+;;; (♠♥♦♣) and chess (♛) codepoints is unreliable — confirmed by a
+;;; player actually watching a recording, not caught by pixel-bbox
+;;; heuristics on a screenshot. Any table needing these (or future
+;;; Unicode symbols) should load a REAL font with EXPLICIT codepoint
+;;; coverage instead of gambling on the default font's glyph table.
+;;; DejaVu Sans is bundled as a project asset (assets/fonts/) rather
+;;; than referenced by a system path, so it's actually present wherever
+;;; this engine ships, not just in a dev sandbox that happens to have it.
+
+(defparameter +glyph-codepoints+ "♠♥♦♣♛"
+  "Extra Unicode symbols this engine's tables need, beyond ASCII —
+add to this string (not a separate font-load call) when a table needs
+another glyph; it's one shared font, not one per table.")
+
+(defvar *glyph-font* nil)
+(defvar *glyph-font-size* 32)
+
+(defun glyph-font-path ()
+  (namestring (asdf:system-relative-pathname :edm-engine "assets/fonts/DejaVuSans.ttf")))
+
+(defun ensure-glyph-font ()
+  (unless *glyph-font*
+    (let* ((codepoints (append (loop for c from 32 to 126 collect c)
+                                (map 'list #'char-code +glyph-codepoints+)))
+           (n (length codepoints)))
+      (cffi:with-foreign-object (arr :int n)
+        (loop for i from 0 for cp in codepoints do (setf (cffi:mem-aref arr :int i) cp))
+        (setf *glyph-font* (raylib:load-font-ex (glyph-font-path) *glyph-font-size* arr n)))))
+  *glyph-font*)
+
+(declaim (ftype (function (string fixnum fixnum fixnum t &optional single-float) null) draw-glyph-text))
+(defun draw-glyph-text (text x y font-size color &optional (spacing 1.0))
+  "DRAW-TEXT equivalent that goes through the loaded glyph font instead
+of raylib's default one — use this for any text that might contain a
+card suit, the crown glyph, or future non-ASCII symbols; plain
+RAYLIB:DRAW-TEXT is fine for ASCII-only UI text."
+  (raylib:draw-text-ex (ensure-glyph-font) text (3d-vectors:vec2 (float x 1.0) (float y 1.0))
+                        (float font-size 1.0) spacing color)
+  nil)
+
+(declaim (ftype (function (string fixnum) fixnum) glyph-text-width))
+(defun glyph-text-width (text font-size)
+  (round (3d-vectors:vx (raylib:measure-text-ex (ensure-glyph-font) text (float font-size 1.0) 1.0))))

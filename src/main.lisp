@@ -173,15 +173,24 @@ retheming the whole engine is +THEME-HUE+, not draw-call edits."
          (when (arcade-state-popup-open state)
            (draw-popup-menu state window-width window-height)))))))
 
+(defvar *debug-arcade-state* nil
+  "The live ARCADE-STATE, exposed for SWANK inspection when
+EDM_ENGINE_SWANK_PORT is set — read-only from another thread (GL calls
+from a non-main thread are unsafe; don't draw with this, just inspect).")
+
 (defun main (&rest argv)
   "Boots the arcade: a main menu (Tables / Engine Options / Save-Load)
 over every REGISTER-GAME entry, dispatching to the selected table's
 GAME-UPDATE/GAME-RENDER each frame. This file has no knowledge of any
 specific table — that's the whole point."
   (declare (ignore argv))
+  (let ((swank-port (sb-ext:posix-getenv "EDM_ENGINE_SWANK_PORT")))
+    (when swank-port
+      (swank:create-server :port (parse-integer swank-port) :dont-close t :style :spawn)))
   (open-window (format nil "~A" +engine-name+) 800 700)
   (unwind-protect
        (let ((state (make-arcade-state)))
+         (setf *debug-arcade-state* state)
          (loop until (window-should-close-p)
                do (arcade-update state)
                   (arcade-render state 800 700)))

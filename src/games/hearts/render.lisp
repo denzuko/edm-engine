@@ -16,6 +16,43 @@
 
 (defvar *theme-sound* nil)
 (defvar *ai-next-action-time* 0.0d0)
+(defvar *card-tweens* (make-hash-table :test #'equal)
+  "CARD -> TWEEN, for the 'floating card easing into place' effect when
+a card moves from a hand to the trick. Built on the shared
+src/tween.lisp engine — the first real consumer, not a Hearts-specific
+animation hack.")
+
+(defparameter +tween-duration+ 0.35)
+
+(defun start-card-tween (card start-x start-y end-x end-y)
+  (setf (gethash card *card-tweens*)
+        (edm-engine:make-tween :start-x (float start-x 1.0) :start-y (float start-y 1.0)
+                                :end-x (float end-x 1.0) :end-y (float end-y 1.0)
+                                :start-time (raylib:get-time) :duration +tween-duration+)))
+
+(defun card-draw-position (card default-x default-y)
+  "Returns (values x y) — the card's TWEENED position while its
+animation is still running, or DEFAULT-X/Y once it's finished (or was
+never tweened, e.g. a hand card that hasn't moved)."
+  (let ((tw (gethash card *card-tweens*)))
+    (if (and tw (not (edm-engine:tween-finished-p tw (raylib:get-time))))
+        (edm-engine:tween-position tw (raylib:get-time))
+        (values (float default-x 1.0) (float default-y 1.0)))))
+
+(defun hand-card-x (i) (+ 20 (* i 55)))
+(defun hand-card-y (window-height) (- window-height 80))
+
+(defun trick-card-x (window-width i) (+ (/ window-width 2.0) (* i 50) -100))
+(defun trick-card-y (window-height) (/ window-height 2.0))
+
+(defun ai-origin-position (player window-width window-height)
+  "Approximate screen position of PLAYER's label — cards fly FROM here,
+not from an exact per-card hand layout (AI hands only show a count, not
+individual card positions)."
+  (ecase player
+    (1 (values 20.0 (/ window-height 2.0)))
+    (2 (values (- (/ window-width 2.0) 60.0) 50.0))
+    (3 (values (- window-width 160.0) (/ window-height 2.0)))))
 
 (defun ensure-theme-playing ()
   (unless *theme-sound*
@@ -38,11 +75,13 @@
                        (round (- (/ window-width 2.0) 60)) 50 18 :white)
     (raylib:draw-text (format nil "AI-3: ~D cards" (length (fourth (hearts-game-hands game))))
                        (- window-width 160) (round cy) 18 :white)
-    ;; current trick, centered
+    ;; current trick, centered — tweened positions while a card's
+    ;; animation is still running
     (loop for card in (hearts-game-current-trick game)
           for i from 0
-          do (raylib:draw-text (card-string card)
-                                (round (+ (/ window-width 2.0) (* i 50) -100)) (round cy) 28 (card-color card)))
+          do (multiple-value-bind (x y)
+                 (card-draw-position card (trick-card-x window-width i) (trick-card-y window-height))
+               (edm-engine:draw-glyph-text (card-string card) (round x) (round y) 28 (card-color card))))
     (if (eq (hearts-game-phase game) :passing)
         (draw-passing-ui game window-width window-height)
         (draw-human-hand game window-width window-height))))
@@ -63,7 +102,7 @@
              (when selected
                (raylib:draw-rectangle x (- window-height 90) 46 58
                                        (edm-engine:rgb-color (edm-engine:theme-color :accent) 80)))
-             (raylib:draw-text (card-string card) (+ x 4) (- window-height 80) 22 (card-color card)))))
+             (edm-engine:draw-glyph-text (card-string card) (+ x 4) (- window-height 80) 22 (card-color card)))))
 
 (defun draw-human-hand (game window-width window-height)
   (declare (ignore window-width))
@@ -80,7 +119,7 @@
                (raylib:draw-rectangle-lines-ex
                 (raylib:make-rectangle :x (float (1- x) 1.0) :y (float (- window-height 91) 1.0) :width 48.0 :height 60.0)
                 2.0 :white))
-             (raylib:draw-text (card-string card) (+ x 4) (- window-height 80) 22
+             (edm-engine:draw-glyph-text (card-string card) (+ x 4) (- window-height 80) 22
                                 (if (or (null legal) playable) (card-color card)
                                     (edm-engine:rgb-color (edm-engine:theme-color :muted)))))))
 
@@ -90,8 +129,12 @@ human can actually see what's happening, not an instant flurry of plays."
   (when (and (/= (hearts-game-turn game) 0) (>= (raylib:get-time) *ai-next-action-time*))
     (let* ((p (hearts-game-turn game))
            (led-suit (when (hearts-game-current-trick game) (cdr (first (hearts-game-current-trick game)))))
-           (card (ai-choose-play (nth p (hearts-game-hands game)) led-suit (hearts-game-hearts-broken game))))
+           (card (ai-choose-play (nth p (hearts-game-hands game)) led-suit (hearts-game-hearts-broken game)))
+           (trick-index (length (hearts-game-current-trick game))))
+      (multiple-value-bind (sx sy) (ai-origin-position p 800.0 700.0)
+        (start-card-tween card sx sy (trick-card-x 800.0 trick-index) (trick-card-y 700.0)))
       (play-card game p card)
+      (when (null (hearts-game-current-trick game)) (clrhash *card-tweens*))
       (edm-engine/audio:play-tone :square 500.0 0.04)
       (setf *ai-next-action-time* (+ (raylib:get-time) 0.8)))))
 
@@ -126,7 +169,11 @@ human can actually see what's happening, not an instant flurry of plays."
                        (legal (legal-plays hand :led-suit led-suit :hearts-broken (hearts-game-hearts-broken game)
                                                  :leading-p (null (hearts-game-current-trick game)))))
                   (when (member card legal :test #'equal)
+                    (start-card-tween card (hand-card-x (hearts-game-cursor game)) (hand-card-y 700.0)
+                                       (trick-card-x 800.0 (length (hearts-game-current-trick game)))
+                                       (trick-card-y 700.0))
                     (play-card game 0 card)
+                    (when (null (hearts-game-current-trick game)) (clrhash *card-tweens*))
                     (setf (hearts-game-cursor game) 0)
                     (edm-engine/audio:play-tone :square 700.0 0.05)
                     (setf *ai-next-action-time* (+ (raylib:get-time) 0.8))))))

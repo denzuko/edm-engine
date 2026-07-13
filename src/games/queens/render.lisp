@@ -59,9 +59,9 @@ visible, not just silently non-advancing."
                           font-size (edm-engine:rgb-color (edm-engine:theme-color :muted)))))
     (:queen
      (let* ((font-size 30)
-            (tw (raylib:measure-text +queen-glyph+ font-size))
+            (tw (edm-engine:glyph-text-width +queen-glyph+ font-size))
             (conflicted (member (cons row col) conflicts :test #'equal)))
-       (raylib:draw-text +queen-glyph+ (round (+ x (/ (- +cell-size+ tw) 2.0)))
+       (edm-engine:draw-glyph-text +queen-glyph+ (round (+ x (/ (- +cell-size+ tw) 2.0)))
                           (round (+ y (/ (- +cell-size+ font-size) 2.0)))
                           font-size (if conflicted (edm-engine:rgb-color edm-engine:+color-red+) :black))))))
 
