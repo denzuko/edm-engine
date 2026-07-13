@@ -8,8 +8,9 @@ untested. Everything else is FiveAM-specified before implementation.
 ## Stack
 
 - SBCL, `(optimize (speed 3) (safety 3))` on every hot-path file
-- Qlot (`qlfile`) for reproducible dependency pinning — use it via
-  `qlot exec ros run`, not `qlot exec sbcl` directly (see Build below)
+- Qlot (`qlfile`/`qlfile.lock`) for reproducible dependency pinning —
+  a package manager on top of Roswell's version management, not
+  invoked by wrapping `sbcl`/`ros` inside it (see Build below)
 - `alexandria`, `serapeum` (`~>`/`~>>` threading, `defconstructor`, `op`)
 - `transducers` for allocation-light entity query pipelines
 - `chanl` for the topic bus, `lparallel` for parallel tick integration
@@ -56,21 +57,32 @@ project-naming gotcha, commands): [`docs/qlot-guide.md`](docs/qlot-guide.md).
 
 ### Running the tests
 
-Qlot is the primary path — lock file + reproducible dependency
-pinning, and it works cleanly with Roswell via `qlot exec ros run`,
-not by invoking `sbcl` directly inside the qlot environment. The
-`qlfile` declares `screamer` via Ultralisp directly (Queens' board
-generation depends on it, and it isn't in base Quicklisp), so `qlot
-install` alone is fully reproducible — no separate manual step.
-Verified end to end: full suite (all five tables) and the standalone
-executable build both work through this exact invocation.
+The mental model: `ros` is a version manager (like `nvm`) — it manages
+which SBCL is active. `qlot` is a package manager (like `yarn`/`npm`)
+— it manages project-local Lisp dependencies with a lock file. You
+don't nest one through the other at runtime; `qlot install` sets up
+`.qlot/` once, and `ros run` picks it up directly via `QUICKLISP_HOME`
+— no `qlot exec` wrapper needed. (`qlot exec ros run` also works — it
+just sets the same env var before exec'ing — but the direct form is
+simpler and is what's actually verified below.)
 
 ```sh
-qlot install
-qlot exec ros run --non-interactive \
+ros install sbcl-bin && ros use sbcl-bin   # version manager: pick the Lisp
+ros install qlot                            # install the package manager
+qlot install                                # package manager: resolve qlfile.lock
+
+QUICKLISP_HOME="$(pwd)/.qlot/" ros run --non-interactive \
+  --eval '(push (truename ".") asdf:*central-registry*)' \
   --eval '(ql:quickload :edm-engine/tests/all)' \
   --eval '(asdf:test-system :edm-engine/tests/all)'
 ```
+
+`QUICKLISP_HOME` needs the trailing slash — Roswell builds a pathname
+from it via `make-pathname`, and without the slash it doesn't resolve
+to `.qlot/setup.lisp` correctly. `screamer` (Queens' board generation
+dependency, not in base Quicklisp) is declared via Ultralisp directly
+in `qlfile`, so `qlot install` alone is fully reproducible — no
+separate manual Ultralisp step needed with this path.
 
 If `qlot install` itself fails on your machine (a real crash has been
 seen — a fatal low-level SBCL fault inside Roswell's qlot subprocess
@@ -89,11 +101,6 @@ sbcl --non-interactive \
   --eval '(asdf:test-system :edm-engine/tests/all)'
 ```
 
-Both commands above install Ultralisp inline (needed for `screamer`,
-which Queens' board generation depends on and isn't in base
-Quicklisp) — only needs doing once per Quicklisp install, not before
-every run, but it's harmless to repeat.
-
 ### Building the standalone executable
 
 This is the step the README never actually documented — `qlot
@@ -102,7 +109,8 @@ loading the test system.
 
 ```sh
 # via qlot (verified working)
-qlot exec ros run --non-interactive \
+QUICKLISP_HOME="$(pwd)/.qlot/" ros run --non-interactive \
+  --eval '(push (truename ".") asdf:*central-registry*)' \
   --eval '(ql:quickload :edm-engine)' \
   --eval '(asdf:make :edm-engine)'
 

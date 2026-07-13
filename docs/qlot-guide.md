@@ -19,7 +19,64 @@ lock file is what makes `qlot install` reproducible for anyone who
 clones the repo. (This project's lock file wasn't committed until
 2026-07-13 — a real gap, not a stylistic choice; see git log.)
 
+## The mental model
+
+`ros` (Roswell) is a version manager — like `nvm`. It manages which
+SBCL is active on `PATH`. `qlot` is a package manager on top of it —
+like `yarn`/`npm`. It manages project-local Lisp dependencies with a
+lock file. **Don't nest them at runtime** (`qlot exec ros run ...` or
+worse, `ros exec qlot exec ros run ...`) — set up each layer once,
+then run code directly.
+
+```sh
+ros install sbcl-bin && ros use sbcl-bin   # version manager: pick the Lisp
+ros install qlot                            # install the package manager
+qlot install                                # package manager: resolve qlfile.lock into .qlot/
+```
+
+## Running code against the qlot-local environment — no wrapper needed
+
+`qlot install` produces `.qlot/setup.lisp`, a project-local Quicklisp
+setup file. `qlot exec <cmd>` works by setting the `QUICKLISP_HOME`
+env var (plus extending `CL_SOURCE_REGISTRY`) and then exec'ing your
+command — for `sbcl`/`ccl`/`ecl`/`abcl`/`clasp`/`clisp`/`allegro` it
+also injects a `--load .qlot/setup.lisp`-equivalent flag, but **for
+`ros` specifically it injects nothing** (confirmed by reading
+`qlot-command-exec` in `src/cli.lisp` — the `case-equal` dispatch has
+no `"ros"` branch), because Roswell's own bootstrap (`ros:quicklisp`
+in `lisp/init.lisp`) already checks `QUICKLISP_HOME` itself. So the
+whole `qlot exec` wrapper is unnecessary when the target is `ros` —
+just set the env var directly:
+
+```sh
+QUICKLISP_HOME="$(pwd)/.qlot/" ros run --non-interactive \
+  --eval '(push (truename ".") asdf:*central-registry*)' \
+  --eval '(ql:quickload :edm-engine/tests/all)' \
+  --eval '(asdf:test-system :edm-engine/tests/all)'
+```
+
+**Gotcha: `QUICKLISP_HOME` needs a trailing slash.** Roswell builds a
+pathname from it via `(make-pathname :name "setup" :type "lisp"
+:defaults (getenv "QUICKLISP_HOME"))`. Without the trailing slash, the
+directory component doesn't parse correctly and quicklisp never loads
+(silently — `ros run` starts, drops into the debugger on the first
+`ql:`-prefixed symbol with `PACKAGE "QL" not found`, not an obvious
+"wrong env var" error). `qlot`'s own `use-local-quicklisp` gets this
+right by building the path via `uiop:directory-exists-p` +
+`uiop:native-namestring`, which always produces a directory pathname
+with the trailing slash — worth mimicking exactly when setting the
+var by hand.
+
+`qlot exec ros run ...` also still works (verified) — it's just doing
+the same `QUICKLISP_HOME` env-var setup as a side effect before
+exec'ing, so it's redundant machinery for the `ros` case specifically,
+not wrong.
+
 ## The one command that matters most: `qlot exec`
+
+For non-`ros` targets (plain `sbcl`, editors, etc.), `qlot exec` is
+still the right tool — it injects the load-setup flag those targets
+actually need:
 
 ```sh
 qlot exec <command>
