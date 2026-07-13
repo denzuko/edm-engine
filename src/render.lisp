@@ -103,7 +103,7 @@ pre-computed RGB literal. Retheming the whole engine is changing
 ;;; than referenced by a system path, so it's actually present wherever
 ;;; this engine ships, not just in a dev sandbox that happens to have it.
 
-(defparameter +glyph-codepoints+ "♠♥♦♣♛"
+(defparameter +glyph-codepoints+ "♠♥♦♣♛♞♟"
   "Extra Unicode symbols this engine's tables need, beyond ASCII —
 add to this string (not a separate font-load call) when a table needs
 another glyph; it's one shared font, not one per table.")

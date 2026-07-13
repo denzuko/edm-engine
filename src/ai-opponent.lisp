@@ -30,6 +30,17 @@
 (defparameter +ai-difficulty-labels+
   '((:novice . "Novice") (:standard . "Standard") (:expert . "Expert")))
 
+(defparameter +ai-difficulty-glyphs+
+  '((:novice . "♟") (:standard . "♞") (:expert . "♛"))
+  "Pawn/knight/queen — chess pieces already carry a natural low-to-high
+skill hierarchy, so this reuses that instead of inventing new iconography
+or needing portrait assets.")
+
+(defparameter +ai-difficulty-descriptions+
+  '((:novice . "Plays safe, doesn't plan ahead")
+    (:standard . "Tracks what's been played, avoids risk")
+    (:expert . "Searches ahead for the strongest line")))
+
 (declaim (ftype (function ((member :novice :standard :expert)) string) ai-difficulty-label))
 (defun ai-difficulty-label (tier)
   (cdr (assoc tier +ai-difficulty-labels+)))

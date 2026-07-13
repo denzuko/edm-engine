@@ -55,8 +55,8 @@ isn't worth chasing for a thumbnail)."
      (when (raylib:is-key-pressed :key-enter) (arcade-launch-selected state))
      (when (raylib:is-key-pressed :key-escape) (arcade-back-to-main-menu state)))
     (:difficulty
-     (when (raylib:is-key-pressed :key-down) (arcade-select-next-difficulty state))
-     (when (raylib:is-key-pressed :key-up) (arcade-select-previous-difficulty state))
+     (when (raylib:is-key-pressed :key-right) (arcade-select-next-difficulty state))
+     (when (raylib:is-key-pressed :key-left) (arcade-select-previous-difficulty state))
      (when (raylib:is-key-pressed :key-enter) (arcade-confirm-difficulty state))
      (when (raylib:is-key-pressed :key-escape)
        (setf (arcade-state-pending-entry state) nil (arcade-state-mode state) :tables)))
@@ -147,10 +147,25 @@ retheming the whole engine is +THEME-HUE+, not draw-call edits."
       (:difficulty
        (draw-section-title (format nil "~A: CHOOSE OPPONENT SKILL"
                                     (game-entry-title (arcade-state-pending-entry state))))
-       (loop for tier in +ai-difficulty-tiers+
-             for i from 0
-             do (raylib:draw-text (ai-difficulty-label tier) 40 (+ 100 (* i 40)) 28
-                                   (menu-item-color (= i (arcade-state-difficulty-index state)))))
+       (let* ((card-w 180) (card-h 200) (gap 30)
+              (total-w (+ (* 3 card-w) (* 2 gap)))
+              (start-x (round (/ (- window-width total-w) 2.0)))
+              (y 130))
+         (loop for tier in +ai-difficulty-tiers+
+               for i from 0
+               for x = (+ start-x (* i (+ card-w gap)))
+               for selected-p = (= i (arcade-state-difficulty-index state))
+               do (draw-chrome-rect x y card-w card-h (if selected-p :accent :panel) (if selected-p 0.35 1.0))
+                  (raylib:draw-rectangle-lines-ex
+                   (raylib:make-rectangle :x (float x 1.0) :y (float y 1.0) :width (float card-w 1.0) :height (float card-h 1.0))
+                   (if selected-p 3.0 1.0)
+                   (rgb-color (theme-color (if selected-p :accent :muted))))
+                  (draw-glyph-text (cdr (assoc tier +ai-difficulty-glyphs+ :test #'eq)) (+ x 60) (+ y 30) 60
+                                    (rgb-color (theme-color (if selected-p :accent :info))))
+                  (raylib:draw-text (ai-difficulty-label tier) (+ x 20) (+ y 120) 24
+                                     (menu-item-color selected-p))
+                  (raylib:draw-text (cdr (assoc tier +ai-difficulty-descriptions+ :test #'eq))
+                                     (+ x 12) (+ y 155) 12 (rgb-color (theme-color :muted)))))
        (draw-back-hint window-height))
       (:options
        (draw-section-title "ENGINE OPTIONS")

@@ -65,7 +65,8 @@
    ;; AI opponent library — pacing timer + difficulty tiers, shared
    ;; across any AI-capable table
    #:ai-timer #:make-ai-timer #:ai-ready-p #:ai-timer-reset
-   #:+ai-difficulty-tiers+ #:ai-difficulty-label #:*ai-difficulty*))
+   #:+ai-difficulty-tiers+ #:ai-difficulty-label #:*ai-difficulty*
+   #:+ai-difficulty-glyphs+ #:+ai-difficulty-descriptions+))
 
 (in-package :edm-engine)
 
