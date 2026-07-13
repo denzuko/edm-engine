@@ -1,0 +1,44 @@
+("quicklisp" .
+ (:class qlot/source/dist:source-dist
+  :initargs (:distribution "https://beta.quicklisp.org/dist/quicklisp.txt" :%version :latest)
+  :version "2026-01-01"))
+("alexandria" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2024-10-12"))
+("serapeum" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2026-01-01"))
+("chanl" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2025-06-22"))
+("lparallel" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2016-08-25"))
+("fiveam" .
+ (:class qlot/source/ql:source-ql
+  :initargs (:%version :latest)
+  :version "ql-2024-10-12"))
+("nikodemus-screamer" .
+ (:class qlot/source/ultralisp:source-ultralisp
+  :initargs (:%version :latest)
+  :version "ultralisp-20260711130500"))
+("transducers" .
+ (:class qlot/source/git:source-git
+  :initargs (:remote-url "https://github.com/fosskers/cl-transducers.git")
+  :version "git-a9aebdb42bda587ff0376e5cc964d42f94f91244"))
+("cl-raylib" .
+ (:class qlot/source/git:source-git
+  :initargs (:remote-url "https://github.com/longlene/cl-raylib.git")
+  :version "git-b3896f28db8017280cff077a74251c3243306253"))
+("40ants-doc" .
+ (:class qlot/source/git:source-git
+  :initargs (:remote-url "https://github.com/40ants/doc.git")
+  :version "git-5b0d0ba89eb39bb78721b9d7b7384d276471ad6b"))
+("dps-meta" .
+ (:class qlot/source/git:source-git
+  :initargs (:remote-url "https://github.com/denzuko/dps-meta.git")
+  :version "git-5992c2046067edaab2720dd215d6618a9ff0414a"))

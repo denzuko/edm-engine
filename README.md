@@ -8,9 +8,8 @@ untested. Everything else is FiveAM-specified before implementation.
 ## Stack
 
 - SBCL, `(optimize (speed 3) (safety 3))` on every hot-path file
-- Qlot (`qlfile`) for dependency pinning when it works — has proven
-  unreliable across environments; the Build section below has a
-  plain-Quicklisp fallback that CI actually relies on
+- Qlot (`qlfile`) for reproducible dependency pinning — use it via
+  `qlot exec ros run`, not `qlot exec sbcl` directly (see Build below)
 - `alexandria`, `serapeum` (`~>`/`~>>` threading, `defconstructor`, `op`)
 - `transducers` for allocation-light entity query pipelines
 - `chanl` for the topic bus, `lparallel` for parallel tick integration
@@ -54,35 +53,43 @@ docs/index.lisp         40ants-doc manual
 
 ### Running the tests
 
-Qlot pins dependency versions, but has proven unreliable across
-environments — CI runs the plain-Quicklisp path below directly
-(`.github/workflows/ci.yml`), and it's known to crash outright on some
-SBCL/Roswell combinations. Try it first; fall back to plain Quicklisp
-if it fails.
+Qlot is the primary path — lock file + reproducible dependency
+pinning, and it works cleanly with Roswell via `qlot exec ros run`,
+not by invoking `sbcl` directly inside the qlot environment. The
+`qlfile` declares `screamer` via Ultralisp directly (Queens' board
+generation depends on it, and it isn't in base Quicklisp), so `qlot
+install` alone is fully reproducible — no separate manual step.
+Verified end to end: full suite (all five tables) and the standalone
+executable build both work through this exact invocation.
 
 ```sh
-# via qlot, if it works in your environment
 qlot install
-qlot exec sbcl --non-interactive \
-  --eval '(asdf:load-system :edm-engine/tests/all)' \
-  --eval '(fiveam:run! :edm-engine)'
-
-# plain Quicklisp fallback — this is what CI actually runs
-sbcl --non-interactive \
-  --load ~/quicklisp/setup.lisp \
-  --eval '(push (truename ".") asdf:*central-registry*)' \
-  --eval '(ql:register-local-projects)' \
+qlot exec ros run --non-interactive \
   --eval '(ql:quickload :edm-engine/tests/all)' \
   --eval '(asdf:test-system :edm-engine/tests/all)'
 ```
 
-`screamer` (used by Queens' board generation) isn't in base Quicklisp —
-you'll also need Ultralisp:
+If `qlot install` itself fails on your machine (a real crash has been
+seen — a fatal low-level SBCL fault inside Roswell's qlot subprocess
+on a specific SBCL/Roswell combination, not reproducible on other
+SBCL versions), plain Quicklisp is the fallback — it's also what CI
+runs directly. This path isn't pinned by the qlfile, so it needs its
+own explicit Ultralisp install for `screamer`:
 
 ```sh
-sbcl --non-interactive --load ~/quicklisp/setup.lisp \
-  --eval '(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)'
+sbcl --non-interactive \
+  --load ~/quicklisp/setup.lisp \
+  --eval '(push (truename ".") asdf:*central-registry*)' \
+  --eval '(ql:register-local-projects)' \
+  --eval '(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)' \
+  --eval '(ql:quickload :edm-engine/tests/all)' \
+  --eval '(asdf:test-system :edm-engine/tests/all)'
 ```
+
+Both commands above install Ultralisp inline (needed for `screamer`,
+which Queens' board generation depends on and isn't in base
+Quicklisp) — only needs doing once per Quicklisp install, not before
+every run, but it's harmless to repeat.
 
 ### Building the standalone executable
 
@@ -91,6 +98,12 @@ install` alone doesn't produce a runnable game, and neither does
 loading the test system.
 
 ```sh
+# via qlot (verified working)
+qlot exec ros run --non-interactive \
+  --eval '(ql:quickload :edm-engine)' \
+  --eval '(asdf:make :edm-engine)'
+
+# plain Quicklisp fallback
 sbcl --non-interactive \
   --load ~/quicklisp/setup.lisp \
   --eval '(push (truename ".") asdf:*central-registry*)' \
