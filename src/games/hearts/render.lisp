@@ -14,6 +14,45 @@
       (edm-engine:rgb-color edm-engine:+color-red+)
       (edm-engine:rgb-color (edm-engine:theme-color :info))))
 
+;;; Real card shapes — a panel background + border + glyph, not just
+;;; floating text on black. The gap this closes: rendering Hearts like
+;;; a terminal readout instead of a card table. Same monochromatic
+;;; theme palette throughout, just applied to an actual card silhouette
+;;; instead of a reference EGA asset's literal look.
+
+(defparameter +card-width+ 46.0)
+(defparameter +card-height+ 62.0)
+(defparameter +card-roundness+ 0.2)
+
+(defun card-rect (x y)
+  (raylib:make-rectangle :x (float x 1.0) :y (float y 1.0) :width +card-width+ :height +card-height+))
+
+(defun draw-card-back (x y &optional highlight-p)
+  "A face-down card — panel fill, accent-tinted back pattern, no glyph."
+  (let ((rect (card-rect x y)))
+    (raylib:draw-rectangle-rounded rect +card-roundness+ 6 (edm-engine:rgb-color (edm-engine:theme-color :panel)))
+    (raylib:draw-rectangle-rounded-lines rect +card-roundness+ 6 (if highlight-p 2.5 1.5)
+                                          (edm-engine:rgb-color (edm-engine:theme-color (if highlight-p :accent :muted))))
+    ;; a simple inset diamond as the "back pattern" — distinguishes a
+    ;; back from a blank panel without needing a texture asset
+    (raylib:draw-rectangle-rounded
+     (raylib:make-rectangle :x (float (+ x 10) 1.0) :y (float (+ y 14) 1.0)
+                             :width (- +card-width+ 20) :height (- +card-height+ 28))
+     0.3 4 (edm-engine:rgb-color (edm-engine:theme-color :accent) 40))))
+
+(defun draw-card-face (x y card &key (alpha 1.0) highlight-p selected-p)
+  "A face-up card — panel fill, suit-colored glyph, ALPHA fades the
+whole card (border+glyph together) for an illegal-to-play card rather
+than swapping to a flat unrelated gray."
+  (let* ((rect (card-rect x y))
+         (fill (if selected-p (edm-engine:rgb-color (edm-engine:theme-color :accent) 60)
+                   (edm-engine:rgb-color (edm-engine:theme-color :panel))))
+         (border (raylib:fade (edm-engine:rgb-color (edm-engine:theme-color (if highlight-p :accent :muted))) alpha)))
+    (raylib:draw-rectangle-rounded rect +card-roundness+ 6 fill)
+    (raylib:draw-rectangle-rounded-lines rect +card-roundness+ 6 (if highlight-p 2.5 1.5) border)
+    (edm-engine:draw-glyph-text (card-string card) (round (+ x 6)) (round (+ y 6)) 20
+                                 (raylib:fade (card-color card) alpha))))
+
 (defvar *theme-sound* nil)
 (defvar *ai-next-action-time* 0.0d0)
 (defvar *card-tweens* (make-hash-table :test #'equal)
@@ -43,19 +82,19 @@ never tweened, e.g. a hand card that hasn't moved)."
         (values (float default-x 1.0) (float default-y 1.0)))))
 
 (defun hand-card-x (i) (+ 20 (* i 55)))
-(defun hand-card-y (window-height) (- window-height 80))
+(defun hand-card-y (window-height) (- window-height 90))
 
-(defun trick-card-x (window-width i) (+ (/ window-width 2.0) (* i 50) -100))
-(defun trick-card-y (window-height) (/ window-height 2.0))
+(defun trick-card-x (window-width i) (+ (/ window-width 2.0) (* i 55) -110))
+(defun trick-card-y (window-height) (- (/ window-height 2.0) 31))
 
 (defun ai-origin-position (player window-width window-height)
-  "Approximate screen position of PLAYER's label — cards fly FROM here,
-not from an exact per-card hand layout (AI hands only show a count, not
-individual card positions)."
+  "Approximate screen position of PLAYER's card stack — cards fly FROM
+here, not from an exact per-card hand layout (AI hands are shown as a
+face-down stack, not individually laid out)."
   (ecase player
-    (1 (values 20.0 (/ window-height 2.0)))
-    (2 (values (- (/ window-width 2.0) 60.0) 50.0))
-    (3 (values (- window-width 160.0) (/ window-height 2.0)))))
+    (1 (values 24.0 (- (/ window-height 2.0) 31.0)))
+    (2 (values (- (/ window-width 2.0) 23.0) 40.0))
+    (3 (values (- window-width 70.0) (- (/ window-height 2.0) 31.0)))))
 
 (defun ensure-theme-playing ()
   (unless *theme-sound*
@@ -65,6 +104,14 @@ individual card positions)."
   (unless (raylib:is-sound-playing *theme-sound*)
     (raylib:play-sound *theme-sound*)))
 
+(defun draw-ai-stack (x y count label)
+  "A small fanned stack of face-down cards standing in for an AI's
+hand, plus a card-count label — not just 'AI-1: 13 cards' as bare text."
+  (dotimes (i (min 4 (ceiling count 4)))
+    (draw-card-back (+ x (* i 4)) (+ y (* i 3))))
+  (raylib:draw-text (format nil "~A (~D)" label count) (round x) (round (+ y +card-height+ 8)) 14
+                     (edm-engine:rgb-color (edm-engine:theme-color :muted))))
+
 (defun draw-hearts-table (game window-width window-height)
   (let ((cy (/ window-height 2.0)))
     (raylib:draw-text (format nil "Round ~D   Scores: You ~D  AI-1 ~D  AI-2 ~D  AI-3 ~D"
@@ -72,40 +119,33 @@ individual card positions)."
                                (second (hearts-game-scores game)) (third (hearts-game-scores game))
                                (fourth (hearts-game-scores game)))
                        20 16 18 :white)
-    ;; AI hand sizes at their table positions
-    (raylib:draw-text (format nil "AI-1: ~D cards" (length (second (hearts-game-hands game)))) 20 (round cy) 18 :white)
-    (raylib:draw-text (format nil "AI-2: ~D cards" (length (third (hearts-game-hands game))))
-                       (round (- (/ window-width 2.0) 60)) 50 18 :white)
-    (raylib:draw-text (format nil "AI-3: ~D cards" (length (fourth (hearts-game-hands game))))
-                       (- window-width 160) (round cy) 18 :white)
-    ;; current trick, centered — tweened positions while a card's
-    ;; animation is still running
+    (draw-ai-stack 24.0 (- cy 31.0) (length (second (hearts-game-hands game))) "AI-1")
+    (draw-ai-stack (- (/ window-width 2.0) 23.0) 40.0 (length (third (hearts-game-hands game))) "AI-2")
+    (draw-ai-stack (- window-width 70.0) (- cy 31.0) (length (fourth (hearts-game-hands game))) "AI-3")
+    ;; current trick, centered — real card faces, tweened positions
+    ;; while a card's animation is still running
     (loop for card in (hearts-game-current-trick game)
           for i from 0
           do (multiple-value-bind (x y)
                  (card-draw-position card (trick-card-x window-width i) (trick-card-y window-height))
-               (edm-engine:draw-glyph-text (card-string card) (round x) (round y) 28 (card-color card))))
+               (draw-card-face x y card)))
     (if (eq (hearts-game-phase game) :passing)
         (draw-passing-ui game window-width window-height)
         (draw-human-hand game window-width window-height))))
 
 (defun draw-passing-ui (game window-width window-height)
+  (declare (ignore window-width))
   (let ((hand (first (hearts-game-hands game))))
     (raylib:draw-text (format nil "Pass 3 cards (~A): Enter to select/deselect, Enter again on the third to send"
                                (pass-direction-for-round (hearts-game-round game)))
-                       20 (- window-height 120) 16 (edm-engine:rgb-color (edm-engine:theme-color :muted)))
+                       20 (- window-height 130) 16 (edm-engine:rgb-color (edm-engine:theme-color :muted)))
     (loop for card in hand
           for i from 0
-          for x = (+ 20 (* i 55))
+          for x = (hand-card-x i)
           for selected = (member card (hearts-game-pass-selection game) :test #'equal)
-          do (when (= i (hearts-game-cursor game))
-               (raylib:draw-rectangle-lines-ex
-                (raylib:make-rectangle :x (float (1- x) 1.0) :y (float (- window-height 91) 1.0) :width 48.0 :height 60.0)
-                2.0 :white))
-             (when selected
-               (raylib:draw-rectangle x (- window-height 90) 46 58
-                                       (edm-engine:rgb-color (edm-engine:theme-color :accent) 80)))
-             (edm-engine:draw-glyph-text (card-string card) (+ x 4) (- window-height 80) 22 (card-color card)))))
+          do (draw-card-face x (hand-card-y window-height) card
+                              :highlight-p (= i (hearts-game-cursor game))
+                              :selected-p selected))))
 
 (defun draw-human-hand (game window-width window-height)
   (declare (ignore window-width))
@@ -116,15 +156,11 @@ individual card positions)."
                                      :leading-p (null (hearts-game-current-trick game))))))
     (loop for card in hand
           for i from 0
-          for x = (+ 20 (* i 55))
+          for x = (hand-card-x i)
           for playable = (member card legal :test #'equal)
-          do (when (= i (hearts-game-cursor game))
-               (raylib:draw-rectangle-lines-ex
-                (raylib:make-rectangle :x (float (1- x) 1.0) :y (float (- window-height 91) 1.0) :width 48.0 :height 60.0)
-                2.0 :white))
-             (edm-engine:draw-glyph-text (card-string card) (+ x 4) (- window-height 80) 22
-                                (if (or (null legal) playable) (card-color card)
-                                    (raylib:fade (card-color card) 0.35))))))
+          do (draw-card-face x (hand-card-y window-height) card
+                              :highlight-p (= i (hearts-game-cursor game))
+                              :alpha (if (or (null legal) playable) 1.0 0.35)))))
 
 (defun maybe-run-ai-turn (game)
   "AI players act after a short pause (>= +hearts-ai-think-seconds+) so a
