@@ -1,17 +1,9 @@
 (in-package :edm-engine/games/hearts)
 
-;;; Card = (rank . suit). Rank 2-14 (11=J 12=Q 13=K 14=A). Suit keyword.
-
-(defun make-deck ()
-  (loop for suit in '(:clubs :diamonds :hearts :spades)
-        append (loop for rank from 2 to 14 collect (cons rank suit))))
-
-(defun shuffled-deck (seed)
-  (let ((rng (sb-ext:seed-random-state seed))
-        (vec (coerce (make-deck) 'vector)))
-    (loop for i from (1- (length vec)) downto 1
-          do (rotatef (aref vec i) (aref vec (random (1+ i) rng))))
-    (coerce vec 'list)))
+;;; MAKE-DECK/SHUFFLED-DECK/CARD-STRING now live in EDM-ENGINE/CARDS —
+;;; generic to any card game, not Hearts-specific. Re-exported below so
+;;; existing callers of EDM-ENGINE/GAMES/HEARTS: don't need to know the
+;;; split.
 
 (defun deal-hands (deck)
   "Splits DECK (52 cards) into 4 hands of 13, in dealing order."

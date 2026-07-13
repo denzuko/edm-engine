@@ -1,7 +1,6 @@
 (defpackage :edm-engine/games/hearts
-  (:use :cl)
+  (:use :cl :edm-engine/cards)
   (:export
-   #:make-deck #:shuffled-deck #:card-string
    #:deal-hands #:pass-direction-for-round
    #:legal-plays #:trick-winner-index #:card-points
    #:hearts-game #:make-hearts-game #:hearts-game-hands #:hearts-game-scores

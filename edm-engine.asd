@@ -48,6 +48,22 @@ same convention as render.lisp."
   :serial t
   :components ((:file "src/render")))
 
+(defsystem "edm-engine/cards"
+  :description "Deck/card primitives shared across any card game — extracted
+from Hearts so a future card game (Solitaire, Blackjack, etc.) reuses this
+instead of redefining it. Pure logic; no raylib."
+  :depends-on ()
+  :serial t
+  :components ((:file "src/cards/package")
+               (:file "src/cards/deck")))
+
+(defsystem "edm-engine/cards/render"
+  :description "Card-shape rendering shared across any card game — the
+'panel + border + glyph' card silhouette any table with cards uses, not a
+per-game reimplementation."
+  :depends-on ("edm-engine/cards" "edm-engine/render")
+  :components ((:file "src/cards/render")))
+
 (defsystem "edm-engine"
   :description "EDM Arcade: tabletop/arcade game simulator binary. dps-meta lisp-actor artifact."
   :author "Dwight Spencer <denzuko@dapla.net>"
@@ -178,7 +194,7 @@ suite since it needs that plus a full raylib build."
 
 (defsystem "edm-engine/games/hearts"
   :description "Hearts: trick-taking, single human vs 3 AI opponents."
-  :depends-on ("edm-engine/core")
+  :depends-on ("edm-engine/core" "edm-engine/cards")
   :serial t
   :components ((:file "src/games/hearts/package")
                (:file "src/games/hearts/rules")
@@ -187,12 +203,12 @@ suite since it needs that plus a full raylib build."
 
 (defsystem "edm-engine/games/hearts/render"
   :description "Hearts table renderer."
-  :depends-on ("edm-engine/games/hearts" "edm-engine/render" "edm-engine/audio")
+  :depends-on ("edm-engine/games/hearts" "edm-engine/render" "edm-engine/audio" "edm-engine/cards/render")
   :components ((:file "src/games/hearts/render")))
 
 (defsystem "edm-engine/games/hearts/tests"
   :description "FiveAM spec suite over edm-engine/games/hearts."
-  :depends-on ("edm-engine/games/hearts" "fiveam")
+  :depends-on ("edm-engine/games/hearts" "edm-engine/cards" "fiveam")
   :serial t
   :components ((:file "t/games/hearts/package")
                (:file "t/games/hearts/rules-spec")
