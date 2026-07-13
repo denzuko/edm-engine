@@ -51,6 +51,9 @@ docs/index.lisp         40ants-doc manual
 
 ## Build
 
+Full qlot reference (qlfile syntax, all source types, the Ultralisp
+project-naming gotcha, commands): [`docs/qlot-guide.md`](docs/qlot-guide.md).
+
 ### Running the tests
 
 Qlot is the primary path — lock file + reproducible dependency
