@@ -79,3 +79,47 @@ first two queens, but swap them into adjacent-touching positions."
   (let ((game (make-queens-game)))
     (setf (queens-game-score game) 250)
     (is (= 250 (edm-engine:game-score game)))))
+
+;;; Cursor navigation (keyboard-driven, arrow keys move, Enter toggles)
+
+(test cursor-starts-at-origin
+  (let ((game (make-queens-game)))
+    (is (= 0 (queens-game-cursor-row game)))
+    (is (= 0 (queens-game-cursor-col game)))))
+
+(test move-cursor-moves-within-bounds
+  (let ((game (make-queens-game)))
+    (move-cursor game 1 0)
+    (is (= 1 (queens-game-cursor-row game)))
+    (move-cursor game 0 1)
+    (is (= 1 (queens-game-cursor-col game)))))
+
+(test move-cursor-clamps-at-board-edges
+  (let ((game (make-queens-game))) ; level 1 is a 4x4 board
+    (move-cursor game -1 0)
+    (is (= 0 (queens-game-cursor-row game)) "can't go above row 0")
+    (move-cursor game 0 -1)
+    (is (= 0 (queens-game-cursor-col game)) "can't go left of col 0")
+    (dotimes (i 10) (move-cursor game 1 1))
+    (is (= 3 (queens-game-cursor-row game)) "can't go past the last row")
+    (is (= 3 (queens-game-cursor-col game)) "can't go past the last column")))
+
+(test toggle-queen-at-cursor-places-and-removes-at-the-cursor-position
+  (let ((game (make-queens-game)))
+    (move-cursor game 2 1)
+    (toggle-queen-at-cursor game)
+    (is (member (cons 2 1) (queens-game-placed game) :test #'equal))
+    (toggle-queen-at-cursor game)
+    (is (not (member (cons 2 1) (queens-game-placed game) :test #'equal)))))
+
+(test cursor-resets-to-origin-on-level-advance
+  (let* ((game (make-queens-game :level 1))
+         (board (queens-game-board game)))
+    (move-cursor game 3 3)
+    (loop for row from 0
+          for col in (queens-board-placement board)
+          do (setf (queens-game-cursor-row game) row (queens-game-cursor-col game) col)
+             (toggle-queen-at-cursor game))
+    (is (= 2 (queens-game-level game)))
+    (is (= 0 (queens-game-cursor-row game)))
+    (is (= 0 (queens-game-cursor-col game)))))

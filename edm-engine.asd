@@ -53,7 +53,8 @@ same convention as render.lisp."
   :license "MIT"
   :version "0.1.0"
   :depends-on ("edm-engine/core" "edm-engine/render"
-               "edm-engine/games/wordle" "edm-engine/games/wordle/render")
+               "edm-engine/games/wordle" "edm-engine/games/wordle/render"
+               "edm-engine/games/queens" "edm-engine/games/queens/render")
   :build-operation "program-op"
   :build-pathname "edm-engine"
   :entry-point "edm-engine:main"
@@ -96,6 +97,13 @@ Wordle never needed one."
   :components ((:file "src/games/queens/package")
                (:file "src/games/queens/board")
                (:file "src/games/queens/game")))
+
+(defsystem "edm-engine/games/queens/render"
+  :description "Queens board renderer. Region colors reuse the engine's
+existing CPU-side HSV->RGB (src/palette.lisp) rather than a second GPU
+shader copy of the same math."
+  :depends-on ("edm-engine/games/queens" "edm-engine/render" "edm-engine/audio")
+  :components ((:file "src/games/queens/render")))
 
 (defsystem "edm-engine/games/queens/tests"
   :description "FiveAM spec suite over edm-engine/games/queens."

@@ -5,4 +5,6 @@
    #:generate-board
    #:queens-game #:make-queens-game #:queens-game-level #:queens-game-score
    #:queens-game-board #:queens-game-placed #:queens-game-status
-   #:toggle-queen #:queens-solved-p #:queens-game-points-for-level))
+   #:toggle-queen #:queens-solved-p #:queens-game-points-for-level
+   #:queens-game-cursor-row #:queens-game-cursor-col #:move-cursor #:toggle-queen-at-cursor
+   #:clamp-to-board))

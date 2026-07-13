@@ -7,7 +7,9 @@
   (score 0 :type fixnum)
   (board nil :type (or null queens-board))
   (placed nil :type list)
-  (status :playing :type (member :playing :won)))
+  (status :playing :type (member :playing :won))
+  (cursor-row 0 :type fixnum)
+  (cursor-col 0 :type fixnum))
 
 (declaim (ftype (function (&key (:level fixnum)) queens-game) make-queens-game))
 (defun make-queens-game (&key (level 1))
@@ -15,7 +17,24 @@
                       :board (generate-board (queens-board-size-for-level level)
                                               (queens-seed-for-level level))))
 
-(declaim (ftype (function (fixnum) fixnum) queens-game-points-for-level))
+(declaim (ftype (function (fixnum fixnum) fixnum) clamp-to-board))
+(defun clamp-to-board (value size)
+  (max 0 (min (1- size) value)))
+
+(defun move-cursor (game d-row d-col)
+  "Moves GAME's cursor by (D-ROW, D-COL), clamped to the current board's
+bounds — clamped, not wrapped, unlike ARCADE's menu-index cyclers
+(CYCLE-INDEX): running off the edge of a game board should stop, not
+wrap to the opposite side."
+  (let ((size (queens-board-size (queens-game-board game))))
+    (setf (queens-game-cursor-row game)
+          (clamp-to-board (+ (queens-game-cursor-row game) d-row) size))
+    (setf (queens-game-cursor-col game)
+          (clamp-to-board (+ (queens-game-cursor-col game) d-col) size)))
+  game)
+
+(defun toggle-queen-at-cursor (game)
+  (toggle-queen game (queens-game-cursor-row game) (queens-game-cursor-col game)))
 (defun queens-game-points-for-level (level)
   "Scales with board size (harder levels are worth more), 100 points per
 board-size unit."
@@ -62,7 +81,9 @@ solved) or moves to a fresh board for the next level."
           (setf (queens-game-board game)
                 (generate-board (queens-board-size-for-level (queens-game-level game))
                                  (queens-seed-for-level (queens-game-level game))))
-          (setf (queens-game-placed game) nil)))))
+          (setf (queens-game-placed game) nil)
+          (setf (queens-game-cursor-row game) 0)
+          (setf (queens-game-cursor-col game) 0)))))
 
 (defmethod edm-engine:game-outcome ((game queens-game))
   (if (eq (queens-game-status game) :won) :win nil))
