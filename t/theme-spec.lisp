@@ -20,34 +20,21 @@
     (multiple-value-bind (h s v) (apply #'rgb->hsv rgb)
       (is (rgb-close-p rgb (hsv->rgb h s v))))))
 
-(test theme-color-accent-matches-established-brand-color
-  "The chrome shader's :accent role must reproduce +color-brand-green+
-(now the CDE teal from unifiedspec.org, not literally green — the
-constant name is legacy) exactly, not approximate it."
+(test theme-color-accent-matches-established-brand-green
+  "The monochromatic theme's hue is derived from +color-brand-green+
+itself, so :accent must reproduce it exactly, not approximate it."
   (is (rgb-close-p (theme-color :accent) +color-brand-green+)))
 
-(test theme-color-background-and-panel-share-the-warm-cream-hue
-  "Dim (background) and panel are both Solarized's warm cream tones —
-they should read as close hues, unlike the accent below."
-  (multiple-value-bind (h-dim) (apply #'rgb->hsv (theme-color :dim))
-    (multiple-value-bind (h-panel) (apply #'rgb->hsv (theme-color :panel))
-      (is (< (abs (- h-dim h-panel)) 0.02)))))
-
-(test theme-color-accent-is-a-genuinely-different-hue-from-the-background
-  "This is the actual unifiedspec.org design: a warm cream background
-paired with a cool CDE teal accent — not a monochromatic single-hue
-theme. An earlier version of this palette was monochromatic; that was
-the wrong direction (a terminal/BBS aesthetic), corrected in favor of
-the real design system's own tokens."
+(test theme-color-roles-share-one-hue-at-different-intensities
+  "The whole point of a monochromatic theme: every role's hue matches,
+only saturation/value differ. (A prior revision replaced this with
+per-role hardcoded hues from unifiedspec.org's Solarized/CDE tokens —
+an over-correction, reverted; single-hue-driven is the actual design.)"
   (multiple-value-bind (h-dim) (apply #'rgb->hsv (theme-color :dim))
     (multiple-value-bind (h-accent) (apply #'rgb->hsv (theme-color :accent))
-      (is (> (abs (- h-dim h-accent)) 0.1)))))
+      (is (< (abs (- h-dim h-accent)) 0.02)))))
 
-(test theme-color-dim-and-panel-are-the-brightest-roles
-  "Light-theme background: :dim (page) and :panel (cards) are bright
-cream tones; :accent (teal) and :info (dark navy, for text/suits on
-the light background) are meaningfully darker — the inverse brightness
-ordering from a dark terminal theme, by design."
+(test theme-color-dim-is-darker-than-panel-is-darker-than-accent
   (flet ((brightness (c) (reduce #'max c)))
-    (is (> (brightness (theme-color :dim)) (brightness (theme-color :accent))))
-    (is (> (brightness (theme-color :panel)) (brightness (theme-color :info))))))
+    (is (< (brightness (theme-color :dim)) (brightness (theme-color :panel))))
+    (is (< (brightness (theme-color :panel)) (brightness (theme-color :accent))))))

@@ -1,28 +1,34 @@
 (in-package :edm-engine)
 
+(declaim (optimize (speed 3) (safety 3)))
 
-;;; Chrome palette: unifiedspec.org's actual tokens (Solarized +
-;;; Okabe-Ito + Solaris/CDE lineages — see denzuko/unifiedspec), not an
-;;; invented DPS-terminal near-black scheme. The design system's own
-;;; default is the LIGHT Solarized palette (tokens.json:
-;;; "background.base: light: base3 (#fdf6e3), dark: base03" — light is
-;;; listed first, the reference case), which reads as a warm, inviting
-;;; tabletop surface — the classic-Hoyle-games direction — not a
-;;; terminal/BBS-door aesthetic. Functional game-state colors (Wordle's
-;;; tile states) intentionally do NOT use this palette — see
+;;; Chrome palette: the established DPS/denzuko terminal identity,
+;;; slimmed down for game UI (menus, backgrounds, overlays). Functional
+;;; game-state colors (Wordle's tile states, and any future table's
+;;; equivalent) intentionally do NOT use this palette — see
 ;;; +okabe-ito-*+ below.
+;;;
+;;; A prior revision replaced this with unifiedspec.org's Solarized/CDE
+;;; tokens (hardcoded per-role HSV literals, one hue per role) — an
+;;; over-correction, not the actual design: reverted. The real design
+;;; is "one hue drives everything" — see THEME-HSV below. The palette
+;;; lives in the shader math (HSV->RGB, and the chrome shader's GPU-
+;;; side equivalent), not as a set of independently-sourced color
+;;; artifacts.
 
-(defparameter +color-dim+ '(0.992 0.965 0.890))        ; #fdf6e3 (Solarized base3) — window background
-(defparameter +color-panel+ '(0.933 0.910 0.835))       ; #eee8d5 (Solarized base2) — panel/card surface
-(defparameter +color-brand-green+ '(0.0 0.502 0.502))   ; #008080 (Solaris/CDE teal) — accent, selection
-(defparameter +color-brand-green2+ '(0.0 0.333 0.333))  ; #005555 (CDE teal-dk) — accent border
-(defparameter +color-amber+ '(0.816 0.251 0.0))         ; #d04000 (Solaris/CDE orange) — warn/highlight
-(defparameter +color-red+ '(0.863 0.196 0.184))         ; #dc322f (Solarized red)
+(defparameter +color-dim+ '(0.039 0.039 0.039))        ; #0a0a0a — window background
+(defparameter +color-panel+ '(0.051 0.067 0.090))      ; #0d1117 — overlay/tile background
+(defparameter +color-brand-green+ '(0.224 1.0 0.078))  ; #39ff14 — menu selection, brand accent
+(defparameter +color-brand-green2+ '(0.0 0.784 0.325)) ; #00c853 — secondary accent
+(defparameter +color-amber+ '(1.0 0.671 0.0))          ; #ffab00
+(defparameter +color-red+ '(1.0 0.090 0.267))          ; #ff1744
 
 ;;; Okabe & Ito (2008) colorblind-safe qualitative palette, used for
 ;;; functional state indicators where the color itself carries game
 ;;; meaning — Wordle's green/yellow correct-vs-present distinction is
-;;; exactly the failure case this palette exists to fix.
+;;; exactly the failure case this palette exists to fix; a brand-first
+;;; neon green/amber pair is not reliably distinguishable under
+;;; deuteranopia/protanopia the way orange/bluish-green is.
 
 (defparameter +okabe-ito-orange+ '(0.902 0.624 0.0))      ; #E69F00
 (defparameter +okabe-ito-bluish-green+ '(0.0 0.620 0.451)) ; #009E73
@@ -35,14 +41,14 @@ muted/neutral tone from a palette color without introducing an
 unrelated gray."
   (mapcar (lambda (c) (* c scale)) triple))
 
-;;; Theme roles map to unifiedspec's actual semantic tokens — this is
-;;; NOT a monochromatic single-hue system (an earlier version of this
-;;; file was; the real Solarized palette deliberately pairs a warm
-;;; background with a cool teal accent, which a single rotating hue
-;;; can't represent). THEME-HSV still returns (hue saturation value)
-;;; per role because the chrome shader is GPU-side HSV math, but each
-;;; role now has its own fixed hue matching the source hex value, not
-;;; a shared +THEME-HUE+.
+;;; Monochromatic HSV theming for chrome (menus, backgrounds, panels).
+;;; One hue defines a whole theme's identity; UI roles are expressed as
+;;; different saturation/value at that same hue — genuinely how a
+;;; green-on-black terminal reads, not an arbitrary design choice.
+;;; Functional game-state colors (Wordle's tile states) deliberately
+;;; do NOT go through this system — see tile.fs.lisp's docstring for why
+;;; free hue-rotation is unsafe for colorblind-accessibility-load-bearing
+;;; colors specifically.
 
 (declaim (ftype (function (single-float single-float single-float) list) hsv->rgb))
 (defun hsv->rgb (h s v)
@@ -80,24 +86,24 @@ unrelated gray."
 
 (defparameter +theme-hue+
   (nth-value 0 (apply #'rgb->hsv +color-brand-green+))
-  "The accent's own hue (CDE teal) — kept for any caller that still
-wants 'the theme's hue' as a single value, but individual roles below
-no longer all share it; see THEME-HSV's docstring.")
+  "Derived from +COLOR-BRAND-GREEN+ itself so :ACCENT reproduces the
+established brand color exactly, not an approximation of it. The
+single value that drives the whole chrome palette — change this one
+number to re-theme the entire engine.")
 
 (declaim (ftype (function ((member :dim :panel :muted :accent :info))
                           (values single-float single-float single-float)) theme-hsv))
 (defun theme-hsv (role)
-  "Raw (hue saturation value) for ROLE, each role's own hue from its
-unifiedspec source color (Solarized base3/base2 for backgrounds,
-CDE teal for accent, Solarized base03 for high-contrast text/info) —
-not a shared rotating hue. Both THEME-COLOR (CPU-side RGB, for text)
-and the chrome shader (GPU-side, for backgrounds) derive from this."
+  "Raw (hue saturation value) for ROLE — the single source of truth
+both THEME-COLOR (CPU-side RGB, for text) and the chrome shader
+(GPU-side, for backgrounds) derive from. Every role shares
++THEME-HUE+; only saturation/value differ per role."
   (ecase role
-    (:dim (values 0.1218 0.1028 0.9922))    ; #fdf6e3 Solarized base3
-    (:panel (values 0.1267 0.1050 0.9333))  ; #eee8d5 Solarized base2
-    (:muted (values 0.5444 0.2290 0.5137))  ; #657b83 Solarized base00
-    (:info (values 0.5340 1.0 0.2118))      ; #002b36 Solarized base03
-    (:accent (values 0.5 1.0 0.502))))      ; #008080 CDE teal
+    (:dim (values +theme-hue+ 0.15 0.04))
+    (:panel (values +theme-hue+ 0.3 0.09))
+    (:muted (values +theme-hue+ 0.15 0.4))
+    (:info (values +theme-hue+ 0.1 0.92))
+    (:accent (values +theme-hue+ 0.922 1.0))))
 
 (declaim (ftype (function ((member :dim :panel :muted :accent :info)) list) theme-color))
 (defun theme-color (role)
