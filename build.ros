@@ -1,0 +1,43 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+;;; Builds the standalone edm-engine executable. Run from the project
+;;; root: `ros build.ros` or `./build.ros` (chmod +x first).
+;;;
+;;; Why this exists rather than `ros build edm-engine.asd program`:
+;;; Roswell's own build.ros loads a .asd file via a raw CL:LOAD, which
+;;; doesn't set up the package/reader context DEFSYSTEM needs — that
+;;; context only exists when ASDF loads a system properly (via
+;;; FIND-SYSTEM/LOAD-SYSTEM), not a bare LOAD. Confirmed by reading
+;;; Roswell's build-asd.lisp source and reproducing the exact failure
+;;; (undefined function DEFSYSTEM) directly. Not fixable from this
+;;; project's .asd file — it's a real gap in `ros build` for
+;;; multi-system project .asd files like this one, not just a
+;;; documentation shortcut.
+
+(progn
+  (ros:ensure-asdf)
+  (let ((qlot-setup (merge-pathnames ".qlot/setup.lisp" *load-pathname*)))
+    (if (probe-file qlot-setup)
+        (load qlot-setup)
+        #+quicklisp (ql:quickload '(:swank) :silent t))))
+
+(defpackage :ros.script.build.edm-engine
+  (:use :cl))
+(in-package :ros.script.build.edm-engine)
+
+(defun main (&rest argv)
+  (declare (ignore argv))
+  (push (truename ".") asdf:*central-registry*)
+  (ql:register-local-projects)
+  (handler-case
+      (progn
+        (ql:quickload :edm-engine)
+        (asdf:make :edm-engine)
+        (format t "~&Built ./edm-engine~%"))
+    (error (e)
+      (format *error-output* "~&BUILD FAILED: ~A~%" e)
+      (sb-ext:exit :code 1))))
+;;; vim: set ft=lisp lisp:

@@ -104,12 +104,32 @@ sbcl --non-interactive \
 
 ### Building the standalone executable
 
-This is the step the README never actually documented — `qlot
-install` alone doesn't produce a runnable game, and neither does
-loading the test system.
+```sh
+ros build.ros
+```
+
+That's it — `qlot install` first if you haven't already (above), then
+this. Produces `./edm-engine`.
+
+Why not `ros build edm-engine.asd program` (Roswell's own generic
+build command)? Tried it first — it doesn't work for this project.
+Roswell's `build.ros` loads a `.asd` file via a raw `CL:LOAD`, which
+doesn't set up the package/reader context `DEFSYSTEM` needs — that
+context only exists when ASDF loads a system properly (via
+`FIND-SYSTEM`/`LOAD-SYSTEM`), not a bare `LOAD`. Confirmed by reading
+Roswell's own `build-asd.lisp` and reproducing the exact failure
+(`undefined function: DEFSYSTEM`) directly — not a project
+misconfiguration, a real gap in `ros build` for multi-system project
+`.asd` files like this one. `build.ros` (committed in this repo)
+wraps the verified-working sequence — `ql:quickload` then `asdf:make`,
+the two steps that actually need ASDF's proper loading path — behind
+the simple one-command interface `ros build` was supposed to give.
+
+If you'd rather see the steps explicitly, or `build.ros` doesn't work
+on your machine for some reason:
 
 ```sh
-# via qlot (verified working; QUICKLISP_HOME already exported above)
+# via qlot (QUICKLISP_HOME already exported above)
 ros run --non-interactive \
   --eval '(push (truename ".") asdf:*central-registry*)' \
   --eval '(ql:quickload :edm-engine)' \
