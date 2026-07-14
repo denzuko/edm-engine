@@ -13,7 +13,7 @@ in which struct slot and which bound."
   (mod (+ current delta) bound))
 
 (defstruct (arcade-state (:constructor make-arcade-state))
-  (mode :main-menu :type (member :main-menu :tables :playing :options :save-load :difficulty))
+  (mode :title :type (member :title :main-menu :tables :playing :options :save-load :difficulty))
   (main-menu-index 0 :type fixnum)
   (table-index 0 :type fixnum)
   (current-game nil)
@@ -45,6 +45,9 @@ in which struct slot and which bound."
           (2 :save-load))))
 
 (defun arcade-back-to-main-menu (state)
+  (setf (arcade-state-mode state) :main-menu))
+
+(defun arcade-dismiss-title (state)
   (setf (arcade-state-mode state) :main-menu))
 
 ;;; Engine Options — real, minimal: master volume

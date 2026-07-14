@@ -39,10 +39,14 @@
    #:+die-sides+ #:roll-die #:roll-dice-n #:roll-percentile
    #:roll-animation #:make-roll-animation #:roll-animation-finished-p #:roll-animation-display-values
    #:roll-animation-start-time #:roll-animation-duration #:roll-animation-final-values
+   #:title-theme-pattern #:+title-theme-row-duration+
    ;; render (defined in edm-engine/render; declared here so main can call them)
    #:open-window #:close-window #:window-should-close-p #:draw-arena
    #:draw-chrome-rect #:ensure-chrome-shader #:set-shader-int #:set-shader-float
    #:draw-glyph-text #:glyph-text-width #:ensure-glyph-font #:draw-wrapped-text
+   #:draw-ui-text #:ui-text-width #:ensure-ui-font #:ensure-mono-font
+   #:+space-1+ #:+space-2+ #:+space-3+ #:+space-4+ #:+space-5+ #:+space-6+ #:+space-7+ #:+space-8+
+   #:+radius-sm+ #:+radius-md+ #:+radius-lg+
    ;; arcade state machine (pure; the raylib update/render loop lives in
    ;; the primary edm-engine system's main.lisp, not here)
    #:+engine-name+ #:+main-menu-items+
@@ -56,6 +60,7 @@
    #:arcade-complete-launch
    #:cycle-index
    #:arcade-select-next-main-menu #:arcade-select-previous-main-menu
+   #:arcade-dismiss-title
    #:arcade-drill-into-main-menu-selection #:arcade-back-to-main-menu
    #:clamp-volume #:arcade-increase-volume #:arcade-decrease-volume
    #:arcade-select-next-table #:arcade-select-previous-table

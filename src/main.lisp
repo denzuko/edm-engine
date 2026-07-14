@@ -18,6 +18,14 @@ selected/unselected branch was duplicated across the main menu and
 the tables list."
   (rgb-color (theme-color (if selected-p :accent :muted))))
 
+(defvar *title-theme-sound* nil)
+(defun ensure-title-theme-playing ()
+  (unless *title-theme-sound*
+    (setf *title-theme-sound*
+          (edm-engine/audio:pattern-sound (title-theme-pattern) +title-theme-row-duration+ :amplitude 0.3)))
+  (unless (raylib:is-sound-playing *title-theme-sound*)
+    (raylib:play-sound *title-theme-sound*)))
+
 (defun draw-section-title (text)
   (raylib:draw-text text 40 30 30 (rgb-color (theme-color :accent))))
 
@@ -45,6 +53,11 @@ isn't worth chasing for a thumbnail)."
 
 (defun arcade-update (state)
   (ecase (arcade-state-mode state)
+    (:title
+     (ensure-title-theme-playing)
+     (when (or (raylib:is-key-pressed :key-enter) (raylib:is-key-pressed :key-space))
+       (when *title-theme-sound* (raylib:stop-sound *title-theme-sound*))
+       (arcade-dismiss-title state)))
     (:main-menu
      (when (raylib:is-key-pressed :key-down) (arcade-select-next-main-menu state))
      (when (raylib:is-key-pressed :key-up) (arcade-select-previous-main-menu state))
@@ -128,7 +141,26 @@ actual tokens — see src/palette.lisp), not a flat CLEAR-BACKGROUND."
   (raylib:with-drawing
     (raylib:clear-background :black) ; opaque base the shaded rect composites over
     (draw-chrome-rect 0 0 window-width window-height :dim)
+    (raylib:draw-rectangle-lines-ex
+     (raylib:make-rectangle :x 2.0 :y 2.0 :width (float (- window-width 4) 1.0) :height (float (- window-height 4) 1.0))
+     3.0 (rgb-color (theme-color :accent)))
     (ecase (arcade-state-mode state)
+      (:title
+       (let* ((name-size 72)
+              (name-w (ui-text-width +engine-name+ name-size))
+              (tagline "TABLE GAMES COLLECTION")
+              (tagline-w (glyph-text-width tagline 20))
+              (prompt "PRESS ENTER")
+              (prompt-w (glyph-text-width prompt 18))
+              (pulse (+ 0.5 (* 0.5 (sin (* 3.0 (raylib:get-time)))))))
+         (draw-ui-text +engine-name+ (round (/ (- window-width name-w) 2.0)) 230 name-size
+                        (rgb-color (theme-color :accent)))
+         (draw-glyph-text tagline (round (/ (- window-width tagline-w) 2.0)) (+ 230 name-size +space-3+) 20
+                           (rgb-color (theme-color :info)))
+         (draw-glyph-text prompt (round (/ (- window-width prompt-w) 2.0)) (- window-height +space-8+) 18
+                           (rgb-color (theme-color :accent) (round (* 255 pulse))))
+         (draw-glyph-text "A DPS Production" +space-5+ (- window-height +space-6+) 14
+                           (rgb-color (theme-color :muted)))))
       (:main-menu
        (raylib:draw-text +engine-name+ 40 30 34 (rgb-color (theme-color :accent)))
        (raylib:draw-text (format nil "Score: ~D" (arcade-state-total-score state))

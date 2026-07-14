@@ -2,26 +2,29 @@
 
 (declaim (optimize (speed 3) (safety 3)))
 
-;;; Chrome palette: the established DPS/denzuko terminal identity,
-;;; slimmed down for game UI (menus, backgrounds, overlays). Functional
-;;; game-state colors (Wordle's tile states, and any future table's
-;;; equivalent) intentionally do NOT use this palette — see
-;;; +okabe-ito-*+ below.
+;;; Chrome palette: the DPS/denzuko terminal identity, driven by
+;;; unifiedspec.org's Solaris/CDE lineage (teal, #008080 — see
+;;; denzuko/unifiedspec's tokens.json, palette.solaris-cde.teal) rather
+;;; than an invented neon green. Functional game-state colors (Wordle's
+;;; tile states, and any future table's equivalent) intentionally do
+;;; NOT use this palette — see +okabe-ito-*+ below.
 ;;;
-;;; A prior revision replaced this with unifiedspec.org's Solarized/CDE
-;;; tokens (hardcoded per-role HSV literals, one hue per role) — an
-;;; over-correction, not the actual design: reverted. The real design
-;;; is "one hue drives everything" — see THEME-HSV below. The palette
-;;; lives in the shader math (HSV->RGB, and the chrome shader's GPU-
-;;; side equivalent), not as a set of independently-sourced color
-;;; artifacts.
+;;; Two things this project got wrong at different times, both
+;;; corrected now: (1) replacing the single-hue architecture with
+;;; hardcoded per-role Solarized/CDE literals (commit d01aa3c) — an
+;;; architectural regression, reverted; (2) reverting all the way back
+;;; to an invented neon-green hue instead of unifiedspec's actual CDE
+;;; teal — reverting the regression shouldn't have meant reverting the
+;;; design direction too. The fix is both at once: ONE hue drives
+;;; everything (THEME-HSV below), and that hue is unifiedspec's teal,
+;;; not a made-up terminal green.
 
-(defparameter +color-dim+ '(0.039 0.039 0.039))        ; #0a0a0a — window background
-(defparameter +color-panel+ '(0.051 0.067 0.090))      ; #0d1117 — overlay/tile background
-(defparameter +color-brand-green+ '(0.224 1.0 0.078))  ; #39ff14 — menu selection, brand accent
-(defparameter +color-brand-green2+ '(0.0 0.784 0.325)) ; #00c853 — secondary accent
-(defparameter +color-amber+ '(1.0 0.671 0.0))          ; #ffab00
-(defparameter +color-red+ '(1.0 0.090 0.267))          ; #ff1744
+(defparameter +color-dim+ '(0.008 0.031 0.031))        ; near-black at the teal hue — window background
+(defparameter +color-panel+ '(0.020 0.078 0.078))      ; overlay/tile background
+(defparameter +color-brand-green+ '(0.0 0.502 0.502))  ; #008080 (Solaris/CDE teal) — menu selection, brand accent
+(defparameter +color-brand-green2+ '(0.0 0.333 0.333)) ; #005555 (CDE teal-dk) — secondary accent
+(defparameter +color-amber+ '(0.816 0.251 0.0))        ; #d04000 (Solaris/CDE orange, "Sun logo block")
+(defparameter +color-red+ '(0.863 0.196 0.184))        ; #dc322f (Solarized red)
 
 ;;; Okabe & Ito (2008) colorblind-safe qualitative palette, used for
 ;;; functional state indicators where the color itself carries game
@@ -103,7 +106,7 @@ both THEME-COLOR (CPU-side RGB, for text) and the chrome shader
     (:panel (values +theme-hue+ 0.3 0.09))
     (:muted (values +theme-hue+ 0.15 0.4))
     (:info (values +theme-hue+ 0.1 0.92))
-    (:accent (values +theme-hue+ 0.922 1.0))))
+    (:accent (values +theme-hue+ 1.0 0.502))))     ; #008080 exactly
 
 (declaim (ftype (function ((member :dim :panel :muted :accent :info)) list) theme-color))
 (defun theme-color (role)

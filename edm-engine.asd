@@ -17,6 +17,7 @@
                (:file "src/tween")
                (:file "src/layout")
                (:file "src/dice")
+               (:file "src/title-theme")
                (:file "src/save")
                (:file "src/arcade")
                (:file "src/tick")))

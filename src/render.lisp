@@ -151,3 +151,50 @@ caller can lay out whatever comes after it."
           for i from 0
           do (draw-glyph-text line x (+ y (* i line-height)) font-size color))
     (* (length lines) line-height)))
+
+;;; unifiedspec.org's two-register typography: Titillium Web for UI/
+;;; display (headings, labels, buttons) and Inconsolata for the
+;;; technical register (code, paths, tags) — see denzuko/unifiedspec's
+;;; tokens.json, typography.font-family. Bundled as project assets
+;;; (OFL-licensed, license text alongside) rather than a system-font
+;;; reference, same reasoning as the glyph font.
+
+(defvar *ui-font* nil)
+(defvar *mono-font* nil)
+(defparameter +ui-font-size+ 48
+  "Loaded at a large base size; DRAW-UI-TEXT draws at whatever size is
+requested, scaled down from this — normal raylib font usage.")
+(defparameter +mono-font-size+ 32)
+
+(defun ui-font-path ()
+  (namestring (asdf:system-relative-pathname :edm-engine "assets/fonts/TitilliumWeb-Bold.ttf")))
+(defun mono-font-path ()
+  (namestring (asdf:system-relative-pathname :edm-engine "assets/fonts/Inconsolata-Regular.ttf")))
+
+(defun ensure-ui-font ()
+  (unless *ui-font*
+    (setf *ui-font* (raylib:load-font-ex (ui-font-path) +ui-font-size+ (cffi:null-pointer) 0)))
+  *ui-font*)
+
+(defun ensure-mono-font ()
+  (unless *mono-font*
+    (setf *mono-font* (raylib:load-font-ex (mono-font-path) +mono-font-size+ (cffi:null-pointer) 0)))
+  *mono-font*)
+
+(declaim (ftype (function (string fixnum fixnum fixnum t &optional single-float) null) draw-ui-text))
+(defun draw-ui-text (text x y font-size color &optional (spacing 1.0))
+  (raylib:draw-text-ex (ensure-ui-font) text (3d-vectors:vec2 (float x 1.0) (float y 1.0))
+                        (float font-size 1.0) spacing color)
+  nil)
+
+(declaim (ftype (function (string fixnum) fixnum) ui-text-width))
+(defun ui-text-width (text font-size)
+  (round (3d-vectors:vx (raylib:measure-text-ex (ensure-ui-font) text (float font-size 1.0) 1.0))))
+
+;;; unifiedspec's spacing scale (4px base unit) and border-radius scale
+;;; — named so layout code reads as intent, not magic numbers.
+
+(defparameter +space-1+ 4) (defparameter +space-2+ 8) (defparameter +space-3+ 12)
+(defparameter +space-4+ 16) (defparameter +space-5+ 24) (defparameter +space-6+ 32)
+(defparameter +space-7+ 48) (defparameter +space-8+ 64)
+(defparameter +radius-sm+ 0.03) (defparameter +radius-md+ 0.06) (defparameter +radius-lg+ 0.1)
