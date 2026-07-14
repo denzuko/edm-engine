@@ -11,6 +11,7 @@
    #:yahtzee-game #:make-yahtzee-game #:yahtzee-game-dice #:yahtzee-game-held
    #:yahtzee-game-rolls-remaining #:yahtzee-game-scores #:yahtzee-game-turn
    #:yahtzee-game-player-count #:yahtzee-game-cursor #:yahtzee-game-status
+   #:yahtzee-game-roll-animation
    #:toggle-hold #:roll-turn-dice #:commit-score #:available-categories
    #:ai-choose-holds #:ai-choose-category
    #:turn-over-p #:game-over-p #:winner-index #:advance-turn))

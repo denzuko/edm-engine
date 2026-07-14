@@ -70,13 +70,25 @@ each face value 1-6 — the standard arrangement on a real die.")
                              (1+ (yahtzee-game-turn game)) (yahtzee-game-player-count game)
                              (yahtzee-game-rolls-remaining game))
                      20 16 18 :white)
-  (loop for v in (yahtzee-game-dice game)
-        for h in (yahtzee-game-held game)
-        for i from 0
-        do (draw-die (+ 20 (* i 70)) 90 v h (= i (yahtzee-game-cursor game))))
+  (let ((display-values (if (yahtzee-game-roll-animation game)
+                             (edm-engine:roll-animation-display-values
+                              (yahtzee-game-roll-animation game) (raylib:get-time) 6)
+                             (yahtzee-game-dice game))))
+    (loop for v in display-values
+          for h in (yahtzee-game-held game)
+          for i from 0
+          do (draw-die (+ 20 (* i 70)) 90 v h (= i (yahtzee-game-cursor game)))))
   (draw-scorecard game window-height)
   (raylib:draw-text "Left/Right: dice | Enter: hold | Up: roll | Down: category list | Enter on category: score"
                      20 (- window-height 30) 12 (edm-engine:rgb-color (edm-engine:theme-color :muted))))
+
+(defparameter +roll-animation-duration+ 0.4d0)
+
+(defun start-roll-animation (game)
+  (setf (yahtzee-game-roll-animation game)
+        (edm-engine:make-roll-animation :start-time (raylib:get-time)
+                                         :duration +roll-animation-duration+
+                                         :final-values (yahtzee-game-dice game))))
 
 (defmethod edm-engine:game-title ((game yahtzee-game)) "Yahtzee")
 
@@ -87,6 +99,7 @@ each face value 1-6 — the standard arrangement on a real die.")
        (when (< (yahtzee-game-rolls-remaining game) 3)
          (setf (yahtzee-game-held game) (ai-choose-holds (yahtzee-game-dice game) (yahtzee-game-held game))))
        (roll-turn-dice game)
+       (start-roll-animation game)
        (edm-engine/audio:play-tone :square 500.0 0.04))
       (t
        (let ((cat (ai-choose-category (yahtzee-game-dice game) (available-categories game (yahtzee-game-turn game)))))
@@ -108,6 +121,7 @@ each face value 1-6 — the standard arrangement on a real die.")
            (when (raylib:is-key-pressed :key-up)
              (when (plusp (yahtzee-game-rolls-remaining game))
                (roll-turn-dice game)
+               (start-roll-animation game)
                (edm-engine/audio:play-tone :square 500.0 0.05)))
            (when (raylib:is-key-pressed :key-enter)
              (cond

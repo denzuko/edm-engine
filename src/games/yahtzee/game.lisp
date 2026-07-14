@@ -9,6 +9,7 @@
   (player-count 4 :type fixnum)
   (cursor 0 :type fixnum)
   (roll-seed 1 :type fixnum)
+  (roll-animation nil)
   (status :playing :type (member :playing :won :lost)))
 
 (defun make-yahtzee-game (&key (seed 1) (player-count 4))

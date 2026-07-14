@@ -1,16 +1,19 @@
 (in-package :edm-engine/games/yahtzee)
 
-;;; Dice = a list of 5 integers, 1-6.
+;;; Dice = a list of 5 integers, 1-6. The "roll a single d6" primitive
+;;; is EDM-ENGINE:ROLL-DIE (src/dice.lisp, generic across die types);
+;;; the "5 dice, hold-a-subset, reroll the rest" mechanic below is
+;;; specifically Yahtzee's own, built on top of that primitive rather
+;;; than reimplementing "roll a die" itself.
 
 (defun roll-dice (seed)
-  (let ((rng (sb-ext:seed-random-state seed)))
-    (loop repeat 5 collect (1+ (random 6 rng)))))
+  (loop for i from 0 below 5 collect (edm-engine:roll-die :d6 (+ seed (* i 97)))))
 
 (defun reroll-dice (dice held seed)
   "Rerolls DICE at positions where HELD is NIL, leaves held positions
 untouched."
-  (let ((rng (sb-ext:seed-random-state seed)))
-    (loop for d in dice for h in held collect (if h d (1+ (random 6 rng))))))
+  (loop for d in dice for h in held for i from 0
+        collect (if h d (edm-engine:roll-die :d6 (+ seed (* i 97))))))
 
 ;;; Upper section — sum of matching-value dice
 

@@ -36,6 +36,9 @@
    #:lerp #:ease-out-cubic #:tween #:make-tween #:tween-position #:tween-finished-p
    #:tween-start-x #:tween-start-y #:tween-end-x #:tween-end-y #:tween-start-time #:tween-duration
    #:centered-row-positions #:wrap-text-lines
+   #:+die-sides+ #:roll-die #:roll-dice-n #:roll-percentile
+   #:roll-animation #:make-roll-animation #:roll-animation-finished-p #:roll-animation-display-values
+   #:roll-animation-start-time #:roll-animation-duration #:roll-animation-final-values
    ;; render (defined in edm-engine/render; declared here so main can call them)
    #:open-window #:close-window #:window-should-close-p #:draw-arena
    #:draw-chrome-rect #:ensure-chrome-shader #:set-shader-int #:set-shader-float
