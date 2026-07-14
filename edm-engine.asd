@@ -75,6 +75,7 @@ per-game reimplementation."
                "edm-engine/games/wordle" "edm-engine/games/wordle/render"
                "edm-engine/games/queens" "edm-engine/games/queens/render"
                "edm-engine/games/hearts" "edm-engine/games/hearts/render"
+               "edm-engine/games/yahtzee" "edm-engine/games/yahtzee/render"
                "swank")
   :build-operation "program-op"
   :build-pathname "edm-engine"
@@ -218,3 +219,25 @@ suite since it needs that plus a full raylib build."
                (:file "t/games/hearts/rules-spec")
                (:file "t/games/hearts/game-spec")
                (:file "t/games/hearts/ui-helpers-spec")))
+
+(defsystem "edm-engine/games/yahtzee"
+  :description "Yahtzee: dice-scoring, multiple human/AI players."
+  :depends-on ("edm-engine/core")
+  :serial t
+  :components ((:file "src/games/yahtzee/package")
+               (:file "src/games/yahtzee/scoring")
+               (:file "src/games/yahtzee/game")
+               (:file "src/games/yahtzee/music")))
+
+(defsystem "edm-engine/games/yahtzee/render"
+  :description "Yahtzee table renderer."
+  :depends-on ("edm-engine/games/yahtzee" "edm-engine/render" "edm-engine/audio")
+  :components ((:file "src/games/yahtzee/render")))
+
+(defsystem "edm-engine/games/yahtzee/tests"
+  :description "FiveAM spec suite over edm-engine/games/yahtzee."
+  :depends-on ("edm-engine/games/yahtzee" "fiveam")
+  :serial t
+  :components ((:file "t/games/yahtzee/package")
+               (:file "t/games/yahtzee/scoring-spec")
+               (:file "t/games/yahtzee/game-spec")))
