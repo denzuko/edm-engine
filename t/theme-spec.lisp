@@ -34,7 +34,11 @@ an over-correction, reverted; single-hue-driven is the actual design.)"
     (multiple-value-bind (h-accent) (apply #'rgb->hsv (theme-color :accent))
       (is (< (abs (- h-dim h-accent)) 0.02)))))
 
-(test theme-color-dim-is-darker-than-panel-is-darker-than-accent
+(test theme-color-dim-is-the-brightest-role-accent-is-vivid-not-pale
+  "Light background (unifiedspec's actual default, not a dark
+terminal): :DIM (page) is the brightest role; :ACCENT (chrome/CTAs) is
+a vivid, saturated teal, not a pale tint — the inverse brightness
+ordering from a dark-terminal theme, by design."
   (flet ((brightness (c) (reduce #'max c)))
-    (is (< (brightness (theme-color :dim)) (brightness (theme-color :panel))))
-    (is (< (brightness (theme-color :panel)) (brightness (theme-color :accent))))))
+    (is (> (brightness (theme-color :dim)) (brightness (theme-color :panel))))
+    (is (> (brightness (theme-color :dim)) (brightness (theme-color :accent))))))

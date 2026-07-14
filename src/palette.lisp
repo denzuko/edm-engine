@@ -100,12 +100,16 @@ number to re-theme the entire engine.")
   "Raw (hue saturation value) for ROLE — the single source of truth
 both THEME-COLOR (CPU-side RGB, for text) and the chrome shader
 (GPU-side, for backgrounds) derive from. Every role shares
-+THEME-HUE+; only saturation/value differ per role."
++THEME-HUE+; only saturation/value differ per role.
+
+Light background (unifiedspec.org's actual default mode, not a dark
+terminal) — :DIM/:PANEL are the light surfaces, :INFO is dark
+high-contrast text, :ACCENT is the vivid CDE teal for chrome/headers."
   (ecase role
-    (:dim (values +theme-hue+ 0.15 0.04))
-    (:panel (values +theme-hue+ 0.3 0.09))
-    (:muted (values +theme-hue+ 0.15 0.4))
-    (:info (values +theme-hue+ 0.1 0.92))
+    (:dim (values +theme-hue+ 0.08 0.99))
+    (:panel (values +theme-hue+ 0.12 0.93))
+    (:muted (values +theme-hue+ 0.25 0.55))
+    (:info (values +theme-hue+ 0.6 0.15))
     (:accent (values +theme-hue+ 1.0 0.502))))     ; #008080 exactly
 
 (declaim (ftype (function ((member :dim :panel :muted :accent :info)) list) theme-color))

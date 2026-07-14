@@ -162,13 +162,13 @@ actual tokens — see src/palette.lisp), not a flat CLEAR-BACKGROUND."
          (draw-glyph-text "A DPS Production" +space-5+ (- window-height +space-6+) 14
                            (rgb-color (theme-color :muted)))))
       (:main-menu
-       (raylib:draw-text +engine-name+ 40 30 34 (rgb-color (theme-color :accent)))
-       (raylib:draw-text (format nil "Score: ~D" (arcade-state-total-score state))
-                          40 (- window-height 40) 18 (rgb-color (theme-color :muted)))
+       (draw-ui-text +engine-name+ +space-6+ +space-5+ 34 (rgb-color (theme-color :accent)))
+       (draw-ui-text (format nil "Score: ~D" (arcade-state-total-score state))
+                      +space-6+ (- window-height +space-6+) 18 (rgb-color (theme-color :muted)))
        (loop for item in +main-menu-items+
              for i from 0
-             do (raylib:draw-text item 40 (+ 100 (* i 40)) 28
-                                   (menu-item-color (= i (arcade-state-main-menu-index state))))))
+             do (draw-ui-text item +space-6+ (+ 100 (* i 40)) 26
+                               (menu-item-color (= i (arcade-state-main-menu-index state))))))
       (:tables
        (draw-section-title "TABLES")
        (loop for entry in *games*
