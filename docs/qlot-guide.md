@@ -46,10 +46,14 @@ also injects a `--load .qlot/setup.lisp`-equivalent flag, but **for
 no `"ros"` branch), because Roswell's own bootstrap (`ros:quicklisp`
 in `lisp/init.lisp`) already checks `QUICKLISP_HOME` itself. So the
 whole `qlot exec` wrapper is unnecessary when the target is `ros` —
-just set the env var directly:
+just set the env var **once per shell session** (same as `nvm use` —
+not something Roswell auto-detects per-directory; checked `ros
+config`, it's global-only, no `.nvmrc`-equivalent exists), not as a
+per-command prefix:
 
 ```sh
-QUICKLISP_HOME="$(pwd)/.qlot/" ros run --non-interactive \
+export QUICKLISP_HOME="$(pwd)/.qlot/"
+ros run --non-interactive \
   --eval '(push (truename ".") asdf:*central-registry*)' \
   --eval '(ql:quickload :edm-engine/tests/all)' \
   --eval '(asdf:test-system :edm-engine/tests/all)'

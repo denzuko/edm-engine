@@ -62,16 +62,17 @@ which SBCL is active. `qlot` is a package manager (like `yarn`/`npm`)
 — it manages project-local Lisp dependencies with a lock file. You
 don't nest one through the other at runtime; `qlot install` sets up
 `.qlot/` once, and `ros run` picks it up directly via `QUICKLISP_HOME`
-— no `qlot exec` wrapper needed. (`qlot exec ros run` also works — it
-just sets the same env var before exec'ing — but the direct form is
-simpler and is what's actually verified below.)
+— no `qlot exec` wrapper needed, and no need to repeat the env var on
+every single command either. Set it once per shell session, same as
+`nvm use`:
 
 ```sh
 ros install sbcl-bin && ros use sbcl-bin   # version manager: pick the Lisp
 ros install qlot                            # install the package manager
 qlot install                                # package manager: resolve qlfile.lock
 
-QUICKLISP_HOME="$(pwd)/.qlot/" ros run --non-interactive \
+export QUICKLISP_HOME="$(pwd)/.qlot/"       # once per session — not per command
+ros run --non-interactive \
   --eval '(push (truename ".") asdf:*central-registry*)' \
   --eval '(ql:quickload :edm-engine/tests/all)' \
   --eval '(asdf:test-system :edm-engine/tests/all)'
@@ -108,8 +109,8 @@ install` alone doesn't produce a runnable game, and neither does
 loading the test system.
 
 ```sh
-# via qlot (verified working)
-QUICKLISP_HOME="$(pwd)/.qlot/" ros run --non-interactive \
+# via qlot (verified working; QUICKLISP_HOME already exported above)
+ros run --non-interactive \
   --eval '(push (truename ".") asdf:*central-registry*)' \
   --eval '(ql:quickload :edm-engine)' \
   --eval '(asdf:make :edm-engine)'
