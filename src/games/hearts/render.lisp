@@ -61,9 +61,15 @@ face-down stack, not individually laid out)."
 
 (defun draw-ai-stack (x y count label)
   "A small fanned stack of face-down cards standing in for an AI's
-hand, plus a card-count label — not just 'AI-1: 13 cards' as bare text."
+hand, an avatar glyph matching the chosen difficulty tier (same
+pawn/knight/queen from the difficulty-selection screen — a player
+shouldn't lose that identity the moment play starts), and a card-count
+label — not just 'AI-1: 13 cards' as bare text."
   (dotimes (i (min 4 (ceiling count 4)))
     (draw-card-back (+ x (* i 4)) (+ y (* i 3))))
+  (edm-engine:draw-glyph-text (cdr (assoc edm-engine:*ai-difficulty* edm-engine:+ai-difficulty-glyphs+))
+                               (round (+ x 12)) (round (- y 26)) 22
+                               (edm-engine:rgb-color (edm-engine:theme-color :info)))
   (raylib:draw-text (format nil "~A (~D)" label count) (round x) (round (+ y +card-height+ 8)) 14
                      (edm-engine:rgb-color (edm-engine:theme-color :muted))))
 
