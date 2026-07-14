@@ -123,8 +123,8 @@ the item list comes from ARCADE-POPUP-ITEMS, driven by GAME-OUTCOME."
   "One BeginDrawing/EndDrawing per frame, established here — GAME-RENDER
 methods (e.g. DRAW-GRID) assume they're already inside a drawing context
 and never call WITH-DRAWING themselves. The background is drawn via the
-chrome shader (genuinely GPU HSV-driven), not a flat CLEAR-BACKGROUND —
-retheming the whole engine is +THEME-HUE+, not draw-call edits."
+chrome shader (genuinely GPU HSV-driven per-role, from unifiedspec.org's
+actual tokens — see src/palette.lisp), not a flat CLEAR-BACKGROUND."
   (raylib:with-drawing
     (raylib:clear-background :black) ; opaque base the shaded rect composites over
     (draw-chrome-rect 0 0 window-width window-height :dim)

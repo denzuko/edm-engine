@@ -79,7 +79,7 @@ label — not just 'AI-1: 13 cards' as bare text."
                                (hearts-game-round game) (first (hearts-game-scores game))
                                (second (hearts-game-scores game)) (third (hearts-game-scores game))
                                (fourth (hearts-game-scores game)))
-                       20 16 18 :white)
+                       20 16 18 (edm-engine:rgb-color (edm-engine:theme-color :info)))
     (draw-ai-stack 24.0 (- cy 31.0) (length (second (hearts-game-hands game))) "AI-1")
     (draw-ai-stack (- (/ window-width 2.0) 23.0) 40.0 (length (third (hearts-game-hands game))) "AI-2")
     (draw-ai-stack (- window-width 70.0) (- cy 31.0) (length (fourth (hearts-game-hands game))) "AI-3")

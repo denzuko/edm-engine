@@ -81,7 +81,7 @@ visible, not just silently non-advancing."
       (raylib:draw-text
        (format nil "Level ~D/~D   Score ~D~A" (queens-game-level game) +queens-level-count+
                (queens-game-score game) (if conflicts "   (conflict!)" ""))
-       (round ox) (round (- oy 36)) 22 :white))))
+       (round ox) (round (- oy 36)) 22 (edm-engine:rgb-color (edm-engine:theme-color :info))))))
 
 (defmethod edm-engine:game-title ((game queens-game))
   "Queens")

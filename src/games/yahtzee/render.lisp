@@ -59,7 +59,7 @@ each face value 1-6 — the standard arrangement on a real die.")
           do (raylib:draw-text (category-label cat) x (+ y (* i row-h)) 16
                                 (cond (filled (edm-engine:rgb-color (edm-engine:theme-color :muted)))
                                       (selected-p (edm-engine:rgb-color (edm-engine:theme-color :accent)))
-                                      (t :white)))
+                                      (t (edm-engine:rgb-color (edm-engine:theme-color :info)))))
              (raylib:draw-text (if filled (format nil "~D" filled) "-")
                                 (+ x 150) (+ y (* i row-h)) 16
                                 (edm-engine:rgb-color (edm-engine:theme-color :muted))))))
@@ -69,7 +69,7 @@ each face value 1-6 — the standard arrangement on a real die.")
   (raylib:draw-text (format nil "Player ~D of ~D   Rolls left: ~D"
                              (1+ (yahtzee-game-turn game)) (yahtzee-game-player-count game)
                              (yahtzee-game-rolls-remaining game))
-                     20 16 18 :white)
+                     20 16 18 (edm-engine:rgb-color (edm-engine:theme-color :info)))
   (when (/= 0 (yahtzee-game-turn game))
     (edm-engine:draw-glyph-text (cdr (assoc edm-engine:*ai-difficulty* edm-engine:+ai-difficulty-glyphs+))
                                  320 8 26 (edm-engine:rgb-color (edm-engine:theme-color :info))))
