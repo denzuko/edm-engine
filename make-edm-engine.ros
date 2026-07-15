@@ -3,40 +3,38 @@
 #|
 exec ros -Q -- $0 "$@"
 |#
-;;; Builds the standalone edm-engine executable. Run from the project
-;;; root: `ros make-edm-engine.ros` or `./make-edm-engine.ros` (chmod
-;;; +x first).
+;;; `ros build make-edm-engine.ros` compiles THIS FILE into a real,
+;;; standalone game binary directly — not a build-tool that then needs
+;;; running a second time. edm-engine is loaded at COMPILE time (as a
+;;; top-level form, evaluated while `ros build` is still a normal SBCL
+;;; process with full access to its own contrib modules and ASDF), so
+;;; by the time Roswell freezes the image, the whole game is already
+;;; part of it. MAIN just calls EDM-ENGINE:MAIN.
 ;;;
-;;; NOT named build.ros — "build" collides with Roswell's own reserved
-;;; `build` subcommand (`ros build <script>` compiles a script into a
-;;; standalone executable). A script literally named build.ros risks
-;;; `ros build.ros` being parsed as invoking that subcommand instead of
-;;; running this script directly, which is the likely cause of a real
-;;; failure hit running this under the old name: instead of executing
-;;; the script, Roswell compiled the SCRIPT ITSELF into a frozen image
-;;; and ran that, which then crashed — because this script's own logic
-;;; (loading .qlot/setup.lisp, ASDF, quickloading edm-engine) was never
-;;; meant to run as a frozen pre-compiled image, only as an interpreted
-;;; script. Renamed to eliminate the ambiguity outright rather than
-;;; chase the exact Roswell-version-dependent parsing behavior.
+;;; This replaces an earlier version of this script that deferred
+;;; loading edm-engine to MAIN (called only once the compiled binary
+;;; actually runs) and called ASDF:MAKE there — which doesn't work:
+;;; ASDF:MAKE does its own SAVE-LISP-AND-DIE, and calling that from
+;;; *inside* an image Roswell already froze via `ros build` is a real,
+;;; deep incompatibility, not a bug in this project's own code —
+;;; confirmed directly: `ros build make-edm-engine.ros && ./make-edm-engine`
+;;; produced a working compiler tool, but running it failed with
+;;; "Don't know how to REQUIRE sb-cltl2" partway through lparallel's
+;;; own .asd load — the frozen image had lost access to SBCL's contrib-
+;;; module-loading machinery that a normal process still has.
 ;;;
-;;; Why this exists rather than `ros build edm-engine.asd program`:
-;;; Roswell's own build.ros loads a .asd file via a raw CL:LOAD, which
-;;; doesn't set up the package/reader context DEFSYSTEM needs — that
-;;; context only exists when ASDF loads a system properly (via
-;;; FIND-SYSTEM/LOAD-SYSTEM), not a bare LOAD. Confirmed by reading
-;;; Roswell's build-asd.lisp source and reproducing the exact failure
-;;; (undefined function DEFSYSTEM) directly. Not fixable from this
-;;; project's .asd file — it's a real gap in `ros build` for
-;;; multi-system project .asd files like this one, not just a
-;;; documentation shortcut.
+;;; `ros make-edm-engine.ros` (interpreted, no `build`) still works too
+;;; and is simpler for iterating — this file supports both entry
+;;; points.
 
-(progn
-  (ros:ensure-asdf)
-  (let ((qlot-setup (merge-pathnames ".qlot/setup.lisp" *load-pathname*)))
-    (if (probe-file qlot-setup)
-        (load qlot-setup)
-        #+quicklisp (ql:quickload '(:swank) :silent t))))
+(let ((qlot-setup (merge-pathnames ".qlot/setup.lisp" (truename "."))))
+  (if (probe-file qlot-setup)
+      (load qlot-setup)
+      #+quicklisp (ql:quickload '(:swank) :silent t)))
+
+(push (truename ".") asdf:*central-registry*)
+(ql:register-local-projects)
+(ql:quickload :edm-engine :silent t)
 
 (defpackage :ros.script.make-edm-engine
   (:use :cl))
@@ -44,14 +42,5 @@ exec ros -Q -- $0 "$@"
 
 (defun main (&rest argv)
   (declare (ignore argv))
-  (push (truename ".") asdf:*central-registry*)
-  (ql:register-local-projects)
-  (handler-case
-      (progn
-        (ql:quickload :edm-engine)
-        (asdf:make :edm-engine)
-        (format t "~&Built ./edm-engine~%"))
-    (error (e)
-      (format *error-output* "~&BUILD FAILED: ~A~%" e)
-      (sb-ext:exit :code 1))))
+  (edm-engine:main))
 ;;; vim: set ft=lisp lisp:

@@ -109,35 +109,53 @@ sbcl --non-interactive \
 ### Building the standalone executable
 
 ```sh
-ros make-edm-engine.ros
+ros build make-edm-engine.ros
 ```
 
-That's it — `qlot install` first if you haven't already (above), then
-this. Produces `./edm-engine`.
+Produces `./make-edm-engine` — a real, standalone game binary, ready
+to run directly. Verified end to end on a real failure this caused
+first: `ros build` genuinely compiles this script into a working game,
+not a build-tool that needs a second invocation.
+
+This took two real fixes to get right, not one:
 
 **Not named `build.ros`** — "build" collides with Roswell's own
 reserved `build` subcommand (`ros build <script>` compiles a script
 into a standalone executable). A script literally named `build.ros`
 risks `ros build.ros` being parsed as invoking that subcommand instead
-of running the script directly — which is what actually happened on a
-real machine: instead of executing the script, Roswell compiled the
-script itself into a frozen image and ran that, which crashed, because
-the script's own logic was never meant to run as a pre-compiled image.
-Renamed to remove the ambiguity outright.
+of running the script directly. Renamed to remove the ambiguity
+outright.
+
+**Doesn't call `asdf:make` at runtime** — an earlier version of this
+script deferred loading `edm-engine` and calling `asdf:make` to `MAIN`
+(only run once the compiled binary actually executes). That doesn't
+work: `asdf:make` does its own `save-lisp-and-die`, and calling that
+from *inside* an image Roswell already froze via `ros build` is a
+real, deep incompatibility — confirmed directly, not assumed: the
+build itself succeeded and produced a binary, but running that binary
+failed partway through loading `lparallel`'s own `.asd` with `Don't
+know how to REQUIRE sb-cltl2` — the frozen image had lost access to
+SBCL's contrib-module-loading machinery a normal process still has.
+Fixed by loading `edm-engine` as a **top-level form**, evaluated while
+`ros build` is still a normal SBCL process with full access to its own
+contrib modules — by the time Roswell freezes the image, the whole
+game is already part of it, and `MAIN` just calls `EDM-ENGINE:MAIN`
+directly.
+
+`ros make-edm-engine.ros` (interpreted, no `build`) now launches the
+game directly too, for the same reason — it's no longer a script that
+*produces* a binary, it *is* the game, compiled or not.
 
 Why not `ros build edm-engine.asd program` (Roswell's own generic
-build command)? Tried it first — it doesn't work for this project.
-Roswell's own build machinery loads a `.asd` file via a raw `CL:LOAD`,
-which doesn't set up the package/reader context `DEFSYSTEM` needs —
-that context only exists when ASDF loads a system properly (via
-`FIND-SYSTEM`/`LOAD-SYSTEM`), not a bare `LOAD`. Confirmed by reading
-Roswell's own `build-asd.lisp` and reproducing the exact failure
-(`undefined function: DEFSYSTEM`) directly — not a project
-misconfiguration, a real gap in `ros build` for multi-system project
-`.asd` files like this one. `make-edm-engine.ros` (committed in this
-repo) wraps the verified-working sequence — `ql:quickload` then
-`asdf:make`, the two steps that actually need ASDF's proper loading
-path — behind a simple one-command interface.
+build command, pointed at the `.asd` directly)? Tried it first — it
+doesn't work for this project. Roswell's own build machinery loads a
+`.asd` file via a raw `CL:LOAD`, which doesn't set up the package/
+reader context `DEFSYSTEM` needs — that context only exists when ASDF
+loads a system properly (via `FIND-SYSTEM`/`LOAD-SYSTEM`), not a bare
+`LOAD`. Confirmed by reading Roswell's own `build-asd.lisp` and
+reproducing the exact failure (`undefined function: DEFSYSTEM`)
+directly — a real gap in `ros build` for multi-system project `.asd`
+files like this one, not a project misconfiguration.
 
 If you'd rather see the steps explicitly, or `make-edm-engine.ros`
 doesn't work on your machine for some reason:
@@ -158,9 +176,13 @@ sbcl --non-interactive \
   --eval '(asdf:make :edm-engine)'
 ```
 
-Produces `./edm-engine`, a standalone ELF binary — `./edm-engine` to
-run it directly, no SBCL or Quicklisp needed at runtime. Built assets
-(shaders, the bundled font) resolve via `asdf:system-relative-pathname`
+Both of these produce `./edm-engine` via `asdf:make` directly (not
+`ros build`), which is the path that's always worked — only the
+`ros build`-compiled route needed the top-level-loading fix above.
+
+Whichever path you use, the resulting binary is a standalone ELF —
+no SBCL or Quicklisp needed at runtime. Built assets (shaders, the
+bundled font) resolve via `asdf:system-relative-pathname`
 at build time, so the binary currently expects to run from within the
 source tree it was built in — not yet relocatable to an arbitrary
 install directory (tracked as part of the post-1.0 release pipeline,
