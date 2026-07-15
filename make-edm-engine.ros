@@ -4,7 +4,21 @@
 exec ros -Q -- $0 "$@"
 |#
 ;;; Builds the standalone edm-engine executable. Run from the project
-;;; root: `ros build.ros` or `./build.ros` (chmod +x first).
+;;; root: `ros make-edm-engine.ros` or `./make-edm-engine.ros` (chmod
+;;; +x first).
+;;;
+;;; NOT named build.ros — "build" collides with Roswell's own reserved
+;;; `build` subcommand (`ros build <script>` compiles a script into a
+;;; standalone executable). A script literally named build.ros risks
+;;; `ros build.ros` being parsed as invoking that subcommand instead of
+;;; running this script directly, which is the likely cause of a real
+;;; failure hit running this under the old name: instead of executing
+;;; the script, Roswell compiled the SCRIPT ITSELF into a frozen image
+;;; and ran that, which then crashed — because this script's own logic
+;;; (loading .qlot/setup.lisp, ASDF, quickloading edm-engine) was never
+;;; meant to run as a frozen pre-compiled image, only as an interpreted
+;;; script. Renamed to eliminate the ambiguity outright rather than
+;;; chase the exact Roswell-version-dependent parsing behavior.
 ;;;
 ;;; Why this exists rather than `ros build edm-engine.asd program`:
 ;;; Roswell's own build.ros loads a .asd file via a raw CL:LOAD, which
@@ -24,9 +38,9 @@ exec ros -Q -- $0 "$@"
         (load qlot-setup)
         #+quicklisp (ql:quickload '(:swank) :silent t))))
 
-(defpackage :ros.script.build.edm-engine
+(defpackage :ros.script.make-edm-engine
   (:use :cl))
-(in-package :ros.script.build.edm-engine)
+(in-package :ros.script.make-edm-engine)
 
 (defun main (&rest argv)
   (declare (ignore argv))

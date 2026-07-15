@@ -109,28 +109,38 @@ sbcl --non-interactive \
 ### Building the standalone executable
 
 ```sh
-ros build.ros
+ros make-edm-engine.ros
 ```
 
 That's it — `qlot install` first if you haven't already (above), then
 this. Produces `./edm-engine`.
 
+**Not named `build.ros`** — "build" collides with Roswell's own
+reserved `build` subcommand (`ros build <script>` compiles a script
+into a standalone executable). A script literally named `build.ros`
+risks `ros build.ros` being parsed as invoking that subcommand instead
+of running the script directly — which is what actually happened on a
+real machine: instead of executing the script, Roswell compiled the
+script itself into a frozen image and ran that, which crashed, because
+the script's own logic was never meant to run as a pre-compiled image.
+Renamed to remove the ambiguity outright.
+
 Why not `ros build edm-engine.asd program` (Roswell's own generic
 build command)? Tried it first — it doesn't work for this project.
-Roswell's `build.ros` loads a `.asd` file via a raw `CL:LOAD`, which
-doesn't set up the package/reader context `DEFSYSTEM` needs — that
-context only exists when ASDF loads a system properly (via
+Roswell's own build machinery loads a `.asd` file via a raw `CL:LOAD`,
+which doesn't set up the package/reader context `DEFSYSTEM` needs —
+that context only exists when ASDF loads a system properly (via
 `FIND-SYSTEM`/`LOAD-SYSTEM`), not a bare `LOAD`. Confirmed by reading
 Roswell's own `build-asd.lisp` and reproducing the exact failure
 (`undefined function: DEFSYSTEM`) directly — not a project
 misconfiguration, a real gap in `ros build` for multi-system project
-`.asd` files like this one. `build.ros` (committed in this repo)
-wraps the verified-working sequence — `ql:quickload` then `asdf:make`,
-the two steps that actually need ASDF's proper loading path — behind
-the simple one-command interface `ros build` was supposed to give.
+`.asd` files like this one. `make-edm-engine.ros` (committed in this
+repo) wraps the verified-working sequence — `ql:quickload` then
+`asdf:make`, the two steps that actually need ASDF's proper loading
+path — behind a simple one-command interface.
 
-If you'd rather see the steps explicitly, or `build.ros` doesn't work
-on your machine for some reason:
+If you'd rather see the steps explicitly, or `make-edm-engine.ros`
+doesn't work on your machine for some reason:
 
 ```sh
 # via qlot (QUICKLISP_HOME already exported above)
