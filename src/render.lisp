@@ -78,19 +78,28 @@ wrong is still wrong.)"
                           null)
                 draw-chrome-rect))
 (defun draw-chrome-rect (x y width height role &optional (alpha 1.0))
-  "Draws a solid rectangle whose color is computed on the GPU from
-ROLE's (hue saturation value) — genuinely shader-driven, not a
-pre-computed RGB literal. Retheming the whole engine is changing
-+THEME-HUE+, not editing draw calls."
-  (ensure-chrome-shader)
-  (multiple-value-bind (h s v) (theme-hsv role)
-    (raylib:begin-shader-mode *chrome-shader*)
-    (set-shader-float *chrome-shader* *chrome-hue-loc* h)
-    (set-shader-float *chrome-shader* *chrome-saturation-loc* s)
-    (set-shader-float *chrome-shader* *chrome-value-loc* v)
-    (set-shader-float *chrome-shader* *chrome-alpha-loc* alpha)
-    (raylib:draw-rectangle x y width height :white)
-    (raylib:end-shader-mode))
+  "GPU mode (default): a solid rectangle whose color is computed on the
+GPU from ROLE's (hue saturation value) — genuinely shader-driven, not
+a pre-computed RGB literal. Retheming the whole engine is changing
++THEME-HUE+, not editing draw calls.
+CPU mode: no shader, no fill, no color — a flat monotone outline, the
+minimum needed to see where a panel/region is at a fraction of the
+GPU cost."
+  (ecase *render-mode*
+    (:gpu
+     (ensure-chrome-shader)
+     (multiple-value-bind (h s v) (theme-hsv role)
+       (raylib:begin-shader-mode *chrome-shader*)
+       (set-shader-float *chrome-shader* *chrome-hue-loc* h)
+       (set-shader-float *chrome-shader* *chrome-saturation-loc* s)
+       (set-shader-float *chrome-shader* *chrome-value-loc* v)
+       (set-shader-float *chrome-shader* *chrome-alpha-loc* alpha)
+       (raylib:draw-rectangle x y width height :white)
+       (raylib:end-shader-mode)))
+    (:cpu
+     (raylib:draw-rectangle-lines-ex
+      (raylib:make-rectangle :x (float x 1.0) :y (float y 1.0) :width (float width 1.0) :height (float height 1.0))
+      1.0 (if (eq *theme-direction* :dark) :white :black))))
   nil)
 
 ;;; Glyph font: raylib's DEFAULT font's coverage of card-suit

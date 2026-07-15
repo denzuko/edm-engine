@@ -67,10 +67,10 @@ in which struct slot and which bound."
   (setf *theme-direction* (if (eq *theme-direction* :light) :dark :light)))
 
 (defun arcade-select-next-option-row (state)
-  (setf (arcade-state-options-cursor state) (mod (1+ (arcade-state-options-cursor state)) 2)))
+  (setf (arcade-state-options-cursor state) (mod (1+ (arcade-state-options-cursor state)) 3)))
 
 (defun arcade-select-previous-option-row (state)
-  (setf (arcade-state-options-cursor state) (mod (1- (arcade-state-options-cursor state)) 2)))
+  (setf (arcade-state-options-cursor state) (mod (1- (arcade-state-options-cursor state)) 3)))
 
 ;;; Tables (game selection)
 

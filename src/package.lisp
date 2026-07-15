@@ -34,6 +34,7 @@
    ;; monochromatic HSV theme system (chrome only — see palette.lisp)
    #:hsv->rgb #:rgb->hsv #:+theme-hue+ #:theme-color #:theme-hsv
    #:+theme-directions+ #:*theme-direction*
+   #:+render-modes+ #:*render-mode* #:toggle-render-mode
    #:lerp #:ease-out-cubic #:tween #:make-tween #:tween-position #:tween-finished-p
    #:tween-start-x #:tween-start-y #:tween-end-x #:tween-end-y #:tween-start-time #:tween-duration
    #:centered-row-positions #:wrap-text-lines

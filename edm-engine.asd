@@ -191,6 +191,7 @@ suite since it needs that plus a full raylib build."
                (:file "t/game-registry-spec")
                (:file "t/arcade-menu-spec")
                (:file "t/theme-spec")
+               (:file "t/render-mode-spec")
                (:file "t/tween-spec")
                (:file "t/layout-spec")
                (:file "t/dice-spec")

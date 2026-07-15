@@ -137,3 +137,14 @@ bright, matching a conventional dark-terminal theme."
 (defun theme-color (role)
   (multiple-value-bind (h s v) (theme-hsv role)
     (hsv->rgb h s v)))
+
+(defparameter +render-modes+ '(:gpu :cpu))
+
+(defvar *render-mode* :gpu
+  "GPU: full shader-driven experience (colors, effects, transitions,
+texture assets). CPU: a flat monotone vector fallback — no shaders, no
+color texturing, minimal draw cost. See DRAW-CHROME-RECT in
+src/render.lisp for where this actually changes what gets drawn.")
+
+(defun toggle-render-mode ()
+  (setf *render-mode* (if (eq *render-mode* :gpu) :cpu :gpu)))

@@ -89,6 +89,10 @@ isn't worth chasing for a thumbnail)."
        (when (or (raylib:is-key-pressed :key-left) (raylib:is-key-pressed :key-right)
                  (raylib:is-key-pressed :key-enter))
          (arcade-toggle-theme-direction state)))
+     (when (= 2 (arcade-state-options-cursor state))
+       (when (or (raylib:is-key-pressed :key-left) (raylib:is-key-pressed :key-right)
+                 (raylib:is-key-pressed :key-enter))
+         (toggle-render-mode)))
      (when (raylib:is-key-pressed :key-escape) (arcade-back-to-main-menu state)))
     (:save-load
      (when (raylib:is-key-pressed :key-down) (arcade-select-next-save-slot state))
@@ -146,7 +150,8 @@ and never call WITH-DRAWING themselves. The background is drawn via the
 chrome shader (genuinely GPU HSV-driven per-role, from unifiedspec.org's
 actual tokens — see src/palette.lisp), not a flat CLEAR-BACKGROUND."
   (raylib:with-drawing
-    (raylib:clear-background :black) ; opaque base the shaded rect composites over
+    (raylib:clear-background
+     (if (and (eq *render-mode* :cpu) (eq *theme-direction* :dark)) :black :white))
     (draw-chrome-rect 0 0 window-width window-height :dim)
     (raylib:draw-rectangle-lines-ex
      (raylib:make-rectangle :x 2.0 :y 2.0 :width (float (- window-width 4) 1.0) :height (float (- window-height 4) 1.0))
@@ -210,7 +215,9 @@ actual tokens — see src/palette.lisp), not a flat CLEAR-BACKGROUND."
                       40 100 22 (menu-item-color (= 0 (arcade-state-options-cursor state))))
        (draw-ui-text (format nil "Theme: ~A" (if (eq *theme-direction* :light) "Light" "Dark"))
                       40 140 22 (menu-item-color (= 1 (arcade-state-options-cursor state))))
-       (draw-glyph-text "UP/DOWN: choose  LEFT/RIGHT: adjust" 40 180 16 (rgb-color (theme-color :muted)))
+       (draw-ui-text (format nil "Graphics: ~A" (if (eq *render-mode* :gpu) "Full (GPU)" "Simple (CPU)"))
+                      40 180 22 (menu-item-color (= 2 (arcade-state-options-cursor state))))
+       (draw-glyph-text "UP/DOWN: choose  LEFT/RIGHT: adjust" 40 220 16 (rgb-color (theme-color :muted)))
        (draw-back-hint window-height))
       (:save-load
        (draw-section-title "SAVE / LOAD")

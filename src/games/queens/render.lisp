@@ -33,13 +33,21 @@ why this isn't a same-named per-shader-pack .vs file."
     (setf *cell-time-loc* (raylib:get-shader-location *cell-shader* "time"))))
 
 (defun draw-cell (x y region-id size cursor-p elapsed)
-  (ensure-cell-shader)
-  (raylib:begin-shader-mode *cell-shader*)
-  (edm-engine:set-shader-float *cell-shader* *cell-hue-loc* (/ (float region-id 1.0) size))
-  (edm-engine:set-shader-int *cell-shader* *cell-cursor-loc* (if cursor-p 1 0))
-  (edm-engine:set-shader-float *cell-shader* *cell-time-loc* elapsed)
-  (raylib:draw-rectangle (round x) (round y) (round +cell-size+) (round +cell-size+) :white)
-  (raylib:end-shader-mode))
+  (ecase edm-engine:*render-mode*
+    (:gpu
+     (ensure-cell-shader)
+     (raylib:begin-shader-mode *cell-shader*)
+     (edm-engine:set-shader-float *cell-shader* *cell-hue-loc* (/ (float region-id 1.0) size))
+     (edm-engine:set-shader-int *cell-shader* *cell-cursor-loc* (if cursor-p 1 0))
+     (edm-engine:set-shader-float *cell-shader* *cell-time-loc* elapsed)
+     (raylib:draw-rectangle (round x) (round y) (round +cell-size+) (round +cell-size+) :white)
+     (raylib:end-shader-mode))
+    (:cpu
+     (let ((line-color (if (eq edm-engine:*theme-direction* :dark) :white :black)))
+       (raylib:draw-rectangle-lines-ex
+        (raylib:make-rectangle :x (float x 1.0) :y (float y 1.0) :width (float +cell-size+ 1.0) :height (float +cell-size+ 1.0))
+        (if cursor-p 2.5 1.0) line-color)
+       (raylib:draw-text (format nil "~D" region-id) (round (+ x 4)) (round (+ y 4)) 12 line-color)))))
 
 (defun queens-grid-origin (window-width window-height size)
   (let ((total (+ (* size +cell-size+) (* (1- size) +cell-gap+))))
