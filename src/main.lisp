@@ -262,12 +262,12 @@ specific table — that's the whole point."
   (let ((swank-port (sb-ext:posix-getenv "EDM_ENGINE_SWANK_PORT")))
     (when swank-port
       (swank:create-server :port (parse-integer swank-port) :dont-close t :style :spawn)))
-  (open-window (format nil "~A" +engine-name+) 800 700)
+  (open-window (format nil "~A" +engine-name+) 1024 768)
   (unwind-protect
        (let ((state (make-arcade-state)))
          (setf *debug-arcade-state* state)
          (loop until (window-should-close-p)
                do (arcade-update state)
-                  (arcade-render state 800 700)))
+                  (arcade-render state 1024 768)))
     (close-window))
   (uiop:quit 0))
