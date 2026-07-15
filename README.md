@@ -55,6 +55,10 @@ docs/index.lisp         40ants-doc manual
 Full qlot reference (qlfile syntax, all source types, the Ultralisp
 project-naming gotcha, commands): [`docs/qlot-guide.md`](docs/qlot-guide.md).
 
+Full unifiedspec.org design token reference (palette, typography,
+spacing, radius — indexed from the real `tokens.json`, not
+reconstructed piecemeal): [`docs/unifiedspec-guide.md`](docs/unifiedspec-guide.md).
+
 ### Running the tests
 
 The mental model: `ros` is a version manager (like `nvm`) — it manages
