@@ -94,23 +94,44 @@ established brand color exactly, not an approximation of it. The
 single value that drives the whole chrome palette — change this one
 number to re-theme the entire engine.")
 
+(defparameter +theme-directions+ '(:light :dark))
+
+(defvar *theme-direction* :light
+  "Runtime-mutable (GH #6) — unifiedspec.org's actual default is Light,
+not a dark terminal, but the engine should offer the same toggle the
+real unifiedspec site has. THEME-HSV dispatches on this; its own call
+signature is unchanged, so no caller elsewhere needed touching to make
+this genuinely switchable at runtime instead of a load-time constant.")
+
 (declaim (ftype (function ((member :dim :panel :muted :accent :info))
                           (values single-float single-float single-float)) theme-hsv))
 (defun theme-hsv (role)
   "Raw (hue saturation value) for ROLE — the single source of truth
 both THEME-COLOR (CPU-side RGB, for text) and the chrome shader
 (GPU-side, for backgrounds) derive from. Every role shares
-+THEME-HUE+; only saturation/value differ per role.
++THEME-HUE+ in both directions; only saturation/value differ per role
+and per *THEME-DIRECTION*.
 
-Light background (unifiedspec.org's actual default mode, not a dark
-terminal) — :DIM/:PANEL are the light surfaces, :INFO is dark
-high-contrast text, :ACCENT is the vivid CDE teal for chrome/headers."
-  (ecase role
-    (:dim (values +theme-hue+ 0.08 0.99))
-    (:panel (values +theme-hue+ 0.12 0.93))
-    (:muted (values +theme-hue+ 0.25 0.55))
-    (:info (values +theme-hue+ 0.6 0.15))
-    (:accent (values +theme-hue+ 1.0 0.502))))     ; #008080 exactly
+Light (default, unifiedspec.org's actual mode): :DIM/:PANEL are the
+light surfaces, :INFO is dark high-contrast text, :ACCENT is the vivid
+CDE teal for chrome/headers.
+Dark: the inverse — :DIM/:PANEL are near-black, :INFO/:ACCENT are
+bright, matching a conventional dark-terminal theme."
+  (ecase *theme-direction*
+    (:light
+     (ecase role
+       (:dim (values +theme-hue+ 0.08 0.99))
+       (:panel (values +theme-hue+ 0.12 0.93))
+       (:muted (values +theme-hue+ 0.25 0.55))
+       (:info (values +theme-hue+ 0.6 0.15))
+       (:accent (values +theme-hue+ 1.0 0.502))))     ; #008080 exactly
+    (:dark
+     (ecase role
+       (:dim (values +theme-hue+ 0.15 0.04))
+       (:panel (values +theme-hue+ 0.3 0.09))
+       (:muted (values +theme-hue+ 0.15 0.4))
+       (:info (values +theme-hue+ 0.1 0.92))
+       (:accent (values +theme-hue+ 1.0 0.502))))))
 
 (declaim (ftype (function ((member :dim :panel :muted :accent :info)) list) theme-color))
 (defun theme-color (role)

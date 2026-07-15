@@ -25,7 +25,8 @@ in which struct slot and which bound."
   (popup-index 0 :type fixnum)
   (save-slot-index 0 :type fixnum)
   (difficulty-index 0 :type fixnum)
-  (pending-entry nil))
+  (pending-entry nil)
+  (options-cursor 0 :type fixnum))
 
 ;;; Top-level main menu: Tables / Engine Options / Save-Load
 
@@ -60,6 +61,16 @@ in which struct slot and which bound."
 
 (defun arcade-decrease-volume (state)
   (setf (arcade-state-volume state) (clamp-volume (- (arcade-state-volume state) 0.1))))
+
+(defun arcade-toggle-theme-direction (state)
+  (declare (ignore state))
+  (setf *theme-direction* (if (eq *theme-direction* :light) :dark :light)))
+
+(defun arcade-select-next-option-row (state)
+  (setf (arcade-state-options-cursor state) (mod (1+ (arcade-state-options-cursor state)) 2)))
+
+(defun arcade-select-previous-option-row (state)
+  (setf (arcade-state-options-cursor state) (mod (1- (arcade-state-options-cursor state)) 2)))
 
 ;;; Tables (game selection)
 

@@ -42,3 +42,24 @@ ordering from a dark-terminal theme, by design."
   (flet ((brightness (c) (reduce #'max c)))
     (is (> (brightness (theme-color :dim)) (brightness (theme-color :panel))))
     (is (> (brightness (theme-color :dim)) (brightness (theme-color :accent))))))
+
+;;; Runtime theme-direction switching (GH #6) — *THEME-DIRECTION*
+;;; defaults to :LIGHT (unifiedspec's actual default) and is mutable at
+;;; runtime, not a load-time constant; THEME-HSV/THEME-COLOR dispatch
+;;; on it without changing their own call signature, so no caller
+;;; anywhere else in the codebase needed touching.
+
+(test theme-direction-defaults-to-light
+  (is (eq :light *theme-direction*)))
+
+(test theme-direction-dark-inverts-the-brightness-ordering
+  (let ((*theme-direction* :dark))
+    (flet ((brightness (c) (reduce #'max c)))
+      (is (< (brightness (theme-color :dim)) (brightness (theme-color :accent)))))))
+
+(test theme-direction-light-and-dark-still-share-one-hue
+  (dolist (direction '(:light :dark))
+    (let ((*theme-direction* direction))
+      (multiple-value-bind (h-dim) (apply #'rgb->hsv (theme-color :dim))
+        (multiple-value-bind (h-accent) (apply #'rgb->hsv (theme-color :accent))
+          (is (< (abs (- h-dim h-accent)) 0.02)))))))

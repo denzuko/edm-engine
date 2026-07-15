@@ -33,6 +33,7 @@
    #:rgb-scaled
    ;; monochromatic HSV theme system (chrome only — see palette.lisp)
    #:hsv->rgb #:rgb->hsv #:+theme-hue+ #:theme-color #:theme-hsv
+   #:+theme-directions+ #:*theme-direction*
    #:lerp #:ease-out-cubic #:tween #:make-tween #:tween-position #:tween-finished-p
    #:tween-start-x #:tween-start-y #:tween-end-x #:tween-end-y #:tween-start-time #:tween-duration
    #:centered-row-positions #:wrap-text-lines
@@ -53,7 +54,7 @@
    #:arcade-state #:make-arcade-state
    #:arcade-state-mode #:arcade-state-main-menu-index #:arcade-state-table-index
    #:arcade-state-current-game #:arcade-state-current-table-title #:arcade-state-ruleset-handle
-   #:arcade-state-total-score #:arcade-state-volume
+   #:arcade-state-total-score #:arcade-state-volume #:arcade-state-options-cursor
    #:arcade-state-popup-open #:arcade-state-popup-index #:arcade-state-save-slot-index
    #:arcade-state-difficulty-index #:arcade-state-pending-entry
    #:arcade-select-next-difficulty #:arcade-select-previous-difficulty #:arcade-confirm-difficulty
@@ -63,6 +64,7 @@
    #:arcade-dismiss-title
    #:arcade-drill-into-main-menu-selection #:arcade-back-to-main-menu
    #:clamp-volume #:arcade-increase-volume #:arcade-decrease-volume
+   #:arcade-toggle-theme-direction #:arcade-select-next-option-row #:arcade-select-previous-option-row
    #:arcade-select-next-table #:arcade-select-previous-table
    #:arcade-launch-selected #:arcade-restart-current #:arcade-return-to-table-select
    #:arcade-popup-items #:arcade-open-popup #:arcade-popup-next #:arcade-popup-previous
