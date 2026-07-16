@@ -4,3 +4,4 @@
 **/shaders/*.fs
 **/shaders/*.vs
 edm-engine
+make-edm-engine
