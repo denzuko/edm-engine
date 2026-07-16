@@ -88,13 +88,13 @@ driver's done."
                     (funcall driver-fn state (lambda () (setf should-stop t)))
                  (setf should-stop t)))
              :name "edm-engine-e2e-driver")))
-      (edm-engine:open-window (format nil "~A" edm-engine:+engine-name+) 800 700)
+      (edm-engine:open-window (format nil "~A" edm-engine:+engine-name+) 1024 768)
       (unwind-protect
            (progn
              (setf state (edm-engine:make-arcade-state))
              (loop until (or (edm-engine:window-should-close-p) should-stop)
                    do (edm-engine:arcade-update state)
-                      (edm-engine:arcade-render state 800 700)))
+                      (edm-engine:arcade-render state 1024 768)))
         (edm-engine:close-window))
       (bordeaux-threads:join-thread driver-thread))))
 
