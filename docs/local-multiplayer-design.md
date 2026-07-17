@@ -69,15 +69,28 @@ from the start:
 (defstruct seat
   (controller :ai :type (member :human :ai))
   (device nil)                        ; a DEVICE-BINDING, only when :human
-  (ai-difficulty :novice :type (member :novice :standard :expert)))  ; only when :ai
+  (ai-character nil))                 ; an AI-CHARACTER (see
+                                       ; docs/ai-character-dialogue-design.md),
+                                       ; only when :ai -- NOT a bare difficulty
+                                       ; keyword. Correction: an earlier draft of
+                                       ; this design used a bare :AI-DIFFICULTY
+                                       ; tier here, which was itself the same
+                                       ; genre of gap as #30's bug -- skill was
+                                       ; never meant to be separable from a named
+                                       ; character's identity and voice, per the
+                                       ; Hoyle's Book of Games reference this
+                                       ; project has carried since its earliest
+                                       ; screenshots. See that doc for the
+                                       ; character/dialogue system this seat
+                                       ; field actually points at.
 ```
 
 A table that supports N seats (Hearts/Yahtzee: 4; Queens/Wordle: 1, no
 seat vector needed at all -- single-player tables don't grow this
 complexity) gets a `(VECTOR SEAT ...)` created at launch. Seat 0
 defaults to `(:CONTROLLER :HUMAN :DEVICE <default keyboard binding>)`;
-seats 1..N-1 default to `(:CONTROLLER :AI :AI-DIFFICULTY <selected
-tier>)`, exactly matching current behavior until someone joins.
+seats 1..N-1 default to `(:CONTROLLER :AI :AI-CHARACTER <assigned
+character>)`, exactly matching current behavior until someone joins.
 
 **Turn-dispatch changes from a global check to a seat lookup.** Today,
 e.g. Hearts: `(/= (hearts-game-turn game) 0)` -- hardcoded, seat 0 is
