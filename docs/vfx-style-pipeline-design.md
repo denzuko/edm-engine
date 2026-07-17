@@ -94,7 +94,80 @@ branch was scoped for (facts + queries, not search) -- not a reason to
 hand-rebuild specificity logic now. Not proposing that dependency
 until last-wins genuinely stops being enough.
 
-## 2. Layout system -- extends #36, does not re-litigate it
+## 1a. Effect-sequence DSL -- chaining #46's primitives declaratively, the real gap this design left open
+
+A real gap in this design as originally written: the stylesheet DSL
+above handles *static* attributes (a color, a radius), and #46's
+taxonomy catalogs *what* effect primitives exist (ease, zoom, rotate,
+fade...), but neither designs how a game pack actually *chains*
+primitives into a time-based sequence tied to a game event, as data,
+rather than hand-written Lisp per table. Two concrete cases motivate
+the design directly:
+
+- A card game's "played" effect: ease from hand position to field
+  position *while simultaneously* zooming from hand-card-size to
+  field-slot-size -- two primitives, one trigger, running together.
+- A puzzle game's token selection: zoom a token by a percentage while
+  a selection state is active, reverting when it isn't -- one
+  primitive, but a fundamentally different trigger shape (a persistent
+  state, not a one-shot event).
+
+### Two trigger shapes, not one -- distinguished explicitly because they're genuinely different
+
+**Event-triggered (one-shot)**: fires once on a bus event (`:card-
+played`), runs its chained primitives to completion, then the effect
+instance is done -- the shape #37's VFX pipeline was already designed
+around (arena-backed instances, drained from the bus once per frame).
+
+**State-triggered (persistent, enter/exit)**: active for as long as a
+condition holds (a token is selected, a cursor sits on a cell -- this
+is exactly Queens' already-proven cursor pulse, generalized rather than
+left shader-specific), with defined enter and exit transitions rather
+than a single run-to-completion. Not a variant of the event case
+forced to fit -- a genuinely different lifecycle, worth its own macro
+rather than overloading one.
+
+```lisp
+;; event-triggered: the card-play example
+(defeffect-sequence :card-played
+  (:trigger :event :card-played)
+  (:ease :position :from :hand-position :to :field-position
+         :duration (:space 2))
+  (:zoom :from :hand-scale :to :field-scale
+         :duration (:space 2)))       ; both run together, same trigger,
+                                       ; not sequenced one-after-another
+                                       ; unless explicitly ordered
+
+;; state-triggered: the puzzle-token example
+(defeffect-state :token-selected
+  (:trigger :state :selection-p)
+  (:zoom :scale 1.1 :duration (:space 1)))  ; enters on selection,
+                                             ; reverts to 1.0 on
+                                             ; deselection, automatically
+```
+
+### `:hand-position`/`:field-slot-size` etc. resolve through #36's layout system, not hardcoded here
+
+This is the reason the effect DSL can't stand alone from the layout
+work -- a hand's position depends on how many cards are currently in
+it (`CENTERED-ROW-POSITIONS`' own math), and a field slot's size is a
+layout-computed constant, not a static number this DSL should own or
+duplicate. Named positions/sizes referenced in an effect sequence
+(`:hand-position`, `:field-slot-size`) resolve through #36's already-
+designed layout primitives at the moment the effect fires, not through
+values baked into the effect sequence's own definition -- keeping the
+effect DSL about *timing and composition*, and the layout DSL about
+*where things actually are*, rather than blurring the two.
+
+### Macro-time validation, same discipline as the stylesheet DSL above
+
+Each chained primitive (`:ease`, `:zoom`, `:rotate`, `:fade`, ...) must
+name one of #46's cataloged primitive types -- a typo or an invented
+primitive name is a compile error, not a silent no-op at runtime, the
+same principle already established for `DEFSTYLESHEET`'s token
+validation.
+
+
 
 #36 (`docs/layout-dsl-design.md`) already designed the primitives this
 genre needs, grounded in real duplication found across all four
@@ -204,7 +277,10 @@ Extends #36 (layout), depends on #21/#22 (CSP restoration -- the bus
 needs to be real before this is real, not scaffolded), gives #33's
 arena system its actual second consumer, folds in #31's fix rather than
 deferring it, and notes where #8's Datalog branch would matter if
-cascade resolution ever needs to be more than last-wins.
+cascade resolution ever needs to be more than last-wins. Section 1a
+directly extends #46 (the primitive catalog this DSL chains) and
+depends on #36's layout resolution for named position/size references
+rather than duplicating layout data.
 
 ## Open questions, not resolved here
 
