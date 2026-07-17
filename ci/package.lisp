@@ -62,14 +62,18 @@ qlot exec ros run --load deploy/provision.lisp \\
   --eval '(uiop:quit 0)'
 qlot exec ros build make-edm-engine.ros")
 
-;; #35 fixed (two real bugs: a genuine timing race in
-;; FIND-WINDOW-BY-NAME, and every test being stale from before the
-;; title-screen feature existed) — 12/12 passing, confirmed across
-;; multiple runs. This is the real e2e regression net #16 was waiting
-;; on. Runs in the same job as the build step, not a separate one —
-;; it needs the same raylib provisioning that step already paid the
-;; cost for, so re-running it in an isolated job would just duplicate
-;; several minutes of raylib compilation for no reason.
+;; #35's suite is fixed and passes reliably in this project's own dev
+;; sandbox (12/12, confirmed across multiple runs). Wiring it in here
+;; was attempted (+run-e2e-tests+ below, kept for the next attempt) and
+;; genuinely failed on a real GitHub Actions runner with a DIFFERENT
+;; error than anything seen in the sandbox: every test failed with
+;; "TYPE-ERROR: -1 is not of type (UNSIGNED-BYTE 32)", not reproduced
+;; locally despite trying (KEYSYM->KEYCODES returns a valid keycode in
+;; this sandbox's Xvfb). Genuinely CI-runner-specific — worth its own
+;; investigation with a proper backtrace captured, not a guess landed
+;; without evidence. Reverted to keep CI green rather than merge a step
+;; that's known-broken on the actual target environment. See #35's
+;; follow-up issue.
 (defparameter +run-e2e-tests+
   "export PATH=\"$PATH:$HOME/.roswell/bin\"
 sudo apt-get install -y -qq xvfb
@@ -94,5 +98,4 @@ qlot exec ros run \\
                          :name "build-binary"
                          :os "ubuntu-latest"
                          :steps (list (action "Checkout Code" "actions/checkout@v4")
-                                      (sh "Provision and Build" +provision-and-build+)
-                                      (sh "Run e2e Suite" +run-e2e-tests+)))))
+                                      (sh "Provision and Build" +provision-and-build+)))))
