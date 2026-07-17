@@ -292,13 +292,19 @@ Genuinely reusable beyond Boss Monster once a second consumer exists
 (a hypothetical shop/upgrade mechanic in a future table) -- not
 building anything beyond this shape until one does.
 
-**Distinct from collectibles (section 1a), not overlapping with them.**
-Currency is per-table, in-session, spendable within that table's own
-rules (Boss Monster's souls only mean something inside a Boss Monster
-game). Collectibles are cross-table, profile-owned, and persist between
-sessions -- a meta-progression reward, not a resource a single table's
-rules spend. A future table could use both without either concept
-needing to absorb the other's job.
+**Distinct from collectibles (section 1a), not overlapping with them
+-- reinforced directly, no shared data structure and no shared
+resolution path between the two.** Currency is per-table, in-session,
+spendable within that table's own rules (Boss Monster's souls only
+mean something inside a Boss Monster game) -- `CURRENCY-POOL` lives on
+the table's own game state, not on `PLAYER-PROFILE`. Collectibles are
+cross-table, profile-owned, and persist between sessions -- a meta-
+progression reward, stored on `PLAYER-PROFILE`, resolved via #8's
+fact-query mechanism, not spent through a table's own rules. They serve
+different functions and don't share a code path: `EARN`/`SPEND`
+(currency) never touch `ACTIVATE-COLLECTIBLE`'s fact-assertion, and
+vice versa. A future table can use both without either concept ever
+needing to absorb or delegate to the other.
 
 ## 4. Modular inventory system
 
@@ -321,7 +327,72 @@ mechanic (carry the treasure back to your secret room) doesn't need
 capacity limits; add that constraint if/when a second consumer actually
 needs it, not speculatively.
 
-## What's explicitly out of scope here
+## 5. Achievement system -- global, distinct from both unlocks and collectibles
+
+A third, separate concept from the two already designed above --
+worth being precise about the boundaries rather than letting these
+blur together:
+
+- **Unlocks** (section 1) are access-control: a condition met *gates*
+  something (a table, a character).
+- **Collectibles** (section 1a) are usable meta-progression rewards
+  with gameplay effects when activated.
+- **Achievements** are records of accomplishment -- recognition, not
+  access control and not a usable item. Earning one doesn't inherently
+  unlock or activate anything; it's tracked and displayed. (An
+  achievement *can* be the trigger condition an unlock or a collectible-
+  discovery query checks against -- see below -- but the achievement
+  itself carries no gameplay effect or access change on its own.)
+
+### Global, and integrates with table games -- one system, per-table vocabulary, same pattern as #40's dialogue events
+
+```lisp
+(defstruct achievement
+  (id nil :type keyword)                ; e.g. :hearts-shot-the-moon-5x
+  (display-name "" :type string)
+  (table nil :type (or null keyword))   ; NIL = cross-table/meta-game
+                                         ; achievement; a keyword = earned
+                                         ; through a specific table, but
+                                         ; tracked by the same global system
+  (condition nil))                      ; a predicate/fact-query over the
+                                         ; profile's STATS -- same #8
+                                         ; territory as collectible
+                                         ; discovery, a different consumer
+```
+
+`PLAYER-PROFILE` already has a `STATS` hash-table (raw counters --
+"times shot the moon: 5") from the unlock-condition design above.
+Achievements are the *derived, named* layer over that raw data, not a
+duplicate of it:
+
+```lisp
+(defstruct player-profile
+  ...
+  (stats (make-hash-table))       ; raw counters, unchanged from above
+  (earned-achievements nil :type list))  ; NEW -- named, discrete
+                                          ; milestones derived from STATS,
+                                          ; not another counter
+```
+
+**"Integrates with the table games" means one global processor, a
+per-table event vocabulary** -- the same shape #40 already establishes
+for dialogue (Hearts defines `:trick-won`/`:shot-the-moon`, Yahtzee
+defines `:yahtzee-rolled`, the consumer is generic across every table).
+An achievement processor listens on both table-specific game events
+*and* `:meta` events (rank-up, collectible discovery) -- "global" means
+it's not confined to one topic or one table's vocabulary, not that
+there's a second, separate mechanism for meta-game achievements versus
+table achievements.
+
+### Relationship to unlocks and collectibles -- feeds them, doesn't duplicate them
+
+An achievement being earned can be *one of* an unlock's or a
+collectible-discovery's fact-query inputs (e.g., "this collectible is
+discoverable if the profile has earned `:hearts-shot-the-moon-5x`") --
+composing with #8's fact-query mechanism the same way table facts and
+profile rank already do, not a fourth, separate resolution path.
+
+
 
 - The full real-time protocol extension Game & Watch needs -- flagged
   as a real gap, not designed in detail, since it deserves its own pass
@@ -354,8 +425,10 @@ Gives #8 its strongest case yet (section 1a) -- genuine multi-fact
 composition across simultaneously-active collectibles, a correctness
 problem #37's simple cascade cannot solve, stronger than #40's single-
 value gamerule-facts example. Notes a real, unresolved follow-on for
-#9 (save-slot profile-scoping)
-without resolving it here.
+#9 (save-slot profile-scoping) without resolving it here. Section 5
+(achievements) is deliberately kept separate from both unlocks and
+collectibles -- three distinct concepts, one shared profile/bus/fact-
+query substrate, not three separately-invented mechanisms.
 
 Not implemented. This is the architecture and the reasoning grounding
 it in three specific games; scoping which system gets built first, and
