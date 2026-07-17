@@ -83,6 +83,18 @@ from the start:
                                        ; screenshots. See that doc for the
                                        ; character/dialogue system this seat
                                        ; field actually points at.
+  (profile nil))                      ; a PLAYER-PROFILE, or NIL for a guest
+                                       ; seat -- only meaningful when
+                                       ; CONTROLLER is :HUMAN. Second revision
+                                       ; to this struct (see
+                                       ; docs/widget-currency-inventory-design.md's
+                                       ; player-profile section) -- the
+                                       ; easter-egg/unlock system needs to know
+                                       ; *whose* progress a human seat's
+                                       ; achievements belong to, and a machine-
+                                       ; wide unlock flag set is wrong the
+                                       ; moment two different people share one
+                                       ; local-multiplayer session.
 ```
 
 A table that supports N seats (Hearts/Yahtzee: 4; Queens/Wordle: 1, no

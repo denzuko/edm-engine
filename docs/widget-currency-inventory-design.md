@@ -75,18 +75,71 @@ decorative extra.
   per-game), since a "global" easter egg needs to be checked regardless
   of which screen is active.
 
+### Real gap this doc had, corrected: unlocks must be per-player-profile, not machine-global
+
+An earlier draft of this section said unlocks are "profile-level" as a
+throwaway phrase without actually designing what a profile is -- a real
+gap once #39's local multiplayer exists. Up to four human players can
+share one machine (#39); "who unlocked what" and "whose progress is
+this" is a real, previously-unresolved question, not a detail. A single
+machine-wide unlock flag set (what this doc originally implied) is
+wrong the moment two different people are actually playing on the same
+install.
+
+```lisp
+(defstruct player-profile
+  (id nil :type keyword)              ; stable, unique per profile
+  (display-name "" :type string)
+  (unlocked-tables nil :type list)
+  (unlocked-characters nil :type list) ; if #40's characters become unlockable
+  (stats (make-hash-table)))          ; achievement/milestone tracking --
+                                       ; the actual condition-evaluation
+                                       ; substrate for UNLOCK-CONDITION-MET-P
+```
+
+**Profiles are optional and lightweight, not mandatory account
+creation** -- matching #39's own "pick up and play, DOS-hotseat" framing
+rather than a heavyweight login flow that would fight it. At join-time
+(the same screen #39 already designs for seat-claiming), a human seat
+either selects an existing profile, creates a new lightweight one (a
+name, nothing more), or plays as an unprofiled guest (no persistent
+progression tracked for that session, matching today's behavior
+exactly). This means **#39's `SEAT` struct needs one more field**:
+
+```lisp
+(defstruct seat
+  (controller :ai :type (member :human :ai))
+  (device nil)
+  (profile nil)      ; a PLAYER-PROFILE, or NIL for a guest seat --
+                      ; only meaningful when CONTROLLER is :HUMAN
+  (ai-character nil))
+```
+
+**Unlock conditions evaluate per-profile, against that profile's own
+stats** -- not "has anyone ever shot the moon on this machine," but
+"has *this* profile." In a shared session with multiple human seats,
+an achievement belongs to whichever seat's profile actually earned it
+(the player who shot the moon), not everyone at the table -- matching
+how per-player achievements normally work in any local multiplayer game
+with individual profiles, not a shared machine-wide unlock pool.
+
 **Persistence is a real, separate design question, not reuse of save
 slots.** The existing save system (`save.lisp`, `*SAVE-SLOT-COUNT*` =
 10) is per-session, per-table game state -- explicitly not what unlock
-flags are. Unlocks are profile-level, persist across every session
-regardless of save slot, and should live in their own file (e.g.
-`~/.parencade-saves/unlocks.sexp`, sibling to but structurally distinct
-from the numbered save slots) -- conflating the two would mean deleting
-a save slot could plausibly re-lock a table, which is wrong.
+flags are, and explicitly not currently profile-scoped either (worth
+noting as an open question below, not resolving it here). Unlock/
+profile data should live in its own file per profile (e.g.
+`~/.parencade-saves/profiles/<id>.sexp`, sibling to but structurally
+distinct from the numbered save slots) -- conflating unlocks with save
+slots would mean deleting a save slot could plausibly re-lock a table,
+which is wrong regardless of the profile question.
 
 ```lisp
-(defgeneric unlock-condition-met-p (condition-id))  ; per-table methods
-(defun check-unlocks ())  ; called on table-return, not every frame
+(defgeneric unlock-condition-met-p (condition-id profile))  ; per-table
+                                                              ; methods,
+                                                              ; now profile-aware
+(defun check-unlocks (seat))  ; called on table-return, reads SEAT-PROFILE,
+                               ; not every frame, not machine-global
 ```
 
 ## 2. Core widget/dialog system
@@ -179,13 +232,24 @@ needs it, not speculatively.
 - Boss Monster's row-shaped board layout as a fourth primitive in #36 --
   worth adding once Boss Monster is scoped for real; not designing a
   primitive against a game that isn't built yet.
+- **Whether the existing save system (#9) should become profile-scoped
+  too**, now that profiles exist as a real concept -- a real, related
+  question (should Dwight's save slots be distinct from a guest's, or
+  from another profile's) but not resolved here. #9 already has enough
+  tracked scope (the deceptive-save bug, missing error handling); this
+  is a genuine follow-on for that issue once profiles land, not a
+  reason to reopen #9's design now.
 
 ## Cross-references
 
 Extends #12 (unlock gate for the concrete tables this issue already
 deferred), #18 (the widget system is the structural fix, not a
 workaround), #36 (widgets compose layout, don't duplicate it), #37
-(widgets compose the style pipeline for visuals).
+(widgets compose the style pipeline for visuals). Revises #39's SEAT
+struct a second time (first for AI-CHARACTER per #40, now for PROFILE)
+-- both revisions are additive fields, not conflicting redesigns.
+Notes a real, unresolved follow-on for #9 (save-slot profile-scoping)
+without resolving it here.
 
 Not implemented. This is the architecture and the reasoning grounding
 it in three specific games; scoping which system gets built first, and
