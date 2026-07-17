@@ -56,6 +56,15 @@ every category — i.e. their turn is done, not that the whole game is."
   (let ((totals (mapcar #'grand-total (yahtzee-game-scores game))))
     (position (reduce #'max totals) totals)))
 
+(defmethod edm-engine:game-outcome ((game yahtzee-game))
+  (case (yahtzee-game-status game)
+    (:won :win)
+    (:lost :lose)
+    (t nil)))
+
+(defmethod edm-engine:game-score ((game yahtzee-game))
+  (grand-total (first (yahtzee-game-scores game))))
+
 (defun advance-turn (game)
   "Skips over any player who has already filled every category — used
 when player counts differ in how many categories are left, so turns

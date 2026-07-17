@@ -67,6 +67,26 @@
           (list (list :ones 1 :chance 5) (list :ones 1 :chance 20)))
     (is (= 1 (winner-index game)))))
 
+(test game-outcome-reflects-status-not-the-default-nil-method
+  "Regression test for a real, live-verified bug (#34): GAME-OUTCOME
+had no method for YAHTZEE-GAME at all, silently falling through to the
+default NIL — the arcade shell's win/lose overlay never appeared for
+this table even when the game's own status correctly said :WON."
+  (let ((game (make-yahtzee-game)))
+    (is (null (edm-engine:game-outcome game)))
+    (setf (yahtzee-game-status game) :won)
+    (is (eq :win (edm-engine:game-outcome game)))
+    (setf (yahtzee-game-status game) :lost)
+    (is (eq :lose (edm-engine:game-outcome game)))))
+
+(test game-score-reflects-the-human-players-grand-total
+  "Regression test for #34: GAME-SCORE also had no method, so the
+arcade's running total never banked Yahtzee points at all."
+  (let ((game (make-yahtzee-game)))
+    (setf (yahtzee-game-scores game)
+          (list (list :ones 3 :twos 6 :chance 20) nil nil nil))
+    (is (= 29 (edm-engine:game-score game)))))
+
 ;;; AI
 
 (test ai-choose-holds-returns-5-booleans
