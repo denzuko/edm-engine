@@ -16,7 +16,7 @@ a card moves from a hand to the trick. Built on the shared
 src/tween.lisp engine — the first real consumer, not a Hearts-specific
 animation hack.")
 
-(defparameter +tween-duration+ 0.55
+(defparameter +tween-duration+ 0.55d0
   "Long enough to genuinely see the motion, not just technically animate
 it — 0.35s round-tripped through video compression reads as an instant
 cut more often than not, especially over a short start/end distance.")

@@ -26,7 +26,7 @@ easing curve for UI motion."
   (end-x 0.0 :type single-float)
   (end-y 0.0 :type single-float)
   (start-time 0.0d0 :type double-float)
-  (duration 0.3 :type single-float))
+  (duration 0.3d0 :type double-float))
 
 (declaim (ftype (function (tween double-float) (values single-float single-float)) tween-position))
 (defun tween-position (tween now)
@@ -34,9 +34,9 @@ easing curve for UI motion."
 [start-time, start-time+duration] window and eased with
 EASE-OUT-CUBIC — never overshoots the end position, never goes
 negative before the start."
-  (let* ((elapsed (float (- now (tween-start-time tween)) 1.0))
-         (raw-tt (max 0.0 (min 1.0 (/ elapsed (tween-duration tween)))))
-         (eased-tt (ease-out-cubic raw-tt)))
+  (let* ((elapsed (- now (tween-start-time tween)))
+         (raw-tt (max 0.0d0 (min 1.0d0 (/ elapsed (tween-duration tween)))))
+         (eased-tt (ease-out-cubic (float raw-tt 1.0))))
     (values (lerp (tween-start-x tween) (tween-end-x tween) eased-tt)
             (lerp (tween-start-y tween) (tween-end-y tween) eased-tt))))
 
