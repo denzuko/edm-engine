@@ -24,6 +24,11 @@ logic, this covers that real keystrokes actually reach it."
      (lambda (state stop)
        (with-x-display (display (e2e-display-name))
          (setf window-found (not (null (find-window-by-name display edm-engine:+engine-name+ :timeout 20))))
+         ;; the arcade boots into :TITLE first, not :MAIN-MENU directly —
+         ;; dismiss it before this test's own logic (which is about
+         ;; main-menu -> tables specifically) begins.
+         (send-key display +key-return+)
+         (wait-for (lambda () (eq :main-menu (edm-engine:arcade-state-mode state))))
          (setf initial-mode (edm-engine:arcade-state-mode state))
          (send-key display +key-return+)
          (setf reached-tables (wait-for (lambda () (eq :tables (edm-engine:arcade-state-mode state))))))
@@ -38,6 +43,8 @@ logic, this covers that real keystrokes actually reach it."
      (lambda (state stop)
        (with-x-display (display (e2e-display-name))
          (find-window-by-name display edm-engine:+engine-name+ :timeout 20)
+         (send-key display +key-return+) ; dismiss title -> main-menu
+         (wait-for (lambda () (eq :main-menu (edm-engine:arcade-state-mode state))))
          (send-key display +key-down+)
          (setf r1 (wait-for (lambda () (= 1 (edm-engine:arcade-state-main-menu-index state)))))
          (send-key display +key-down+)
@@ -57,6 +64,8 @@ this same way."
      (lambda (state stop)
        (with-x-display (display (e2e-display-name))
          (find-window-by-name display edm-engine:+engine-name+ :timeout 20)
+         (send-key display +key-return+) ; dismiss title -> main-menu
+         (wait-for (lambda () (eq :main-menu (edm-engine:arcade-state-mode state))))
          (send-key display +key-return+) ; -> tables
          (wait-for (lambda () (eq :tables (edm-engine:arcade-state-mode state))))
          (send-key display +key-return+) ; launch first table (Wordle)
@@ -86,6 +95,8 @@ by hand)."
      (lambda (state stop)
        (with-x-display (display (e2e-display-name))
          (find-window-by-name display edm-engine:+engine-name+ :timeout 20)
+         (send-key display +key-return+) ; dismiss title -> main-menu
+         (wait-for (lambda () (eq :main-menu (edm-engine:arcade-state-mode state))))
          (send-key display +key-return+)
          (wait-for (lambda () (eq :tables (edm-engine:arcade-state-mode state))))
          (send-key display +key-return+)
@@ -108,6 +119,8 @@ all silently failing) turned out to be this one bug."
      (lambda (state stop)
        (with-x-display (display (e2e-display-name))
          (find-window-by-name display edm-engine:+engine-name+ :timeout 20)
+         (send-key display +key-return+) ; dismiss title -> main-menu
+         (wait-for (lambda () (eq :main-menu (edm-engine:arcade-state-mode state))))
          (send-key display +key-return+)
          (wait-for (lambda () (eq :tables (edm-engine:arcade-state-mode state))))
          (send-key display +key-return+)

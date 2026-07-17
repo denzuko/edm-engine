@@ -38,12 +38,23 @@ resolve \":99\" as a DNS hostname, which fails outright."
 
 (defun find-window-by-name (display name &key (timeout 15))
   "Polls the root window's children for a window whose NAME matches,
-for up to TIMEOUT seconds. Returns the XLIB:WINDOW, or NIL."
+for up to TIMEOUT seconds. Returns the XLIB:WINDOW, or NIL.
+
+Waits an additional beat after the window is found before returning —
+a real, confirmed race: the X11 window existing (mappable, has a name)
+does not mean raylib/GLFW's own input-polling loop has started actively
+processing events yet. An XTEST key event sent immediately after this
+function returns can be lost — sent into a window that exists at the
+X11 protocol level but isn't yet pumping GetKeyPressed/PollInputEvents
+on the application side. Confirmed live: the identical key-press
+sequence reliably worked with a 1s delay inserted before SEND-KEY, and
+reliably failed without one."
   (let ((deadline (+ (get-universal-time) timeout))
         (root (xlib:screen-root (first (xlib:display-roots display)))))
     (loop
       (dolist (win (xlib:query-tree root))
         (when (ignore-errors (string= name (xlib:wm-name win)))
+          (sleep 1.0)
           (return-from find-window-by-name win)))
       (when (> (get-universal-time) deadline)
         (return-from find-window-by-name nil))
