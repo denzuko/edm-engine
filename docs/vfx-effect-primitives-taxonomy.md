@@ -22,6 +22,35 @@ catalog below builds on, not a green field.
 These don't need new GPU work -- they're new *math shapes* feeding the
 same kind of position/scale/alpha values tweens already produce.
 
+**Correction, direct question prompted it**: zoom and rotation
+exposed a real gap this taxonomy's first pass glossed over.
+`TWEEN`'s struct (`start-x`/`start-y`/`end-x`/`end-y`) is hardcoded to
+2D position specifically -- it does not generalize to scale, rotation
+angle, or alpha (which #45's fade already needs) without either
+duplicating the struct per value type or, correctly, making the
+interpolated value itself generic:
+
+```lisp
+(defstruct value-tween
+  (start-values nil :type (simple-array double-float (*)))  ; N-dimensional
+  (end-values nil :type (simple-array double-float (*)))
+  (start-time 0.0d0 :type double-float)
+  (duration 0.0d0 :type double-float)   ; DOUBLE-FLOAT throughout, #31's lesson
+  (easing #'ease-out-cubic))            ; pluggable, once the curve library exists
+```
+
+Position becomes a 2-dimensional instance; scale, rotation angle, and
+alpha are 1-dimensional instances of the same primitive, not three more
+structs. This is the actual shape #37's "generalize TWEEN via a real
+protocol" should target -- generic over the interpolated value, not
+just wrapped in a protocol while staying position-specific underneath.
+
+- **Per-object zoom/scale** -- a `VALUE-TWEEN` on a scale factor. Real
+  consumer: a card "punching in" on being played, a Door Dasher pickup
+  growing before vanishing.
+- **Per-object rotation** -- a `VALUE-TWEEN` on an angle. Real
+  consumer: a card flip's actual rotation (currently likely faked via
+  position/scale alone), a die tumbling mid-roll.
 - **Easing curve library** -- not a new primitive, a real gap in the
   existing one. `EASE-OUT-CUBIC` is hardcoded; bounce, elastic,
   ease-in, ease-in-out are the standard set most engines expose and
@@ -34,15 +63,45 @@ same kind of position/scale/alpha values tweens already produce.
   shader code. A natural fit for highlighting an interactive element
   anywhere (a joinable seat in #39's flow, a discoverable-but-not-yet-
   examined cell in Labyrinth's fog-of-war).
-- **Shake/jitter** -- genuinely different math from both tween and
-  pulse: a random or noise-driven offset over time, not smooth
-  interpolation and not periodic. Camera shake (already named in the
-  original VFX brief) and Door Dasher's hazard-hit feedback are the
-  two named real consumers.
 - **Trails** -- a fading history of recent positions behind a fast-
   moving element. Relevant to Door Dasher's falling hazards and fast
   card-flip animations; a real particle-adjacent case, not fully new
   machinery once particles exist.
+
+## Category 1a: whole-screen camera effects -- genuinely new, verified available, corrects how "shake" should actually work
+
+Checked directly: this engine has no camera concept anywhere today
+(`grep` for `begin-mode-2d`/`camera2d` across `src/` returns nothing).
+Every table draws directly in screen space. But `cl-raylib` genuinely
+exports a real `Camera2D` (`MAKE-CAMERA2D`, `BEGIN-MODE-2D`) --
+zoom/rotation/target/offset applied to an entire render pass, not a
+per-draw-call parameter. Verified before designing around it, not
+assumed.
+
+**Correction to Category 1's original "shake" entry**: whole-screen
+camera shake belongs here, not as per-draw-call jitter. Randomizing a
+`Camera2D`'s offset each frame shakes everything drawn in one place,
+correctly and cheaply; jittering every individual draw call's position
+would mean every draw site needs to know a shake is active, which is
+both more expensive and more error-prone. The math (random/noise-
+driven offset over time) is the same shake primitive already named --
+this corrects *where* it applies, not what it is.
+
+- **Camera zoom** -- a `VALUE-TWEEN` on `Camera2D`'s zoom field. Real
+  consumer: a dramatic zoom on a win moment (#34's fixed overlay), a
+  zoom-in as Door Dasher's timer runs critically low.
+- **Camera rotation** -- a `VALUE-TWEEN` on `Camera2D`'s rotation
+  field. Lower-priority than zoom/shake -- no currently-named consumer
+  needs a rotating camera specifically, worth having the primitive
+  available rather than building content against it speculatively.
+- **Camera shake** -- moved here from Category 1, corrected as above.
+
+Introducing `Camera2D` as a real primitive is itself worth flagging as
+new core-engine surface, not just new VFX content -- every table's
+`GAME-RENDER` currently draws with no camera transform active at all;
+wiring one in (even an identity/no-op `Camera2D` by default) is a small
+but real prerequisite before any of category 1a's effects can exist.
+
 
 ## Category 2: screen-space / post-process effects (GPU-driven, extend the c-mera shader pattern)
 
@@ -123,9 +182,15 @@ of the effect's own definition, not a follow-up task.
 
 Extends #37's effect protocol (`EFFECT-UPDATE`/`EFFECT-FINISHED-P`/
 `EFFECT-APPLY`) -- every primitive above is a concrete implementation
-of that protocol, not a new one. Connects to #10 (CPU-mode discipline
+of that protocol, not a new one. Corrects the tween generalization
+itself to be value-generic (position/scale/rotation/alpha as instances
+of one `VALUE-TWEEN`, not separate structs) rather than leaving it
+position-specific. Introduces `Camera2D` as new, verified-available
+core-engine surface (zoom/rotation/shake all route through it),
+correcting where shake should apply rather than adding a new effect.
+Connects to #10 (CPU-mode discipline
 for every shader-driven effect). Real named consumers drawn from #34
-(win overlay/confetti), #38 (widget blur/glow), #39 (join-flow pulse),
+(win overlay/confetti, now also camera zoom), #38 (widget blur/glow), #39 (join-flow pulse),
 #42 (Labyrinth fog-of-war dissolve/vignette, Boss Monster distortion),
 #45 (Door Dasher shake/chromatic-aberration/flash, fade as the proven
 transition case).
