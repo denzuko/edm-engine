@@ -167,6 +167,39 @@ primitive name is a compile error, not a silent no-op at runtime, the
 same principle already established for `DEFSTYLESHEET`'s token
 validation.
 
+### Trigger dispatch is O(1), by the same discipline already governing the stylesheet cascade -- stated explicitly, not left implicit
+
+An earlier draft of this section left the actual runtime lookup
+unspecified. It shouldn't be -- this pipeline's whole performance
+discipline (stated at the very top of this document) is "resolved
+once, O(1) lookup per frame," already applied to the stylesheet
+cascade (selector to resolved plist). The same principle applies here,
+not a new one:
+
+```lisp
+(defvar *effect-sequences* (make-hash-table))  ; event keyword -> compiled sequence
+(defvar *effect-states* (make-hash-table))     ; state keyword -> compiled sequence
+```
+
+`DEFEFFECT-SEQUENCE`/`DEFEFFECT-STATE` expand to registration into
+these tables at load time (pack-load, matching the stylesheet
+cascade's own resolution point), not at first-use or per-frame. The
+VFX processor draining a `:card-played` event off the bus does
+`(gethash :card-played *effect-sequences*)` -- one hash lookup, not a
+linear scan or a growing `COND`/`CASE` chain as more sequences get
+defined across more game packs.
+
+**Precise about what's cached and what genuinely can't be**, so this
+isn't overclaimed: the hash table caches *which primitives are chained
+together and their parameters* (the structure resolved from
+`DEFEFFECT-SEQUENCE`'s definition) -- it does not and cannot cache the
+actual resolved pixel positions/sizes (`:hand-position`,
+`:field-slot-size`), since those depend on runtime state (how many
+cards are currently in hand) and must be computed fresh via #36's
+layout primitives each time the effect fires. That computation is
+itself cheap (simple arithmetic, not a search), so the O(1) property
+that matters -- "which sequence does this trigger run" -- holds
+regardless.
 
 
 #36 (`docs/layout-dsl-design.md`) already designed the primitives this
