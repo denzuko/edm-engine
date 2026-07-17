@@ -346,6 +346,21 @@ blur together:
 
 ### Global, and integrates with table games -- one system, per-table vocabulary, same pattern as #40's dialogue events
 
+Committing explicitly here, not left hedged the way an earlier draft
+worded it ("a predicate/fact-query" implied either a plain Lisp
+predicate or a Datalog query, as if either would do): **achievement
+conditions are Datalog queries, specifically, not ad hoc predicate
+functions.** This is deliberate, not just consistent with #8 for its
+own sake -- achievements are exactly the case that most needs it.
+Simple unlocks (section 1) stay plain per-table `DEFGENERIC` dispatch,
+reasonably, since most don't need cross-fact composition. Achievements
+routinely will: "won three different tables in one session," "beat
+`:larry` at both Hearts and Yahtzee," "earned this while a specific
+collectible was active" are genuine multi-fact conjunctions over
+profile stats, table history, and possibly other already-earned
+achievements -- exactly the shape a hand-written predicate function
+gets unwieldy for fast, and a Datalog query handles as its normal case.
+
 ```lisp
 (defstruct achievement
   (id nil :type keyword)                ; e.g. :hearts-shot-the-moon-5x
@@ -354,10 +369,13 @@ blur together:
                                          ; achievement; a keyword = earned
                                          ; through a specific table, but
                                          ; tracked by the same global system
-  (condition nil))                      ; a predicate/fact-query over the
-                                         ; profile's STATS -- same #8
-                                         ; territory as collectible
-                                         ; discovery, a different consumer
+  (condition nil))                      ; a DATALOG QUERY over the profile's
+                                         ; STATS (and, per the multi-fact
+                                         ; examples above, potentially table
+                                         ; facts and other earned
+                                         ; achievements too) -- #8's
+                                         ; mechanism specifically, not a
+                                         ; hand-written predicate
 ```
 
 `PLAYER-PROFILE` already has a `STATS` hash-table (raw counters --
@@ -373,6 +391,7 @@ duplicate of it:
                                           ; milestones derived from STATS,
                                           ; not another counter
 ```
+
 
 **"Integrates with the table games" means one global processor, a
 per-table event vocabulary** -- the same shape #40 already establishes
