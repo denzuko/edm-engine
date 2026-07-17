@@ -39,6 +39,29 @@ sbcl --non-interactive \\
   --eval '(ql:quickload :edm-engine/tests/all)' \\
   --eval '(asdf:test-system :edm-engine/tests/all)'")
 
+;; #16's remaining scope: CI never built or verified the actual binary,
+;; only pure-logic specs. This step provisions raylib (via #15's
+;; consfigurator design, live-verified against a real missing-sudo
+;; sandbox before landing here) and builds the real binary via
+;; ros make-edm-engine.ros (#4's fix), giving CI something beyond
+;; FiveAM specs to actually verify a commit against. Wiring the real
+;; e2e suite (#35) in is separate, deliberate follow-on scope — that
+;; suite currently crashes even on its simplest test and needs its own
+;; fix before it belongs in a required CI step, not bundled in here
+;; where a broken suite would just make every commit red for an
+;; unrelated reason.
+(defparameter +provision-and-build+
+  "sudo apt-get install -y -qq libacl1-dev libcap-dev sudo
+which ros || (curl -sL https://github.com/roswell/roswell/releases/download/v23.10.14.114/roswell_23.10.14.114-1_amd64.deb -o /tmp/roswell.deb && sudo dpkg -i /tmp/roswell.deb)
+ros install sbcl-bin
+ros install qlot
+export PATH=\"$PATH:$HOME/.roswell/bin\"
+qlot install
+qlot exec ros run --load deploy/provision.lisp \\
+  --eval '(edm-engine-deploy:provision)' \\
+  --eval '(uiop:quit 0)'
+qlot exec ros build make-edm-engine.ros")
+
 (defworkflow ci
   :on-push-to "main"
   :on-pull-request t
@@ -46,4 +69,9 @@ sbcl --non-interactive \\
                          :name "run-tests"
                          :os "ubuntu-latest"
                          :steps (list (action "Checkout Code" "actions/checkout@v4")
-                                      (sh "Bootstrap and Test" +bootstrap-and-test+)))))
+                                      (sh "Bootstrap and Test" +bootstrap-and-test+)))
+         (make-instance 'job
+                         :name "build-binary"
+                         :os "ubuntu-latest"
+                         :steps (list (action "Checkout Code" "actions/checkout@v4")
+                                      (sh "Provision and Build" +provision-and-build+)))))

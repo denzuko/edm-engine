@@ -25,6 +25,23 @@
           "shell": "bash"
         }
       ]
+    },
+    "build-binary": {
+      "runs-on": "ubuntu-latest",
+      "env": {
+        "OS": "ubuntu-latest"
+      },
+      "steps": [
+        {
+          "name": "Checkout Code",
+          "uses": "actions/checkout@v4"
+        },
+        {
+          "name": "Provision and Build",
+          "run": "sudo apt-get install -y -qq libacl1-dev libcap-dev sudo\nwhich ros || (curl -sL https://github.com/roswell/roswell/releases/download/v23.10.14.114/roswell_23.10.14.114-1_amd64.deb -o /tmp/roswell.deb && sudo dpkg -i /tmp/roswell.deb)\nros install sbcl-bin\nros install qlot\nexport PATH=\"$PATH:$HOME/.roswell/bin\"\nqlot install\nqlot exec ros run --load deploy/provision.lisp \\\n  --eval '(edm-engine-deploy:provision)' \\\n  --eval '(uiop:quit 0)'\nqlot exec ros build make-edm-engine.ros",
+          "shell": "bash"
+        }
+      ]
     }
   }
 }
