@@ -26,6 +26,10 @@
  (:class qlot/source/ultralisp:source-ultralisp
   :initargs (:%version :latest)
   :version "ultralisp-20260711130500"))
+("spwhitton-consfigurator" .
+ (:class qlot/source/ultralisp:source-ultralisp
+  :initargs (:%version :latest)
+  :version "ultralisp-20260711130500"))
 ("transducers" .
  (:class qlot/source/git:source-git
   :initargs (:remote-url "https://github.com/fosskers/cl-transducers.git")
