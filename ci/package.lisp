@@ -62,6 +62,26 @@ qlot exec ros run --load deploy/provision.lisp \\
   --eval '(uiop:quit 0)'
 qlot exec ros build make-edm-engine.ros")
 
+;; #35 fixed (two real bugs: a genuine timing race in
+;; FIND-WINDOW-BY-NAME, and every test being stale from before the
+;; title-screen feature existed) — 12/12 passing, confirmed across
+;; multiple runs. This is the real e2e regression net #16 was waiting
+;; on. Runs in the same job as the build step, not a separate one —
+;; it needs the same raylib provisioning that step already paid the
+;; cost for, so re-running it in an isolated job would just duplicate
+;; several minutes of raylib compilation for no reason.
+(defparameter +run-e2e-tests+
+  "export PATH=\"$PATH:$HOME/.roswell/bin\"
+sudo apt-get install -y -qq xvfb
+Xvfb :99 -screen 0 1280x1024x24 +extension XKEYBOARD &
+sleep 2
+export DISPLAY=:99
+export LIBGL_ALWAYS_SOFTWARE=1
+qlot exec ros run \\
+  --eval '(ql:quickload :edm-engine/e2e :silent t)' \\
+  --eval '(let ((r (fiveam:run (quote :edm-engine-e2e)))) (fiveam:explain! r) (unless (fiveam:results-status r) (uiop:quit 1)))' \\
+  --eval '(uiop:quit 0)'")
+
 (defworkflow ci
   :on-push-to "main"
   :on-pull-request t
@@ -74,4 +94,5 @@ qlot exec ros build make-edm-engine.ros")
                          :name "build-binary"
                          :os "ubuntu-latest"
                          :steps (list (action "Checkout Code" "actions/checkout@v4")
-                                      (sh "Provision and Build" +provision-and-build+)))))
+                                      (sh "Provision and Build" +provision-and-build+)
+                                      (sh "Run e2e Suite" +run-e2e-tests+)))))

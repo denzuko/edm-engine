@@ -40,6 +40,11 @@
           "name": "Provision and Build",
           "run": "sudo apt-get install -y -qq libacl1-dev libcap-dev sudo\nwhich ros || (curl -sL https://github.com/roswell/roswell/releases/download/v23.10.14.114/roswell_23.10.14.114-1_amd64.deb -o /tmp/roswell.deb && sudo dpkg -i /tmp/roswell.deb)\nros install sbcl-bin\nros install qlot\nexport PATH=\"$PATH:$HOME/.roswell/bin\"\nqlot install\nqlot exec ros run --load deploy/provision.lisp \\\n  --eval '(edm-engine-deploy:provision)' \\\n  --eval '(uiop:quit 0)'\nqlot exec ros build make-edm-engine.ros",
           "shell": "bash"
+        },
+        {
+          "name": "Run e2e Suite",
+          "run": "export PATH=\"$PATH:$HOME/.roswell/bin\"\nsudo apt-get install -y -qq xvfb\nXvfb :99 -screen 0 1280x1024x24 +extension XKEYBOARD &\nsleep 2\nexport DISPLAY=:99\nexport LIBGL_ALWAYS_SOFTWARE=1\nqlot exec ros run \\\n  --eval '(ql:quickload :edm-engine/e2e :silent t)' \\\n  --eval '(let ((r (fiveam:run (quote :edm-engine-e2e)))) (fiveam:explain! r) (unless (fiveam:results-status r) (uiop:quit 1)))' \\\n  --eval '(uiop:quit 0)'",
+          "shell": "bash"
         }
       ]
     }

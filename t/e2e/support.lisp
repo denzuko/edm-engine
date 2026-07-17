@@ -46,15 +46,21 @@ does not mean raylib/GLFW's own input-polling loop has started actively
 processing events yet. An XTEST key event sent immediately after this
 function returns can be lost — sent into a window that exists at the
 X11 protocol level but isn't yet pumping GetKeyPressed/PollInputEvents
-on the application side. Confirmed live: the identical key-press
-sequence reliably worked with a 1s delay inserted before SEND-KEY, and
-reliably failed without one."
+on the application side.
+
+Honest caveat, not overclaimed: this is a pragmatic mitigation (a fixed
+delay), not a guaranteed-deterministic fix — confirmed flaky under
+heavier system load (a run immediately following a from-scratch
+recompile failed with a 1.0s delay; increased to 2.0s here for more
+margin, not proven to eliminate the race entirely). A more robust fix
+(polling for actual input-readiness rather than a fixed sleep, or a
+retry-safe key-send helper) is real, unresolved follow-on scope."
   (let ((deadline (+ (get-universal-time) timeout))
         (root (xlib:screen-root (first (xlib:display-roots display)))))
     (loop
       (dolist (win (xlib:query-tree root))
         (when (ignore-errors (string= name (xlib:wm-name win)))
-          (sleep 1.0)
+          (sleep 2.0)
           (return-from find-window-by-name win)))
       (when (> (get-universal-time) deadline)
         (return-from find-window-by-name nil))
