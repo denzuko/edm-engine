@@ -121,10 +121,75 @@ Corrects #39's seat design directly (already updated). Is the concrete
 shape for #3's remaining scope (play style as a real axis, not just
 search depth). Is the properly-specified version of #12's "opponent
 dialogue/personality" line item. Composes #36 (layout) and #38
-(widgets) rather than inventing new positioning/rendering. Uses the
-event-bus shape #21/#22/#37 already establish.
+(widgets) rather than inventing new positioning/rendering. Character
+override *is* #37's stylesheet cascade mechanism, not a parallel
+system -- a character is a selector namespace, same as `(:card :back)`.
+Gives #8 a real, named second consumer (conditional behavior adjustment
+via gamerule facts), not just theoretical justification. Uses the
+event-bus shape #21/#22 already establish for dialogue triggering.
 
-## Open questions, not resolved here
+## 5. Global baseline, per-table override -- the same cascade as #37, not a separate mechanism
+
+A character's definition above (skill tier, play style, voice) is a
+*global baseline*, not a fixed, table-blind constant. Correction to
+this doc's own earlier framing: a character shouldn't need a
+completely separate override mechanism from #37's stylesheet cascade --
+it should *be* cascadable data, the same selector-plus-last-wins
+pattern, not a bespoke second system:
+
+```lisp
+(defcharacter-baseline :larry
+  :skill-tier :novice
+  :play-style :flirtatious-chatter
+  :voice (dialogue-voice ...))
+
+;; per-table override -- same DEFSTYLESHEET-style selector mechanism as #37,
+;; not a new pattern. Unspecified attributes fall back to the baseline.
+(defcharacter-override (:character :larry :table :hearts)
+  :voice (dialogue-voice :taunts (...)))   ; Hearts-specific lines
+                                            ; (references shooting-the-moon,
+                                            ; a Hearts-only event) --
+                                            ; skill-tier/play-style not
+                                            ; overridden here, inherited
+                                            ; from baseline
+```
+
+This is genuinely the same shape as a game pack overriding `(:selector
+(:card :back) ...)` in #37 -- a character is just another cascadable
+selector namespace, resolved once (at table-load time, not per frame)
+into a flat effective-character table, matching #37's own performance
+discipline exactly.
+
+### "Gamerule facts" -- the real second consumer #8 was waiting for
+
+Simple attribute override (above) covers "Larry's Hearts dialogue is
+different from his baseline." It doesn't cover *conditional* behavior
+adjustment -- "if this table has house-rule X active, an aggressive
+character's risk tolerance should shift" -- which is a genuine
+fact-plus-rule query, not a static override. This is exactly the shape
+#8 (Datalog/Prolog ruleset branch) was scoped for and has been waiting
+on a real consumer for: persistent facts (a table's active house rules,
+a character's play-style) queried by rules (how should this character's
+decision-making adjust given those facts), not a one-shot search the
+way Screamer is used for Queens' board generation.
+
+Illustrative only, not committing to #8's eventual syntax (that's its
+own scope):
+```lisp
+;; once #8's branch exists
+(assert-fact (:table-rule :hearts :no-shooting-the-moon))
+(defrule (:character-behavior :risk-tolerance)
+  (:when (:character-play-style ?c :aggressive) (:table-rule ?t :active))
+  (:then (:adjust ?c :risk-tolerance -0.2)))
+```
+
+Not designing #8's internals here -- flagging that this system is the
+concrete, real second consumer that justifies building it, the same
+way Yahtzee was the real second consumer that justified the AI-timer/
+difficulty-tier library existing as a shared thing rather than Hearts-
+specific code.
+
+
 
 - Whether unlockable characters (connecting to #38's easter-egg system
   -- a new character joins the roster as an unlock reward, matching
