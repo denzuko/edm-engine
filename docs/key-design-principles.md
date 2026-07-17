@@ -64,31 +64,83 @@ capital for multiple future titles, not scope spent on one compilation
 -- worth stating explicitly since it changes how the earlier
 architecture-to-implementation ratio concern should be read.
 
-## 2. Save/profile schema versioning -- explicit version tags, S-expression flexibility acknowledged directly
+## 2. Save/profile schema versioning -- against the real spec, correcting an earlier wrong guess
 
-Confirmed as a real, lower-cost problem than in most serialization
-formats, for a real reason: S-expression save/profile data (`save.lisp`,
-#38's `PLAYER-PROFILE`) is self-describing, not a fixed binary layout --
-a `LOAD-PRIME`-style migration function reading an old shape and
-transforming it into the current one is a genuine, proven Lisp pattern,
-not a hard problem needing new infrastructure.
+Correction, not a refinement of the earlier draft: `cispec.org` is a
+real, specific thing -- `org.cispec`, a standard label namespace for
+attesting "Change Items" (organization, hardware, software, evidence,
+credentials, anything whose state affects service delivery, cost, or
+risk), by Da Planet Security, part of the same dps-meta/cimatrix family
+already encountered this session (#27's investigation). Fetched and
+read directly rather than guessed at -- an earlier draft of this
+section incorrectly suggested `clojure.spec` as the likely reference;
+that was wrong, retracted here, not just superseded silently.
 
-**One refinement worth adding**: an explicit `:SCHEMA-VERSION` tag on
-every save/profile file, rather than inferring version from the shape
-of the data itself. Inference gets ambiguous once a few migrations have
-stacked -- a missing field could mean "written by an older version" or
-"an optional field this profile never touched," and those need
-different handling. An explicit tag makes `LOAD-PRIME` a clean dispatch
-on a known value instead of a guessing game reconstructed from absence.
+### The relevant part of the real spec, applied to save/profile data
+
+Core terms REQUIRED for conformance on any tracked Change Item:
+`organization`, `orgunit`, `owner`, `role`, `application`, `version`.
+Extended terms include `specversion` (which version of the *spec
+itself* a label set was authored against) and `checksum` (under the
+`custody-chain` category -- provenance/integrity).
+
+Not every core term maps cleanly onto a game save file, and forcing one
+that doesn't would be worse than leaving it out -- `orgunit`/`role` are
+enterprise-organizational concepts with no honest equivalent here. The
+ones that do map directly, applied as `org.cispec.*`-style tags on
+every save/profile file:
 
 ```lisp
-;; illustrative
-(defun load-prime (raw-data)
-  (case (getf raw-data :schema-version 0)  ; 0 = pre-versioning, oldest shape
-    (0 (migrate-v0-to-v1 raw-data))
-    (1 raw-data)  ; current
-    (t (error "unknown schema version"))))
+;; illustrative -- a header block on save/profile data, not the whole schema
+(:org.cispec.application "edm-engine"       ; or the specific table
+ :org.cispec.version "0.4.2"                ; the game/engine version
+                                             ; that wrote this file
+ :org.cispec.specversion "1.0"              ; which cispec spec version
+                                             ; these labels themselves
+                                             ; conform to
+ :org.cispec.owner :dwight                  ; maps directly onto #38's
+                                             ; PLAYER-PROFILE id -- a
+                                             ; save file's owner *is*
+                                             ; the profile that created it,
+                                             ; a genuinely direct fit,
+                                             ; not a stretch
+ :org.cispec.checksum "sha256:...")         ; direct answer to #9's
+                                             ; already-flagged gap --
+                                             ; no save-integrity checking
+                                             ; exists anywhere today; this
+                                             ; is the spec-aligned way to
+                                             ; express it rather than a
+                                             ; bespoke scheme
 ```
+
+### `LOAD-PRIME` as a hash-lookup handler table plus a transducers pipeline, not a growing COND
+
+With `org.cispec.version` (or a dedicated save-schema version distinct
+from the game's own version, if those ever diverge) present on every
+file, migration becomes exactly the shape asked for: a handler lookup,
+not a hand-maintained conditional that grows linearly and messily as
+versions accumulate.
+
+```lisp
+(defvar *migration-handlers* (make-hash-table :test #'equal))
+;; keyed by (from-version . to-version), one single-step transform each
+(setf (gethash '("0" . "1") *migration-handlers*) #'migrate-v0-to-v1)
+(setf (gethash '("1" . "2") *migration-handlers*) #'migrate-v1-to-v2)
+
+(defun load-prime (raw-data)
+  (let* ((from (getf raw-data :org.cispec.version))
+         (steps (migration-path from *current-version*)))  ; e.g. ("0" "1" "2")
+    (transducers:transduce
+     (transducers:map (lambda (step) (gethash step *migration-handlers*)))
+     (transducers:fold (lambda (data handler) (funcall handler data)) raw-data)
+     steps)))
+```
+
+This is a genuine third real consumer for `transducers` (#7's audit
+found exactly two prior consumers, `arena.lisp` and
+`wordle/guess.lisp`) -- composing the chain of single-step migrations
+through a version gap is precisely the shape transducers exist for,
+not a stretch application to hit a number.
 
 Not urgent at pre-alpha with no real save files yet -- worth designing
 now while it's cheap, per the same standing discipline #43 already
@@ -141,10 +193,14 @@ table.
 ## Cross-references
 
 Section 1 confirms and extends #38, #12, #39, #41, #37, #42. Section 2
-extends #9's save-system scope and #38's profile design. Section 3
-extends #42/#45's real-time protocol design. Section 4 generalizes
-#43's Wordle-specific finding into a standing rule, connects to #39,
-#41, #3.
+is grounded in the real `cispec.org`/`org.cispec` spec (Da Planet
+Security, part of the dps-meta/cimatrix family from #27) -- its
+`checksum` term directly answers #9's already-flagged save-integrity
+gap, its `owner` term maps directly onto #38's `PLAYER-PROFILE`, and
+`LOAD-PRIME`'s design gives `transducers` its third real consumer
+(#7's audit found two prior). Section 3 extends #42/#45's real-time
+protocol design. Section 4 generalizes #43's Wordle-specific finding
+into a standing rule, connects to #39, #41, #3.
 
 Not implemented -- standing principles for future work to be built
 against, not new systems requiring their own implementation.
