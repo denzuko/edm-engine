@@ -236,6 +236,70 @@ right now," the same discipline that already keeps `SCORE-ROUND` itself
 independent of a second, separately-maintained rule check (see its own
 existing docstring).
 
+### Game economics -- what actually makes this worth hunting for, not just a mechanic that exists
+
+Grounded in a specific source (Blargis' breakdown of his own roguelike
+deckbuilder's design lessons) with an explicit, important translation
+constraint stated directly: **this engine is not a roguelike and isn't
+becoming one.** There's no run structure, no permadeath, no starting
+classes -- every table here is independently playable on its own terms,
+the way it already is. What actually translates is the underlying game-
+economics reasoning about *why* a meta-progression/collectible layer
+either becomes something players hunt for, or becomes noise they never
+engage with -- not the roguelike genre trappings around it.
+
+**What translates directly:**
+
+- **Collectibles as "engine parts," not stat-sticks.** The source's
+  core point -- good build-crafting isn't upgrading one number, it's
+  giving players pieces that let them build *their own* strategy.
+  Directly reinforces this doc's own "double even hearts"/"triple
+  spades" example: collectibles should be designed to incentivize
+  *different, mutually-exclusive* play patterns per table, not a
+  single best pick every rational player converges on. A content-design
+  principle for whoever writes actual collectible effects later, not
+  an architecture change -- but worth stating explicitly so it isn't
+  lost by the time real content gets written.
+- **Synergy as the actual goal of composability**, not just a technical
+  capability. #8's fact-composition mechanism (already designed above)
+  makes multiple active collectibles combine *correctly* -- that's the
+  architecture. The design goal on top of it is combining
+  *interestingly*: collectibles worth designing in intentional pairs/
+  small families that produce emergent, discoverable combinations, not
+  just independently-authored effects that happen not to conflict.
+- **A real limit on simultaneously active collectibles -- a genuine
+  gap in the activation design above, worth adding.** Without a cap,
+  `ACTIVATE-COLLECTIBLE` degenerates into "activate everything you've
+  ever found," which is the exact failure mode the source names --
+  no real decision, just accumulation. A bounded number of active
+  slots (exact count is a balance question, not an architecture one)
+  makes "which collectibles to bring to this table" a genuine choice
+  every session, the closest translation of the source's "Build Upgrade
+  Moment" concept to a per-table (not per-run) structure.
+- **Discovery should read as earned, not random**, reinforcing the
+  source's "internal locus of control" point. #38's discovery mechanism
+  is already fact/achievement-driven (skill-based, not pure RNG) --
+  worth extending that discipline to *presentation*, not just mechanism:
+  a discovery moment should be framed as a consequence of what the
+  player just did ("you shot the moon -- a new collectible is available"),
+  not a detached notification. A UI/copywriting concern for #38's
+  widget/dialogue integration, not new architecture.
+- **Risk-mitigation as a real collectible category**, not just
+  offensive/scoring modifiers. The source's point about giving players
+  ways to prevent disaster at a cost (or revealing information that
+  lets them adapt) is a legitimate collectible *type* worth having
+  alongside pure scoring boosts once real content gets designed.
+
+**What deliberately does not translate, stated plainly so it isn't
+mistakenly imported later:**
+
+- No run structure or permadeath -- every table stays independently
+  playable exactly as designed elsewhere in this document.
+- No starting classes / procedural early-game -- not relevant to
+  turn-based tabletop games with fixed, well-known rule sets.
+- "Mitigating the slog of starting over" doesn't apply at all -- there
+  is no "starting over" in the roguelike sense here.
+
 
 
 Connects directly to #18 (arcade-state's one-cursor-field-per-screen
