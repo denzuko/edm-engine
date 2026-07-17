@@ -142,7 +142,101 @@ which is wrong regardless of the profile question.
                                ; not every frame, not machine-global
 ```
 
-## 2. Core widget/dialog system
+## 1a. Meta-progression and the collectible "effect engine" -- modeled on dwightaspencer.com's own cross-property easter-egg pattern
+
+Direct reference, verified rather than assumed: `dwightaspencer.com`'s
+own `00-hellowrld` post describes exactly this shape already in
+practice -- "thanks to Soft Serve one can find security research
+whitepapers, talks and presentations, and a few easter eggs on my
+self-hosted git repos" via SSH into a separate server (`hack.dapla.net`).
+The pattern is a *meta* discovery system spanning multiple separate
+surfaces, not one isolated page or one isolated game. Translated to
+this engine: collectibles discoverable across *any* table, not confined
+to the table where they're found, matching that cross-property spirit.
+(Noted honestly: this is the shape confirmed by that reference, not a
+claim of having explored `hack.dapla.net` itself -- designing from what
+was verified plus what was described directly.)
+
+### Rank/score progression drives discovery, via bus events like everything else
+
+Extends `PLAYER-PROFILE` (already added above) with rank/score tracking:
+
+```lisp
+(defstruct player-profile
+  ...                          ; id, display-name, unlocked-tables, stats
+  (rank 0 :type fixnum)
+  (score-total 0 :type fixnum))
+```
+
+Rank-up is a semantic event, same bus pattern as VFX (#37) and dialogue
+(#40) -- not a special case:
+```lisp
+(bus-push *engine-bus* :meta (list :rank-up profile new-rank))
+```
+
+### Collectibles are discovered via a joint query -- table facts *and* profile facts -- the real case #8 was missing
+
+A collectible's discoverability isn't just "profile rank >= N" (a
+simple threshold) or just "this table" (a simple location check) -- per
+the brief, it's *both together*: which table, what's currently true
+about the session, and what's true about the profile finding it. That's
+a genuine multi-source fact query, not a single flag check:
+
+```lisp
+(defstruct collectible
+  (id nil :type keyword)
+  (display-name "" :type string)
+  (discovery-condition nil)   ; a fact/rule query -- #8's territory
+  (effect nil))               ; what this collectible asserts when activated, see below
+```
+
+### Activation asserts a session-scoped fact; effects chain -- this is where #8 earns its keep more clearly than #40's case did
+
+The brief's own example: a collectible found once, activated
+temporarily for one table, that doubles points on even-numbered Hearts
+cards. Activating a collectible asserts a fact scoped to the current
+session, not a permanent profile change:
+
+```lisp
+(activate-collectible profile collectible-id)
+;; e.g. asserts (:active-modifier :double-even-hearts) for this session only
+```
+
+**Multiple active collectibles must compose, not just override each
+other one at a time** -- "double even hearts" and a second, different
+collectible ("triple all spades") active simultaneously both need to
+apply, correctly, to their respective cards. That's real rule
+composition across multiple simultaneously-true facts, which is exactly
+what a fact-plus-rule query engine handles cleanly and an ad hoc
+`COND`/`IF` chain in each game's scoring code does not -- the "chain
+together as an effect engine" the brief names directly is the concrete
+description of a Datalog-style query resolving multiple applicable
+rules at once, not a queue of single-effect overrides applied in
+sequence. **This is a stronger, more concrete case for #8 than #40's
+gamerule-facts example** -- #40 needed conditional adjustment of one
+value; this needs genuine composition of an open-ended number of
+simultaneously-active modifiers, which is a correctness problem a
+simple cascade (#37's last-wins model) cannot solve, not just a
+convenience #8 would add.
+
+### How a table actually queries this
+
+When Hearts computes round scoring, it queries active facts for
+applicable modifiers rather than hardcoding "if this specific
+collectible is active" checks in `SCORE-ROUND` itself:
+
+```lisp
+;; illustrative, not committing to #8's eventual query syntax
+(effective-score card base-score (active-facts-for profile :hearts))
+```
+
+Keeps game logic (`hearts/game.lisp`) ignorant of which specific
+collectibles exist -- it queries "what modifiers apply to this card
+right now," the same discipline that already keeps `SCORE-ROUND` itself
+independent of a second, separately-maintained rule check (see its own
+existing docstring).
+
+
 
 Connects directly to #18 (arcade-state's one-cursor-field-per-screen
 pattern, already flagged as not scaling) and #36 (layout DSL, which
@@ -198,6 +292,14 @@ Genuinely reusable beyond Boss Monster once a second consumer exists
 (a hypothetical shop/upgrade mechanic in a future table) -- not
 building anything beyond this shape until one does.
 
+**Distinct from collectibles (section 1a), not overlapping with them.**
+Currency is per-table, in-session, spendable within that table's own
+rules (Boss Monster's souls only mean something inside a Boss Monster
+game). Collectibles are cross-table, profile-owned, and persist between
+sessions -- a meta-progression reward, not a resource a single table's
+rules spend. A future table could use both without either concept
+needing to absorb the other's job.
+
 ## 4. Modular inventory system
 
 Labyrinth's treasure/keys are the real, first consumer. A per-player
@@ -248,7 +350,11 @@ workaround), #36 (widgets compose layout, don't duplicate it), #37
 (widgets compose the style pipeline for visuals). Revises #39's SEAT
 struct a second time (first for AI-CHARACTER per #40, now for PROFILE)
 -- both revisions are additive fields, not conflicting redesigns.
-Notes a real, unresolved follow-on for #9 (save-slot profile-scoping)
+Gives #8 its strongest case yet (section 1a) -- genuine multi-fact
+composition across simultaneously-active collectibles, a correctness
+problem #37's simple cascade cannot solve, stronger than #40's single-
+value gamerule-facts example. Notes a real, unresolved follow-on for
+#9 (save-slot profile-scoping)
 without resolving it here.
 
 Not implemented. This is the architecture and the reasoning grounding
