@@ -14,4 +14,4 @@
    #:yahtzee-game-roll-animation
    #:toggle-hold #:roll-turn-dice #:commit-score #:available-categories
    #:ai-choose-holds #:ai-choose-category
-   #:turn-over-p #:game-over-p #:winner-index #:advance-turn))
+   #:turn-over-p #:game-over-p #:winner-index #:advance-turn #:yahtzee-game-ai-difficulty))

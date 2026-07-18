@@ -71,7 +71,7 @@ each face value 1-6 — the standard arrangement on a real die.")
                              (yahtzee-game-rolls-remaining game))
                      20 16 18 (edm-engine:rgb-color (edm-engine:theme-color :info)))
   (when (/= 0 (yahtzee-game-turn game))
-    (edm-engine:draw-glyph-text (cdr (assoc edm-engine:*ai-difficulty* edm-engine:+ai-difficulty-glyphs+))
+    (edm-engine:draw-glyph-text (cdr (assoc (yahtzee-game-ai-difficulty game) edm-engine:+ai-difficulty-glyphs+))
                                  320 8 26 (edm-engine:rgb-color (edm-engine:theme-color :info))))
   (let ((display-values (if (yahtzee-game-roll-animation game)
                              (edm-engine:roll-animation-display-values

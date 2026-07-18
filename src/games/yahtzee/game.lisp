@@ -10,12 +10,17 @@
   (cursor 0 :type fixnum)
   (roll-seed 1 :type fixnum)
   (roll-animation nil)
-  (status :playing :type (member :playing :won :lost)))
+  (status :playing :type (member :playing :won :lost))
+  ;; #30's actual fix — same as HEARTS-GAME's own slot, same reasoning:
+  ;; captured at construction time while *AI-DIFFICULTY* is still
+  ;; correctly bound, not read later from the render layer.
+  (ai-difficulty :novice :type (member :novice :standard :expert)))
 
 (defun make-yahtzee-game (&key (seed 1) (player-count 4))
   (%make-yahtzee-game :player-count player-count
                        :scores (loop repeat player-count collect nil)
-                       :roll-seed seed))
+                       :roll-seed seed
+                       :ai-difficulty edm-engine:*ai-difficulty*))
 
 (defun roll-turn-dice (game)
   (when (plusp (yahtzee-game-rolls-remaining game))

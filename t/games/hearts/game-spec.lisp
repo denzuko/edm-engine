@@ -92,3 +92,17 @@
     (is (= 3 (length chosen)))
     (is (= 3 (length (remove-duplicates chosen :test #'equal))))
     (is (every (lambda (c) (member c hand :test #'equal)) chosen))))
+
+(test ai-difficulty-persists-after-the-binding-that-set-it-ends
+  "Regression test for a real, live-verified bug (#30): *AI-DIFFICULTY*
+is only LET-bound for the duration of ARCADE-CONFIRM-DIFFICULTY's
+constructor call — MAKE-HEARTS-GAME must capture it into the game's
+own slot at that moment, not read the global later once it's reverted.
+Simulates exactly the original bug scenario: construct inside a LET
+binding a non-default tier, then check the captured value *after* that
+binding's dynamic extent has closed, matching how the render layer
+reads it many frames later."
+  (let (game)
+    (let ((edm-engine:*ai-difficulty* :standard))
+      (setf game (make-hearts-game :seed 1)))
+    (is (eq :standard (hearts-game-ai-difficulty game)))))

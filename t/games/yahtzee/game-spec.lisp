@@ -99,3 +99,10 @@ arcade's running total never banked Yahtzee points at all."
     (roll-turn-dice game)
     (let ((choice (ai-choose-category (yahtzee-game-dice game) (available-categories game (yahtzee-game-turn game)))))
       (is (member choice +categories+)))))
+
+(test ai-difficulty-persists-after-the-binding-that-set-it-ends
+  "Same regression as Hearts' — #30's actual fix, verified the same way."
+  (let (game)
+    (let ((edm-engine:*ai-difficulty* :expert))
+      (setf game (make-yahtzee-game :seed 1)))
+    (is (eq :expert (yahtzee-game-ai-difficulty game)))))

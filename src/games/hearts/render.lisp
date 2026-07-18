@@ -59,7 +59,7 @@ face-down stack, not individually laid out)."
   (unless (raylib:is-sound-playing *theme-sound*)
     (raylib:play-sound *theme-sound*)))
 
-(defun draw-ai-stack (x y count label)
+(defun draw-ai-stack (x y count label difficulty)
   "A small fanned stack of face-down cards standing in for an AI's
 hand, an avatar glyph matching the chosen difficulty tier (same
 pawn/knight/queen from the difficulty-selection screen — a player
@@ -67,7 +67,7 @@ shouldn't lose that identity the moment play starts), and a card-count
 label — not just 'AI-1: 13 cards' as bare text."
   (dotimes (i (min 4 (ceiling count 4)))
     (draw-card-back (+ x (* i 4)) (+ y (* i 3))))
-  (edm-engine:draw-glyph-text (cdr (assoc edm-engine:*ai-difficulty* edm-engine:+ai-difficulty-glyphs+))
+  (edm-engine:draw-glyph-text (cdr (assoc difficulty edm-engine:+ai-difficulty-glyphs+))
                                (round (+ x 12)) (round (- y 26)) 22
                                (edm-engine:rgb-color (edm-engine:theme-color :info)))
   (raylib:draw-text (format nil "~A (~D)" label count) (round x) (round (+ y +card-height+ 8)) 14
@@ -80,9 +80,9 @@ label — not just 'AI-1: 13 cards' as bare text."
                                (second (hearts-game-scores game)) (third (hearts-game-scores game))
                                (fourth (hearts-game-scores game)))
                        20 16 18 (edm-engine:rgb-color (edm-engine:theme-color :info)))
-    (draw-ai-stack 24.0 (- cy 31.0) (length (second (hearts-game-hands game))) "AI-1")
-    (draw-ai-stack (- (/ window-width 2.0) 23.0) 40.0 (length (third (hearts-game-hands game))) "AI-2")
-    (draw-ai-stack (- window-width 70.0) (- cy 31.0) (length (fourth (hearts-game-hands game))) "AI-3")
+    (draw-ai-stack 24.0 (- cy 31.0) (length (second (hearts-game-hands game))) "AI-1" (hearts-game-ai-difficulty game))
+    (draw-ai-stack (- (/ window-width 2.0) 23.0) 40.0 (length (third (hearts-game-hands game))) "AI-2" (hearts-game-ai-difficulty game))
+    (draw-ai-stack (- window-width 70.0) (- cy 31.0) (length (fourth (hearts-game-hands game))) "AI-3" (hearts-game-ai-difficulty game))
     ;; current trick, centered — real card faces, tweened positions
     ;; while a card's animation is still running
     (loop for card in (hearts-game-current-trick game)

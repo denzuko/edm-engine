@@ -14,7 +14,16 @@
   (cursor 0 :type fixnum)
   (pass-selection nil :type list)
   (status :playing :type (member :playing :won :lost))
-  (trick-pause-until 0.0d0 :type double-float))
+  (trick-pause-until 0.0d0 :type double-float)
+  ;; #30's actual fix: *AI-DIFFICULTY* is only LET-bound for the
+  ;; duration of the constructor call (ARCADE-CONFIRM-DIFFICULTY) —
+  ;; captured here, at construction time, while it's still correctly
+  ;; bound, rather than read later from the render layer where it's
+  ;; already reverted to the global default. Interim fix, matching this
+  ;; struct's existing shape — #39's SEAT/AI-CHARACTER redesign will
+  ;; likely supersede this slot, not extend it; not blocking a real,
+  ;; live bug on a much larger unimplemented design landing first.
+  (ai-difficulty :novice :type (member :novice :standard :expert)))
 
 (defun find-two-of-clubs-holder (hands)
   (position-if (lambda (hand) (member (cons 2 :clubs) hand :test #'equal)) hands))
@@ -23,7 +32,8 @@
   (let* ((hands (deal-hands (shuffled-deck seed)))
          (direction (pass-direction-for-round round))
          (phase (if (eq direction :none) :playing :passing))
-         (game (%make-hearts-game :hands hands :round round :phase phase :scores scores)))
+         (game (%make-hearts-game :hands hands :round round :phase phase :scores scores
+                                   :ai-difficulty edm-engine:*ai-difficulty*)))
     (when (eq phase :playing)
       (let ((leader (find-two-of-clubs-holder hands)))
         (setf (hearts-game-leader game) leader (hearts-game-turn game) leader)))

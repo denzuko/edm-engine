@@ -11,5 +11,5 @@
    #:round-over-p #:score-round #:shoot-the-moon-p #:game-over-p
    #:execute-pass #:toggle-pass-selection #:move-hand-cursor #:advance-round
    #:hearts-game-cursor #:hearts-game-pass-selection #:hearts-game-status
-   #:hearts-game-trick-pause-until #:target-player
+   #:hearts-game-trick-pause-until #:target-player #:hearts-game-ai-difficulty
    #:hearts-theme-pattern #:+hearts-theme-row-duration+))
