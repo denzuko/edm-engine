@@ -58,7 +58,14 @@ runner and this sandbox — override for a different target."
 
     ;; 2. raylib itself — clone and build from source, matching the exact
     ;; sequence already verified working manually earlier this session.
-    (git:cloned "https://github.com/raysan5/raylib.git" #P"/opt/raylib/")
+    ;; Pinned to the 6.0 stable release tag, not master — a real,
+    ;; confirmed failure otherwise: master briefly had a genuine source
+    ;; bug (IsPathAbsolute redeclared static in rcore.c after already
+    ;; being declared non-static in raylib.h), caught by a real CI run
+    ;; on a fresh runner even though this session's own sandbox had an
+    ;; older, unaffected clone cached from earlier testing — the whole
+    ;; reason to pin an upstream dependency, not track its unstable tip.
+    (git:cloned "https://github.com/raysan5/raylib.git" #P"/opt/raylib/" "6.0")
     (cmd:single "sh" "-c"
                 "cd /opt/raylib && mkdir -p build && cd build && cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release .. && make && make install && ldconfig")
 
