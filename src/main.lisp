@@ -274,18 +274,24 @@ over every REGISTER-GAME entry, dispatching to the selected table's
 GAME-UPDATE/GAME-RENDER each frame. This file has no knowledge of any
 specific table — that's the whole point."
   (declare (ignore argv))
+  (installGcHook)
   (let ((swank-port (sb-ext:posix-getenv "EDM_ENGINE_SWANK_PORT")))
     (when swank-port
       (swank:create-server :port (parse-integer swank-port) :dont-close t :style :spawn)))
-  (open-window (format nil "~A" +engine-name+) 1024 768)
+  ;; #51/#50: named startup phases, not one undifferentiated cost —
+  ;; the exact "first few cycles" breakdown #50's investigation needs,
+  ;; now standing metrics instead of ad hoc measurement.
+  (wTmr "startup.window_creation"
+    (open-window (format nil "~A" +engine-name+) 1024 768))
   (unwind-protect
-       (let ((state (make-arcade-state))
+       (let ((state (wTmr "startup.arcade_state_init" (make-arcade-state)))
              (crash-count 0))
          (setf *debug-arcade-state* state)
          (loop until (window-should-close-p)
                do (handler-case
-                      (progn (arcade-update state)
-                             (arcade-render state 1024 768))
+                      (wTmr "render.frame_time"
+                        (arcade-update state)
+                        (arcade-render state 1024 768))
                     (error (c)
                       (log-crash c)
                       (incf crash-count)

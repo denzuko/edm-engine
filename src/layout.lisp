@@ -37,6 +37,18 @@ has COLS entries (each column's X) — a cell at (ROW, COL) sits at
   (values (centered-row-positions rows item-h gap-y container-h)
           (centered-row-positions cols item-w gap-x container-w)))
 
+(declaim (ftype (function (fixnum fixnum fixnum fixnum) fixnum) lrp))
+(defun lrp (base-offset index item-size gap)
+  "LRP = linear row position. BASE-OFFSET + INDEX * (ITEM-SIZE + GAP) —
+a fixed-start row, the non-centered sibling of CENTERED-ROW-POSITIONS.
+#36's second real gap named in the design doc, retrofitted against
+Hearts' HAND-CARD-X and Yahtzee's dice-row positioning, both of which
+independently duplicate this exact shape. Named per the project's
+token-golfed naming convention (docs/naming-convention.md) — called
+every frame per hand/dice-row item, a genuinely hot, frequently-
+repeated call site."
+  (+ base-offset (* index (+ item-size gap))))
+
 (declaim (ftype (function (fixnum fixnum fixnum fixnum fixnum fixnum) (values fixnum fixnum))
                 center-within))
 (defun center-within (container-x container-y container-w container-h content-w content-h)

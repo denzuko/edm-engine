@@ -36,7 +36,7 @@ never tweened, e.g. a hand card that hasn't moved)."
         (edm-engine:tween-position tw (raylib:get-time))
         (values (float default-x 1.0) (float default-y 1.0)))))
 
-(defun hand-card-x (i) (+ 20 (* i 55)))
+(defun hand-card-x (i) (edm-engine:lrp 20 i 55 0))
 (defun hand-card-y (window-height) (- window-height 90))
 
 (defun trick-card-x (window-width i) (+ (/ window-width 2.0) (* i 55) -110))

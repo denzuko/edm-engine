@@ -82,7 +82,7 @@ each face value 1-6 — the standard arrangement on a real die.")
     (loop for v in display-values
           for h in (yahtzee-game-held game)
           for i from 0
-          do (draw-die (+ 20 (* i 70)) 90 v h (= i (yahtzee-game-cursor game)))))
+          do (draw-die (edm-engine:lrp 20 i 70 0) 90 v h (= i (yahtzee-game-cursor game)))))
   (draw-scorecard game window-height)
   (raylib:draw-text "Left/Right: dice | Enter: hold | Up: roll | Down: category list | Enter on category: score"
                      20 (- window-height 30) 12 (edm-engine:rgb-color (edm-engine:theme-color :muted))))

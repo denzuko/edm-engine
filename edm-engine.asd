@@ -8,6 +8,7 @@
   :serial t
   :components ((:file "src/package")
                (:file "src/handle")
+               (:file "src/metrics")
                (:file "src/bus")
                (:file "src/arena")
                (:file "src/ruleset")
@@ -187,6 +188,7 @@ suite since it needs that plus a full raylib build."
   :serial t
   :components ((:file "t/package")
                (:file "t/handle-spec")
+               (:file "t/metrics-spec")
                (:file "t/bus-spec")
                (:file "t/arena-spec")
                (:file "t/ruleset-spec")

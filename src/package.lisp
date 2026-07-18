@@ -6,7 +6,12 @@
    ;; handle
    #:handle #:handle-index #:handle-generation #:make-handle #:handle=
    ;; bus
-   #:bus #:make-bus #:bus-topic #:bus-push #:bus-pop #:bus-try-pop #:*engine-bus*
+   #:mCounter #:mGauge #:mHist #:*metrics*
+   #:mInc #:mGaugeSet #:mObs #:mHistMean
+   #:wTmr #:clearMetrics #:mCounterValue #:mGaugeValue
+   #:mHistCount #:mHistSum #:mHistMin #:mHistMax
+   #:installGcHook #:recordGcMetrics #:dumpMetrics #:*metricsLogPath*
+   #:bus #:make-bus #:bus-topic #:bus-push #:bus-pop #:bus-try-pop #:*engine-bus* #:btd
    ;; arena
    #:arena #:make-arena #:arena-spawn #:arena-despawn #:arena-alive-p
    #:arena-position #:arena-set-position #:arena-velocity #:arena-set-velocity
@@ -37,7 +42,7 @@
    #:+render-modes+ #:*render-mode* #:toggle-render-mode
    #:lerp #:ease-out-cubic #:tween #:make-tween #:tween-position #:tween-finished-p
    #:tween-start-x #:tween-start-y #:tween-end-x #:tween-end-y #:tween-start-time #:tween-duration
-   #:centered-row-positions #:wrap-text-lines #:centered-grid-positions #:center-within
+   #:centered-row-positions #:wrap-text-lines #:centered-grid-positions #:center-within #:lrp
    #:defstylesheet #:get-style #:resolve-style-role #:*stylesheets*
    #:+die-sides+ #:roll-die #:roll-dice-n #:roll-percentile
    #:roll-animation #:make-roll-animation #:roll-animation-finished-p #:roll-animation-display-values

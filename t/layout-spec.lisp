@@ -61,3 +61,25 @@ origin."
   (multiple-value-bind (x y) (center-within 100 50 60 60 20 20)
     (is (= 120 x))
     (is (= 70 y))))
+
+;; BDD-first, per direct correction to this session's own practice:
+;; written before LINEAR-ROW-POSITION exists, expected to fail until
+;; it's implemented. This is the goal gate #20 describes, not a
+;; regression test added after the fact.
+(test linear-row-position-is-base-offset-plus-index-times-stride
+  "BASE-OFFSET + INDEX * (ITEM-SIZE + GAP) — the fixed-start, non-
+centered sibling of CENTERED-ROW-POSITIONS. Checked against the
+actual shape Hearts' HAND-CARD-X and Yahtzee's dice-row positioning
+independently duplicate: a 20px base offset, item 0 at the base,
+item N at base + N * stride."
+  (is (= 20 (lrp 20 0 55 0)))
+  (is (= 75 (lrp 20 1 55 0)))
+  (is (= 130 (lrp 20 2 55 0))))
+
+(test linear-row-position-treats-item-size-and-gap-as-one-combined-stride
+  "ITEM-SIZE and GAP are separate parameters, but their effect is
+additive -- (item-size=50, gap=5) must produce the same result as
+(item-size=55, gap=0), matching how CENTERED-ROW-POSITIONS' own
+stride math already works (ITEM-SIZE + GAP), not a different
+convention for the fixed-start sibling."
+  (is (= (lrp 20 3 55 0) (lrp 20 3 50 5))))
