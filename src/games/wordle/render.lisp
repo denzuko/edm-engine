@@ -37,18 +37,27 @@ standard raylib passthrough, loaded explicitly instead."
 
 (defun grid-origin (window-width window-height rows cols)
   "Top-left of a ROWS x COLS tile grid, centered in a WINDOW-WIDTH x
-WINDOW-HEIGHT window."
-  (let ((total-w (+ (* cols +tile-size+) (* (1- cols) +tile-gap+)))
-        (total-h (+ (* rows +tile-size+) (* (1- rows) +tile-gap+))))
-    (values (/ (- window-width total-w) 2.0)
-            (/ (- window-height total-h) 2.0))))
+WINDOW-HEIGHT window.
+
+#36's second retrofit (after Queens) — was hand-rolled 2D-centering
+math independently duplicating Queens' own version; now composes the
+shared primitive, same as Queens' QUEENS-GRID-ORIGIN was retrofitted."
+  (multiple-value-bind (row-origins col-origins)
+      (edm-engine:centered-grid-positions rows cols (round +tile-size+) (round +tile-size+)
+                                           (round +tile-gap+) (round +tile-gap+)
+                                           window-width window-height)
+    (values (float (first col-origins) 1.0) (float (first row-origins) 1.0))))
 
 (defun draw-tile (x y state letter &optional (highlight 0.0) (outcome nil) (elapsed 0.0))
   "Draws one tile. Color comes entirely from the fragment shader via the
 STATE uniform — the tile-state-to-color mapping lives in GLSL, not here.
 HIGHLIGHT (0.0-1.0) draws a fading white outline, used for the
 just-typed pulse animation. OUTCOME/ELAPSED drive the field-wide
-win/lose/tie pulse — same shader, same mechanism as tile-state color."
+win/lose/tie pulse — same shader, same mechanism as tile-state color.
+
+#36's retrofit: the letter-centering formula was the third of the
+three found duplicates (alongside Queens' mark label and queen glyph),
+now composes CENTER-WITHIN."
   (ensure-tile-shader)
   (raylib:begin-shader-mode *tile-shader*)
   (edm-engine:set-shader-int *tile-shader* *tile-state-loc* (state-code state))
@@ -65,10 +74,8 @@ win/lose/tie pulse — same shader, same mechanism as tile-state color."
     (let* ((s (string letter))
            (font-size 32)
            (tw (raylib:measure-text s font-size)))
-      (raylib:draw-text s
-                         (round (+ x (/ (- +tile-size+ tw) 2.0)))
-                         (round (+ y (/ (- +tile-size+ font-size) 2.0)))
-                         font-size :white))))
+      (multiple-value-bind (tx ty) (edm-engine:center-within (round x) (round y) (round +tile-size+) (round +tile-size+) tw font-size)
+        (raylib:draw-text s tx ty font-size :white)))))
 
 (defun draw-grid (window-width window-height rows-data
                    &key pulse-row pulse-col (pulse-fraction 0.0) outcome (elapsed 0.0))
