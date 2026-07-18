@@ -32,12 +32,13 @@
    #:+okabe-ito-orange+ #:+okabe-ito-bluish-green+ #:+okabe-ito-sky-blue+
    #:rgb-scaled
    ;; monochromatic HSV theme system (chrome only — see palette.lisp)
-   #:hsv->rgb #:rgb->hsv #:+theme-hue+ #:theme-color #:theme-hsv
+   #:hsv->rgb #:rgb->hsv #:+theme-hue+ #:theme-color #:theme-hsv #:+theme-color-roles+
    #:+theme-directions+ #:*theme-direction*
    #:+render-modes+ #:*render-mode* #:toggle-render-mode
    #:lerp #:ease-out-cubic #:tween #:make-tween #:tween-position #:tween-finished-p
    #:tween-start-x #:tween-start-y #:tween-end-x #:tween-end-y #:tween-start-time #:tween-duration
    #:centered-row-positions #:wrap-text-lines #:centered-grid-positions #:center-within
+   #:defstylesheet #:get-style #:resolve-style-role #:*stylesheets*
    #:+die-sides+ #:roll-die #:roll-dice-n #:roll-percentile
    #:roll-animation #:make-roll-animation #:roll-animation-finished-p #:roll-animation-display-values
    #:roll-animation-start-time #:roll-animation-duration #:roll-animation-final-values

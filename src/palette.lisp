@@ -103,6 +103,12 @@ real unifiedspec site has. THEME-HSV dispatches on this; its own call
 signature is unchanged, so no caller elsewhere needed touching to make
 this genuinely switchable at runtime instead of a load-time constant.")
 
+(defparameter +theme-color-roles+ '(:dim :panel :muted :accent :info)
+  "The single source of truth for THEME-HSV/THEME-COLOR's valid ROLE
+values — also what #37's DEFSTYLESHEET macro validates (:role ...)
+tokens against at macro-expansion time, so a typo'd role is a compile
+error there too, not a runtime EBASE-CASE failure.")
+
 (declaim (ftype (function ((member :dim :panel :muted :accent :info))
                           (values single-float single-float single-float)) theme-hsv))
 (defun theme-hsv (role)
