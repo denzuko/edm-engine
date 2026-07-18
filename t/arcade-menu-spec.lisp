@@ -9,6 +9,21 @@
     (arcade-select-next-main-menu state)
     (is (= 0 (arcade-state-main-menu-index state)))))
 
+(test log-crash-writes-a-readable-entry-without-erroring
+  "Regression coverage for #23 (the error boundary) — LOG-CRASH itself
+should never become a second failure on top of the one it's logging,
+and what it writes should actually be useful for debugging, not just
+'something happened'."
+  (let* ((temp-path (merge-pathnames (format nil "edm-engine-crash-test-~A.log" (random 1000000))
+                                      (uiop:temporary-directory)))
+         (edm-engine::*crash-log-path* temp-path))
+    (unwind-protect
+         (progn
+           (edm-engine::log-crash (make-condition 'simple-error :format-control "spec test condition"))
+           (is (probe-file temp-path))
+           (is (search "spec test condition" (uiop:read-file-string temp-path))))
+      (ignore-errors (delete-file temp-path)))))
+
 (test drill-into-tables-enters-tables-mode
   (let ((state (make-arcade-state)))
     (setf (arcade-state-main-menu-index state) 0)

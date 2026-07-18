@@ -25,7 +25,7 @@
    #:*save-slot-count* #:*save-directory*
    #:save-slot-data-path #:save-slot-screenshot-path #:ensure-save-directory
    #:save-game-to-slot #:load-game-from-slot #:delete-save-slot
-   #:list-save-slots #:format-save-timestamp
+   #:list-save-slots #:format-save-timestamp #:log-crash #:*crash-log-path*
    ;; palette (chrome tokens + Okabe-Ito for functional state color)
    #:+color-dim+ #:+color-panel+ #:+color-brand-green+ #:+color-brand-green2+
    #:+color-amber+ #:+color-red+

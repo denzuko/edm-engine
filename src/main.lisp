@@ -253,6 +253,15 @@ actual tokens — see src/palette.lisp), not a flat CLEAR-BACKGROUND."
 EDM_ENGINE_SWANK_PORT is set — read-only from another thread (GL calls
 from a non-main thread are unsafe; don't draw with this, just inspect).")
 
+(defparameter *max-crashes-per-session* 20
+  "A safeguard against an infinite crash-loop: if the SAME class of bug
+fires every single frame (e.g. a bug in a table's GAME-RENDER that
+reproduces even against a freshly-reset ARCADE-STATE), resetting state
+and continuing wouldn't actually recover anything — it would spam the
+crash log at up to 60 times a second and never surface the problem to
+the player. Past this many crashes in one session, MAIN exits with a
+clear message instead of continuing to loop.")
+
 (defun main (&rest argv)
   "Boots the arcade: a main menu (Tables / Engine Options / Save-Load)
 over every REGISTER-GAME entry, dispatching to the selected table's
@@ -264,10 +273,29 @@ specific table — that's the whole point."
       (swank:create-server :port (parse-integer swank-port) :dont-close t :style :spawn)))
   (open-window (format nil "~A" +engine-name+) 1024 768)
   (unwind-protect
-       (let ((state (make-arcade-state)))
+       (let ((state (make-arcade-state))
+             (crash-count 0))
          (setf *debug-arcade-state* state)
          (loop until (window-should-close-p)
-               do (arcade-update state)
-                  (arcade-render state 1024 768)))
+               do (handler-case
+                      (progn (arcade-update state)
+                             (arcade-render state 1024 768))
+                    (error (c)
+                      (log-crash c)
+                      (incf crash-count)
+                      (when (> crash-count *max-crashes-per-session*)
+                        (format *error-output*
+                                "~&PARENCADE: too many errors this session (see ~A) — exiting rather than loop indefinitely.~%"
+                                *crash-log-path*)
+                        (return))
+                      ;; a bug anywhere in any table's GAME-UPDATE/
+                      ;; GAME-RENDER should never take down the whole
+                      ;; session — recover to a fresh, known-good state
+                      ;; (not attempt to salvage the one that just
+                      ;; errored, which could be partially mutated) and
+                      ;; keep playing, rather than crash to desktop with
+                      ;; total progress loss.
+                      (setf state (make-arcade-state))
+                      (setf *debug-arcade-state* state)))))
     (close-window))
   (uiop:quit 0))

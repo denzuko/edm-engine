@@ -71,3 +71,25 @@ separately, only for the currently-highlighted slot."
   (multiple-value-bind (sec min hour date month year) (decode-universal-time universal-time)
     (declare (ignore sec))
     (format nil "~4,'0D-~2,'0D-~2,'0D ~2,'0D:~2,'0D" year month date hour min)))
+
+;;; Crash logging for #23's error boundary. Pure file I/O, no raylib
+;;; dependency — belongs here (tested, pure) rather than main.lisp
+;;; (untested-by-design render/entry-point layer), matching the same
+;;; discipline that already keeps this file's save/load logic separate
+;;; from arcade.lisp's UI-driving code.
+
+(defparameter *crash-log-path*
+  (merge-pathnames ".parencade-saves/crash.log" (user-homedir-pathname))
+  "Sibling to *SAVE-DIRECTORY*, not inside it — a crash log is
+diagnostic data, not game state.")
+
+(defun log-crash (condition)
+  "Best-effort — a failure to write the crash log itself should never
+become a second, more confusing failure on top of the one it's
+logging."
+  (ignore-errors
+    (ensure-directories-exist *crash-log-path*)
+    (with-open-file (out *crash-log-path* :direction :output
+                                           :if-exists :append
+                                           :if-does-not-exist :create)
+      (format out "~&[~A] ~A~%" (get-universal-time) condition))))
