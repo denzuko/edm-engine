@@ -142,11 +142,107 @@ but real prerequisite before any of category 1a's effects can exist.
   water-ripple, a screen-wave radiating from an impact point). Real
   consumer: a Labyrinth dragon-encounter effect, or a Boss Monster
   room-destroyed effect.
-- **Dissolve & erosion** -- noise-driven alpha-threshold reveal/hide,
-  the "materializing" or "burning away" transition. Real consumer: a
-  Labyrinth cell transitioning from fogged to discovered (dissolving
-  the fog rather than an instant pop), or a defeated Boss Monster hero
-  card dissolving away.
+- **Dissolve & erosion** -- specced precisely below (a three-phase
+  HSV-space burn/dissolve, not the generic noise-threshold sketch an
+  earlier draft of this entry left vague). Real consumer: a Labyrinth
+  cell transitioning from fogged to discovered (dissolving the fog
+  rather than an instant pop), a defeated Boss Monster hero card
+  dissolving away, or a future block/row-clear mechanic modeled
+  directly on this entry's own reference case.
+
+### Dissolve shader, precisely specced -- modeled on Sega Genesis arcade Tetris's row-clear flash
+
+Direct reference: the classic effect where a completed row flashes
+(a bright, inverted "burn") then visibly dissolves before the rows
+above drop to fill the gap -- not decoration, the actual mechanic that
+told the player a line was clearing. Genuinely applicable beyond a
+future Tetris-shaped table -- this project's assets are already
+generic HSV monochromatic objects (the whole theme system is hue-
+driven, `PALETTE.LISP`), so this is a primitive any graphic asset in
+the pipeline can use via #45's effect-sequence DSL, not a Tetris-
+specific effect that happens to be reusable.
+
+**The exact math**, `tt` = `t/t_max` (normalized, matching #45's own
+`RAW-TT` convention exactly):
+
+- **`tt < 0.1`** ("burn mask"): the object's own texture color,
+  converted to HSV, gets fully inverted -- hue shifted 180° (`+0.5`
+  mod `1.0` in normalized hue space), saturation and value both
+  `1.0 - x`. RGB tinting is bypassed entirely for this phase -- the
+  shader samples the object's real texture and works in HSV space
+  derived from it, not from any applied theme tint.
+- **`0.1 <= tt < 0.2`**: the inversion mask is disabled -- HSV reverts
+  to the sampled, unmodified value. A single brief strobe (invert, then
+  immediately normal), not a repeating oscillation -- matching the
+  precise two-window timing rather than a generic "flash effect."
+- **`0.2 <= tt <= 1.0`**: `V` (the sampled/reverted value from the
+  prior phase) has `tt` itself subtracted from it, clamped to `0.0` --
+  progressively darkens as `tt` approaches `1.0`, reaching black
+  regardless of the object's original brightness. This is the actual
+  "dissolve" -- not an alpha fade, a value collapse in HSV space.
+- **At `t_max` (+ one tick)**: the effect's own scope ends here --
+  `EFFECT-FINISHED-P` (per #37's protocol) reports true, and whatever
+  triggered the dissolve (a Tetris-shaped row-clear, a Boss Monster
+  hero's defeat) proceeds with its own game-logic consequence (delete
+  the tiles, drop the row) -- the shader's job is the visual, not the
+  game-state mutation that follows it.
+
+**Illustrative c-mera shader sketch** -- a genuine new requirement this
+surfaces: no existing shader in this codebase converts RGB *to* HSV
+(`TOOLS/HSV-SHADER-LIB.LISP` only generates the HSV*->*RGB direction,
+`chrome.fs`/`cell.fs`'s whole job). This shader needs both directions,
+since it samples a real texture rather than generating flat color from
+uniforms the way the existing two shaders do -- worth flagging as new
+shared shader-library surface, not just a new shader file:
+
+```lisp
+;; illustrative — not verified to compile via c-mera, a design sketch
+;; matching this codebase's established shader syntax, same caveat
+;; every DSL sketch in #37/#45 already carries
+(decl ((in vec2 |fragTexCoord|)))
+(decl ((uniform sampler2D texture0)))  ; the object's own sprite/tile
+(decl ((uniform float tt)))            ; t/t_max, 0..1, from #45's tween
+(decl ((out vec4 |finalColor|)))
+
+;; new: RGB->HSV, the direction TOOLS/HSV-SHADER-LIB.LISP doesn't have yet
+(function rgb-to-hsv ((vec3 c)) -> vec3 ...)
+
+(function main nil -> void
+  (decl ((vec4 tex (texture texture0 |fragTexCoord|))))
+  (decl ((vec3 hsv (call rgb-to-hsv (: tex xyz)))))
+  (if (< tt 0.1)
+      (progn (set (: hsv x) (mod (+ (: hsv x) 0.5) 1.0))
+             (set (: hsv y) (- 1.0 (: hsv y)))
+             (set (: hsv z) (- 1.0 (: hsv z))))
+      (if (>= tt 0.2)
+          (set (: hsv z) (max 0.0 (- (: hsv z) tt)))))
+      ;; 0.1 <= tt < 0.2: HSV stays as sampled, no branch needed
+  (set |finalColor| (vec4 (call hsv-to-rgb hsv) (: tex w))))
+```
+
+**CPU-mode fallback, designed alongside the shader per #46's own
+standing rule, not deferred**: the three-phase logic is pure per-pixel
+math with no GPU-specific requirement -- a CPU-mode equivalent applies
+the identical phase logic to a `Color` value directly (via raylib's
+`ColorToHSV`/`ColorFromHSV`, matching the shader's RGB<->HSV round
+trip) before drawing, rather than a shader pass. Same visual result,
+different execution path, exactly the discipline this taxonomy already
+commits to for every category 2-4 effect.
+
+**DSL integration** -- the actual point of specifying this precisely,
+per direct request: a named primitive #45's `DEFEFFECT-SEQUENCE`/
+`DEFEFFECT-STATE` can reference by name, not a one-off shader bolted
+onto a single table:
+
+```lisp
+;; illustrative — a row-clear effect chaining this primitive
+(defeffect-sequence :row-cleared
+  (:trigger :event :row-cleared)
+  (:dissolve :target :cleared-row :duration (:space 4)))  ; t_max in
+                                                            ; the shared
+                                                            ; timing scale
+```
+
 
 ## Category 4: screen transitions (distinct from category 3's per-object effects)
 
@@ -193,7 +289,13 @@ for every shader-driven effect). Real named consumers drawn from #34
 (win overlay/confetti, now also camera zoom), #38 (widget blur/glow), #39 (join-flow pulse),
 #42 (Labyrinth fog-of-war dissolve/vignette, Boss Monster distortion),
 #45 (Door Dasher shake/chromatic-aberration/flash, fade as the proven
-transition case).
+transition case). The dissolve shader spec surfaces a genuine new
+requirement for `TOOLS/HSV-SHADER-LIB.LISP`: an RGB->HSV direction,
+which doesn't exist yet (the library only generates HSV->RGB, all
+`chrome.fs`/`cell.fs` have ever needed) -- worth scoping as shared
+shader-library work before or alongside whoever builds this specific
+effect, not duplicated per-shader if a second consumer needing the
+same direction shows up.
 
 Not implemented. Flash, oscillate/pulse-generalized, and shake are the
 cheapest to build first (CPU-side or trivial shader extensions of
