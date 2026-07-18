@@ -50,28 +50,41 @@ why this isn't a same-named per-shader-pack .vs file."
        (raylib:draw-text (format nil "~D" region-id) (round (+ x 4)) (round (+ y 4)) 12 line-color)))))
 
 (defun queens-grid-origin (window-width window-height size)
-  (let ((total (+ (* size +cell-size+) (* (1- size) +cell-gap+))))
-    (values (/ (- window-width total) 2.0) (/ (- window-height total) 2.0))))
+  "#36's first real retrofit — was hand-rolled 2D-centering math
+duplicating what Wordle independently reimplements too; now composes
+the shared primitive. Only the origin (row 0, col 0) is needed here,
+not the full per-cell list — CENTERED-GRID-POSITIONS still returns
+every row/col origin, matching CENTERED-ROW-POSITIONS' own 'list of
+positions' convention, but DRAW-QUEENS-BOARD's loop only needs the
+first of each."
+  (multiple-value-bind (rows cols)
+      (edm-engine:centered-grid-positions size size (round +cell-size+) (round +cell-size+)
+                                           (round +cell-gap+) (round +cell-gap+)
+                                           window-width window-height)
+    (values (float (first cols) 1.0) (float (first rows) 1.0))))
 
 (defun draw-cell-glyph (game x y row col conflicts)
   "The 'miss-placed X' and queen states both need real visual feedback:
 a mark shows a plain X, a queen shows the crown glyph — tinted red if
 QUEENS-CONFLICTS flags it, so a conflicting placement is genuinely
-visible, not just silently non-advancing."
+visible, not just silently non-advancing.
+
+#36's retrofit: both branches previously hand-rolled the identical
+'center this glyph within the cell' formula (the same one Wordle's
+letter tile also duplicated) — now composes CENTER-WITHIN."
   (ecase (cell-state game row col)
     (:empty nil)
     (:marked
      (let* ((label "X") (font-size 26) (tw (raylib:measure-text label font-size)))
-       (raylib:draw-text label (round (+ x (/ (- +cell-size+ tw) 2.0)))
-                          (round (+ y (/ (- +cell-size+ font-size) 2.0)))
-                          font-size (edm-engine:rgb-color (edm-engine:theme-color :muted)))))
+       (multiple-value-bind (tx ty) (edm-engine:center-within (round x) (round y) (round +cell-size+) (round +cell-size+) tw font-size)
+         (raylib:draw-text label tx ty font-size (edm-engine:rgb-color (edm-engine:theme-color :muted))))))
     (:queen
      (let* ((font-size 30)
             (tw (edm-engine:glyph-text-width +queen-glyph+ font-size))
             (conflicted (member (cons row col) conflicts :test #'equal)))
-       (edm-engine:draw-glyph-text +queen-glyph+ (round (+ x (/ (- +cell-size+ tw) 2.0)))
-                          (round (+ y (/ (- +cell-size+ font-size) 2.0)))
-                          font-size (if conflicted (edm-engine:rgb-color edm-engine:+color-red+) :black))))))
+       (multiple-value-bind (tx ty) (edm-engine:center-within (round x) (round y) (round +cell-size+) (round +cell-size+) tw font-size)
+         (edm-engine:draw-glyph-text +queen-glyph+ tx ty font-size
+                                      (if conflicted (edm-engine:rgb-color edm-engine:+color-red+) :black)))))))
 
 (defun draw-queens-board (game window-width window-height)
   (let* ((board (queens-game-board game))
