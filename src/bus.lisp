@@ -29,3 +29,11 @@ on first reference."
 (defun bus-try-pop (bus topic)
   "Non-blocking receive. Returns (values value received-p)."
   (chanl:recv (bus-topic bus topic) :blockp nil))
+
+(defparameter *engine-bus* (make-bus)
+  "The one bus instance every consumer shares — #22's async theme
+generation is its first real consumer, not a scaffolded placeholder.
+Eagerly created at load time (cheap — an empty hash table, no real
+resources allocated until a topic is actually used), rather than
+lazily constructed in MAIN, so every game's render layer can reference
+it directly without threading a bus argument through every call site.")

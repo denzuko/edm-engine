@@ -6,7 +6,7 @@
    ;; handle
    #:handle #:handle-index #:handle-generation #:make-handle #:handle=
    ;; bus
-   #:bus #:make-bus #:bus-topic #:bus-push #:bus-pop #:bus-try-pop
+   #:bus #:make-bus #:bus-topic #:bus-push #:bus-pop #:bus-try-pop #:*engine-bus*
    ;; arena
    #:arena #:make-arena #:arena-spawn #:arena-despawn #:arena-alive-p
    #:arena-position #:arena-set-position #:arena-velocity #:arena-set-velocity

@@ -48,3 +48,35 @@ overwriting the others."
   (let* ((one-channel (render-pattern (list (list (cons 0 :sine))) 0.05 :sample-rate 1000))
          (two-channel (render-pattern (list (list (cons 0 :sine) (cons 12 :sine))) 0.05 :sample-rate 1000)))
     (is (not (equalp one-channel two-channel)))))
+
+(test theme-playback-decision-cache-hit-wins-regardless-of-other-state
+  "A cache hit should short-circuit everything else — even if a stale
+PENDING flag or a leftover bus message somehow exist, an already-
+cached sound should just play, not re-trigger async work."
+  (is (eq :play-cached (theme-playback-decision t nil nil)))
+  (is (eq :play-cached (theme-playback-decision t t t))))
+
+(test theme-playback-decision-starts-async-work-exactly-once
+  "No cache, nothing pending yet — start the async task. This is the
+branch that must fire only once per key, not the state machine's own
+job (ENSURE-THEME-SOUND-ASYNC's caller sets the PENDING flag before
+this decision is next consulted for the same key)."
+  (is (eq :start-async (theme-playback-decision nil nil nil))))
+
+(test theme-playback-decision-waits-while-pending-and-not-ready
+  (is (eq :wait (theme-playback-decision nil t nil))))
+
+(test theme-playback-decision-wraps-and-plays-once-samples-arrive
+  (is (eq :wrap-and-play (theme-playback-decision nil t t))))
+
+(test render-pattern-async-produces-the-same-samples-as-the-synchronous-version
+  "A real integration test, not just the pure decision logic — kicks
+off the actual LPARALLEL/bus pipeline and confirms it genuinely
+delivers the same PCM data RENDER-PATTERN would produce synchronously,
+not just that some samples arrive."
+  (let* ((pattern (list (list (cons 0 :sine))))
+         (bus (edm-engine:make-bus))
+         (expected (render-pattern pattern 0.05 :sample-rate 44100)))
+    (render-pattern-async pattern 0.05 bus :test-theme :amplitude 0.5)
+    (let ((actual (edm-engine:bus-pop bus :test-theme)))
+      (is (equalp expected actual)))))

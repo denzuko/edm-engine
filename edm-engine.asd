@@ -26,6 +26,7 @@
   :description "Pure on-the-fly waveform sample generation and tracker-style
 pattern sequencing. No raylib, no I/O — this is what the generative audio
 DSL is for, not pre-recorded samples."
+  :depends-on ("edm-engine/core")
   :serial t
   :components ((:file "src/audio/package")
                (:file "src/audio/tone")
@@ -34,7 +35,7 @@ DSL is for, not pre-recorded samples."
 (defsystem "edm-engine/audio"
   :description "raylib playback boundary for generated tones. Untested I/O,
 same convention as render.lisp."
-  :depends-on ("edm-engine/audio/tone" "cl-raylib" "cffi")
+  :depends-on ("edm-engine/audio/tone" "edm-engine/core" "cl-raylib" "cffi")
   :components ((:file "src/audio/playback")))
 
 (defsystem "edm-engine/audio/tests"

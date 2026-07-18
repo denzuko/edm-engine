@@ -52,11 +52,19 @@ face-down stack, not individually laid out)."
     (3 (values (- window-width 70.0) (- (/ window-height 2.0) 31.0)))))
 
 (defun ensure-theme-playing ()
+  "#22: non-blocking. The old PATTERN-SOUND call synchronously paid
+RENDER-PATTERN's measured 44ms cost on the frame it was first needed
+— a real, measured hitch. ENSURE-THEME-SOUND-ASYNC returns NIL every
+frame until the background task delivers samples via the shared bus;
+until then this plays nothing (silence, a better UX than a hitch) and
+tries again next frame — a cache hit after the first successful
+generation returns the sound immediately, same as before."
   (unless *theme-sound*
     (setf *theme-sound*
-          (edm-engine/audio:pattern-sound (hearts-theme-pattern) +hearts-theme-row-duration+
-                                           :amplitude 0.3)))
-  (unless (raylib:is-sound-playing *theme-sound*)
+          (edm-engine/audio:ensure-theme-sound-async
+           (hearts-theme-pattern) +hearts-theme-row-duration+
+           edm-engine:*engine-bus* :hearts-theme :amplitude 0.3)))
+  (when (and *theme-sound* (not (raylib:is-sound-playing *theme-sound*)))
     (raylib:play-sound *theme-sound*)))
 
 (defun draw-ai-stack (x y count label difficulty)

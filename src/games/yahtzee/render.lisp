@@ -34,11 +34,13 @@ each face value 1-6 — the standard arrangement on a real die.")
 (defparameter +yahtzee-ai-think-seconds+ 0.9d0)
 
 (defun ensure-theme-playing ()
+  "#22: non-blocking — see Hearts' identical comment."
   (unless *theme-sound*
     (setf *theme-sound*
-          (edm-engine/audio:pattern-sound (yahtzee-theme-pattern) +yahtzee-theme-row-duration+
-                                           :amplitude 0.3)))
-  (unless (raylib:is-sound-playing *theme-sound*)
+          (edm-engine/audio:ensure-theme-sound-async
+           (yahtzee-theme-pattern) +yahtzee-theme-row-duration+
+           edm-engine:*engine-bus* :yahtzee-theme :amplitude 0.3)))
+  (when (and *theme-sound* (not (raylib:is-sound-playing *theme-sound*)))
     (raylib:play-sound *theme-sound*)))
 
 (defun category-label (category)

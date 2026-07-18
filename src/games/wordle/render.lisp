@@ -100,14 +100,16 @@ pulse across every tile."
 (defvar *theme-sound* nil)
 
 (defun ensure-theme-playing ()
-  "Same mechanism as Queens' ENSURE-THEME-PLAYING — PATTERN-SOUND is
-cached, poll IS-SOUND-PLAYING each frame and re-trigger when the loop
-finishes."
+  "#22: non-blocking — see Hearts' identical comment. The measured 44ms
+RENDER-PATTERN hitch this was originally flagged against (this table's
+own audio glitch) is what this retrofit actually fixes, not just
+Hearts'."
   (unless *theme-sound*
     (setf *theme-sound*
-          (edm-engine/audio:pattern-sound (wordle-theme-pattern) +wordle-theme-row-duration+
-                                           :amplitude 0.3)))
-  (unless (raylib:is-sound-playing *theme-sound*)
+          (edm-engine/audio:ensure-theme-sound-async
+           (wordle-theme-pattern) +wordle-theme-row-duration+
+           edm-engine:*engine-bus* :wordle-theme :amplitude 0.3)))
+  (when (and *theme-sound* (not (raylib:is-sound-playing *theme-sound*)))
     (raylib:play-sound *theme-sound*)))
 
 (defmethod edm-engine:game-update ((game wordle-game))

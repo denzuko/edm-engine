@@ -44,3 +44,40 @@ one-shot blips."
                                :element-type '(signed-byte 16) :initial-element 0))))
            pattern)))
     (apply #'concatenate '(simple-array (signed-byte 16) (*)) row-buffers)))
+
+;;; #22's async theme-generation state machine — pure, no raylib/bus/
+;;; lparallel dependency, belongs here (tested) rather than
+;;; PLAYBACK.LISP (untested I/O boundary), same discipline that moved
+;;; #23's LOG-CRASH into the tested core.
+
+;;; #22's async theme-generation machinery — pure, no raylib dependency,
+;;; belongs here (tested) rather than PLAYBACK.LISP (untested I/O
+;;; boundary), same discipline that moved #23's LOG-CRASH into the
+;;; tested core. Needs EDM-ENGINE/CORE for BUS-PUSH/ENSURE-KERNEL —
+;;; still "no raylib, no I/O" per this system's own description; CHANL/
+;;; LPARALLEL are in-process concurrency, not display/audio I/O.
+
+(defun render-pattern-async (pattern row-duration bus topic &key (amplitude 0.5))
+  "Non-blocking. Kicks off an LPARALLEL task computing RENDER-PATTERN
+(the measured 44ms DSP cost, no raylib dependency) on a worker thread,
+and BUS-PUSHes the finished sample array onto TOPIC when done. Never
+touches raylib itself — that stays on whichever thread calls
+ENSURE-THEME-SOUND-ASYNC (PLAYBACK.LISP), matching the verified split
+between the two halves of the old synchronous PATTERN-SOUND."
+  (edm-engine:ensure-kernel)
+  (lparallel:future
+    (edm-engine:bus-push bus topic
+                          (render-pattern pattern (float row-duration 1.0)
+                                           :amplitude (float amplitude 1.0)))))
+
+(defun theme-playback-decision (cache-hit-p pending-p samples-ready-p)
+  "The pure state machine driving ENSURE-THEME-SOUND-ASYNC
+(PLAYBACK.LISP), factored out here so it has real FiveAM coverage
+rather than being buried in bus/lparallel/raylib I/O. Given the three
+boolean facts about a theme's current state, returns one of
+:PLAY-CACHED / :START-ASYNC / :WRAP-AND-PLAY / :WAIT."
+  (cond
+    (cache-hit-p :play-cached)
+    ((not pending-p) :start-async)
+    (samples-ready-p :wrap-and-play)
+    (t :wait)))

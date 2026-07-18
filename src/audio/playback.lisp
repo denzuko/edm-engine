@@ -64,3 +64,37 @@ machinery, sequenced. This is the music engine: no separate synth path,
 no pre-recorded instrument samples, the exact same on-the-fly waveform
 generation UI SFX use."
   (raylib:play-sound (pattern-sound pattern row-duration :amplitude amplitude)))
+
+;;; #22 — async theme generation via the bus + lparallel, restoring the
+;;; originally-intended CSP architecture (#21) rather than blocking the
+;;; main thread for the measured 44ms RENDER-PATTERN cost on first play.
+
+(defvar *pattern-pending* (make-hash-table :test #'equal)
+  "Keys currently being computed by a background task — presence here
+means 'don't start a second task for this key', not that the samples
+are ready yet.")
+
+(defun ensure-theme-sound-async (pattern row-duration bus topic &key (amplitude 0.5))
+  "Non-blocking replacement for PATTERN-SOUND's compute step — returns
+the cached/ready raylib Sound, or NIL if generation is still in
+flight (silence, not a blocking hitch, until it's ready — a better UX
+than the old behavior, not just a performance fix). Safe to call every
+frame; a cache hit or an already-pending key never starts a second
+async task."
+  (ensure-audio-device)
+  (let* ((key (list pattern row-duration amplitude))
+         (cache-hit-p (nth-value 1 (gethash key *pattern-cache*)))
+         (pending-p (gethash key *pattern-pending*))
+         samples ready-p)
+    (when (and pending-p (not cache-hit-p))
+      (multiple-value-setq (samples ready-p) (edm-engine:bus-try-pop bus topic)))
+    (ecase (theme-playback-decision cache-hit-p pending-p ready-p)
+      (:play-cached (gethash key *pattern-cache*))
+      (:start-async
+       (setf (gethash key *pattern-pending*) t)
+       (render-pattern-async pattern row-duration bus topic :amplitude amplitude)
+       nil)
+      (:wrap-and-play
+       (remhash key *pattern-pending*)
+       (setf (gethash key *pattern-cache*) (samples->raylib-sound samples)))
+      (:wait nil))))

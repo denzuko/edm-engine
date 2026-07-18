@@ -20,10 +20,16 @@ the tables list."
 
 (defvar *title-theme-sound* nil)
 (defun ensure-title-theme-playing ()
+  "#22: non-blocking — see Hearts' identical comment. The title screen
+is the very first thing every player sees; a 44ms synchronous hitch
+here was the worst possible place for it, not just an inconvenience on
+some other table."
   (unless *title-theme-sound*
     (setf *title-theme-sound*
-          (edm-engine/audio:pattern-sound (title-theme-pattern) +title-theme-row-duration+ :amplitude 0.3)))
-  (unless (raylib:is-sound-playing *title-theme-sound*)
+          (edm-engine/audio:ensure-theme-sound-async
+           (title-theme-pattern) +title-theme-row-duration+
+           *engine-bus* :title-theme :amplitude 0.3)))
+  (when (and *title-theme-sound* (not (raylib:is-sound-playing *title-theme-sound*)))
     (raylib:play-sound *title-theme-sound*)))
 
 (defun draw-section-title (text)

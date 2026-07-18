@@ -97,16 +97,17 @@ visible, not just silently non-advancing."
 (defvar *theme-sound* nil)
 
 (defun ensure-theme-playing ()
-  "PATTERN-SOUND is cached (CACHED-OR-COMPUTE, in playback.lisp) — this
-gets the same Sound object every call, not a fresh render each time.
-Polling IS-SOUND-PLAYING and re-triggering PLAY-SOUND when it's false
-is how looping works without raylib's separate Music-streaming API,
-which this engine doesn't use anywhere else."
+  "#22: non-blocking — see Hearts' identical comment. Polling
+IS-SOUND-PLAYING and re-triggering PLAY-SOUND when it's false is
+unchanged, still how looping works without raylib's separate Music-
+streaming API; only the compute step (once cached, PATTERN-SOUND's own
+job before) is now async."
   (unless *theme-sound*
     (setf *theme-sound*
-          (edm-engine/audio:pattern-sound (queens-theme-pattern) +queens-theme-row-duration+
-                                           :amplitude 0.3)))
-  (unless (raylib:is-sound-playing *theme-sound*)
+          (edm-engine/audio:ensure-theme-sound-async
+           (queens-theme-pattern) +queens-theme-row-duration+
+           edm-engine:*engine-bus* :queens-theme :amplitude 0.3)))
+  (when (and *theme-sound* (not (raylib:is-sound-playing *theme-sound*)))
     (raylib:play-sound *theme-sound*)))
 
 (defmethod edm-engine:game-update ((game queens-game))
