@@ -138,7 +138,12 @@ the item list comes from ARCADE-POPUP-ITEMS, driven by GAME-OUTCOME."
   (let* ((game (arcade-state-current-game state))
          (items (arcade-popup-items game))
          (outcome (game-outcome game)))
-    (raylib:draw-rectangle 0 0 window-width window-height (rgb-color (theme-color :panel) 200))
+    ;; #54: was alpha 200 (semi-transparent) — the underlying table's
+    ;; content (scorecard text, dice, cards) bled through visibly
+    ;; behind the popup's own text, reported directly as "all elements
+    ;; overlaying at once." Fully opaque now — readability over a
+    ;; subtle see-through-backdrop effect when the two conflict.
+    (raylib:draw-rectangle 0 0 window-width window-height (rgb-color (theme-color :panel) 255))
     (when outcome
       (let* ((label (ecase outcome (:win "YOU WON") (:lose "YOU LOST") (:tie "TIE GAME")))
              (tw (raylib:measure-text label 44)))
