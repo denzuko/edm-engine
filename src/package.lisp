@@ -44,6 +44,7 @@
    #:tween-start-x #:tween-start-y #:tween-end-x #:tween-end-y #:tween-start-time #:tween-duration
    #:centered-row-positions #:wrap-text-lines #:centered-grid-positions #:center-within #:lrp
    #:defstylesheet #:get-style #:resolve-style-role #:*stylesheets*
+   #:pulseVal #:ese #:clearEse #:*ese*
    #:+die-sides+ #:roll-die #:roll-dice-n #:roll-percentile
    #:roll-animation #:make-roll-animation #:roll-animation-finished-p #:roll-animation-display-values
    #:roll-animation-start-time #:roll-animation-duration #:roll-animation-final-values

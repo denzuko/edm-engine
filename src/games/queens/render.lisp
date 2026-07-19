@@ -89,15 +89,27 @@ letter tile also duplicated) — now composes CENTER-WITHIN."
 (defun draw-queens-board (game window-width window-height)
   (let* ((board (queens-game-board game))
          (size (queens-board-size board))
-         (elapsed (raylib:get-time))
-         (conflicts (queens-conflicts game)))
+         (conflicts (queens-conflicts game))
+         (cursor-row (queens-game-cursor-row game))
+         (cursor-col (queens-game-cursor-col game))
+         ;; #37's DEFEFFECT-STATE generalization, proven against this
+         ;; exact cell — ESE tracks time since the cursor most recently
+         ;; entered ITS CURRENT CELL, not raw wall-clock, so the pulse
+         ;; starts fresh on every cursor move rather than staying
+         ;; phase-locked to program start. Computed once per frame
+         ;; (not once per cell) with a key encoding the cursor's actual
+         ;; position — calling ESE per-cell with one shared key would
+         ;; have every non-cursor cell's call clear the cursor cell's
+         ;; own tracked state within the same frame, a real bug caught
+         ;; and fixed before this landed, not shipped as written first.
+         (cursor-elapsed (edm-engine:ese (list :queens-cursor cursor-row cursor-col) t (raylib:get-time))))
     (multiple-value-bind (ox oy) (queens-grid-origin window-width window-height size)
       (dotimes (row size)
         (dotimes (col size)
-          (let ((x (+ ox (* col (+ +cell-size+ +cell-gap+))))
-                (y (+ oy (* row (+ +cell-size+ +cell-gap+))))
-                (cursor-p (and (= row (queens-game-cursor-row game)) (= col (queens-game-cursor-col game)))))
-            (draw-cell x y (region-at board row col) size cursor-p elapsed)
+          (let* ((x (+ ox (* col (+ +cell-size+ +cell-gap+))))
+                 (y (+ oy (* row (+ +cell-size+ +cell-gap+))))
+                 (cursor-p (and (= row cursor-row) (= col cursor-col))))
+            (draw-cell x y (region-at board row col) size cursor-p (if cursor-p cursor-elapsed 0.0d0))
             (draw-cell-glyph game x y row col conflicts))))
       (raylib:draw-text
        (format nil "Level ~D/~D   Score ~D~A" (queens-game-level game) +queens-level-count+
