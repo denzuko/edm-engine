@@ -201,6 +201,7 @@ suite since it needs that plus a full raylib build."
                (:file "t/layout-spec")
                (:file "t/stylesheet-spec")
                (:file "t/effect-spec")
+               (:file "t/effect-impl-spec")
                (:file "t/dice-spec")
                (:file "t/ai-opponent-spec")
                (:file "t/tick-spec"))
