@@ -16,6 +16,12 @@ entity slots are recycled via generation-checked handles."
   (pos-y (make-array 0 :element-type 'single-float) :type sf-vector)
   (vel-x (make-array 0 :element-type 'single-float) :type sf-vector)
   (vel-y (make-array 0 :element-type 'single-float) :type sf-vector)
+  ;; #46's confetti/particle work — the arena's first real adoption per
+  ;; #33's own finding (correctly designed, never adopted). A particle
+  ;; needs to know its own age to know when it's expired; same fixed-
+  ;; capacity, pre-allocated pattern as every other component here, not
+  ;; a separately-allocated parallel structure.
+  (spawn-times (make-array 0 :element-type 'single-float) :type sf-vector)
   (free-list nil :type list))
 
 (defun make-arena (capacity)
@@ -28,6 +34,7 @@ entity slots are recycled via generation-checked handles."
                :pos-y (make-array capacity :element-type 'single-float :initial-element 0.0)
                :vel-x (make-array capacity :element-type 'single-float :initial-element 0.0)
                :vel-y (make-array capacity :element-type 'single-float :initial-element 0.0)
+               :spawn-times (make-array capacity :element-type 'single-float :initial-element 0.0)
                :free-list (loop for i from (1- capacity) downto 0 collect i)))
 
 (declaim (ftype (function (arena) (values handle &optional)) arena-spawn))
@@ -71,6 +78,14 @@ entity slots are recycled via generation-checked handles."
 
 (define-vec2-component "POSITION" arena-pos-x arena-pos-y)
 (define-vec2-component "VELOCITY" arena-vel-x arena-vel-y)
+
+(declaim (ftype (function (arena handle) single-float) arena-spawn-time))
+(defun arena-spawn-time (arena h)
+  (aref (arena-spawn-times arena) (handle-index h)))
+
+(declaim (ftype (function (arena handle single-float) single-float) arena-set-spawn-time))
+(defun arena-set-spawn-time (arena h time)
+  (setf (aref (arena-spawn-times arena) (handle-index h)) time))
 
 (declaim (ftype (function (arena) list) arena-live-handles))
 (defun arena-live-handles (arena)

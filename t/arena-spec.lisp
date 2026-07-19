@@ -43,3 +43,16 @@
     (let ((live (arena-live-handles arena)))
       (is (= 1 (length live)))
       (is (handle= h2 (first live))))))
+
+;; BDD, per docs/test-layer-separation.md — written before
+;; ARENA-SPAWN-TIME/ARENA-SET-SPAWN-TIME exist, the new component
+;; #46's confetti/particle work (the arena's first real adoption per
+;; #33) needs to track a particle's age for despawning. Broad —
+;; precise arithmetic lives in arena-impl-spec.lisp.
+(test a-spawned-particle-can-record-and-recall-a-spawn-time
+  "GOAL: particles need to know when they were spawned, to know when
+they've expired — a new component, same pattern as POSITION/VELOCITY."
+  (let* ((arena (make-arena 4))
+         (h (arena-spawn arena)))
+    (arena-set-spawn-time arena h 5.0)
+    (is (= 5.0 (arena-spawn-time arena h)))))

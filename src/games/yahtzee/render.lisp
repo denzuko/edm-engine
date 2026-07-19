@@ -33,6 +33,18 @@ each face value 1-6 — the standard arrangement on a real die.")
 (defvar *ai-clock* (edm-engine:make-ai-timer))
 (defparameter +yahtzee-ai-think-seconds+ 0.9d0)
 
+;;; #46's confetti — the arena's (#33) first real adoption, triggered
+;;; on Yahtzee's win overlay (#34, the table this taxonomy entry names
+;;; directly). A module-level arena/tick/prev-status, matching the
+;;; existing *THEME-SOUND*/*AI-CLOCK* pattern for this file's own
+;;; per-table state — not per-game-instance, since confetti is a
+;;; presentation effect layered over whichever game instance is
+;;; current, not game state itself.
+(defvar *confettiArena* (edm-engine:make-arena 200))
+(defvar *confettiTick* (edm-engine:make-tick))
+(defvar *confettiPrevStatus* :playing)
+(defparameter +confettiLifetime+ 3.0d0)
+
 (defun ensure-theme-playing ()
   "#22: non-blocking — see Hearts' identical comment."
   (unless *theme-sound*
@@ -146,6 +158,19 @@ each face value 1-6 — the standard arrangement on a real die.")
     (t nil)))
 
 (defmethod edm-engine:game-render ((game yahtzee-game) window-width window-height)
+  ;; #46's confetti, #33's arena's first real adoption — a status
+  ;; transition INTO :won specifically (not every frame while already
+  ;; :won) is the trigger, matching how a real celebration moment
+  ;; should fire once, not continuously.
+  (when (and (eq (yahtzee-game-status game) :won) (not (eq *confettiPrevStatus* :won)))
+    (edm-engine:spawnConfetti *confettiArena* (/ window-width 2.0) (/ window-height 3.0) 80
+                               (raylib:get-time) (make-random-state t) :speed-range 180.0))
+  (setf *confettiPrevStatus* (yahtzee-game-status game))
+  (edm-engine:advance-tick *confettiArena* *confettiTick* (raylib:get-frame-time))
+  (edm-engine:despawnExpired *confettiArena* (raylib:get-time) +confettiLifetime+)
+  (dolist (h (edm-engine:arena-live-handles *confettiArena*))
+    (multiple-value-bind (x y) (edm-engine:arena-position *confettiArena* h)
+      (raylib:draw-circle (round x) (round y) 4.0 (edm-engine:rgb-color (edm-engine:theme-color :accent)))))
   (draw-yahtzee-table game window-width window-height))
 
 (defmethod edm-engine:game-stop-audio ((game yahtzee-game))

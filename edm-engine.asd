@@ -192,6 +192,7 @@ suite since it needs that plus a full raylib build."
                (:file "t/metrics-spec")
                (:file "t/bus-spec")
                (:file "t/arena-spec")
+               (:file "t/arena-impl-spec")
                (:file "t/ruleset-spec")
                (:file "t/game-registry-spec")
                (:file "t/arcade-menu-spec")

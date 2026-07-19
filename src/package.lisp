@@ -15,7 +15,7 @@
    ;; arena
    #:arena #:make-arena #:arena-spawn #:arena-despawn #:arena-alive-p
    #:arena-position #:arena-set-position #:arena-velocity #:arena-set-velocity
-   #:arena-live-handles
+   #:arena-live-handles #:arena-spawn-time #:arena-set-spawn-time
    ;; ruleset
    #:ruleset-load #:ruleset-unload
    ;; game protocol
@@ -44,7 +44,7 @@
    #:tween-start-x #:tween-start-y #:tween-end-x #:tween-end-y #:tween-start-time #:tween-duration
    #:centered-row-positions #:wrap-text-lines #:centered-grid-positions #:center-within #:lrp
    #:defstylesheet #:get-style #:resolve-style-role #:*stylesheets*
-   #:pulseVal #:ese #:clearEse #:*ese*
+   #:pulseVal #:ese #:clearEse #:*ese* #:spawnConfetti #:despawnExpired
    #:+die-sides+ #:roll-die #:roll-dice-n #:roll-percentile
    #:roll-animation #:make-roll-animation #:roll-animation-finished-p #:roll-animation-display-values
    #:roll-animation-start-time #:roll-animation-duration #:roll-animation-final-values

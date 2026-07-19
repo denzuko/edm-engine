@@ -53,3 +53,46 @@ before choosing it, not guessed."
 feature. Full camelCase, not acronym-tier: called rarely (test setup
 only), not the per-frame hot path ESE itself is."
   (clrhash *ese*))
+
+;;; #46's confetti/particle work — the arena's (#33) first real
+;;; adoption, grounded in Yahtzee's win overlay (#34, now fixed),
+;;; #46's own named consumer. Genuinely needs the arena's "many
+;;; simultaneous entities" design, unlike a single card tween — the
+;;; actual reason this is the arena's first real consumer rather than
+;;; forcing a smaller-cardinality effect into it.
+
+(declaim (ftype (function (arena single-float single-float fixnum double-float random-state
+                           &key (:speed-range single-float))
+                          list)
+                spawnConfetti))
+(defun spawnConfetti (arena origin-x origin-y count now rng &key (speed-range 100.0))
+  "Spawns up to COUNT particles at (ORIGIN-X, ORIGIN-Y), random
+velocity within +/- SPEED-RANGE on each axis, recording NOW as each
+one's spawn-time. Returns the actually-spawned handles — fewer than
+COUNT, gracefully, if the arena's capacity is exhausted first, never
+signals an error that could take down the whole session (#23's
+standing discipline, extended to a new subsystem). RNG is an explicit
+random-state, not the global *RANDOM-STATE* — reproducible per #47's
+own standing rule on seeded randomness, the same discipline Queens'
+board generation and the card shuffle already correctly use."
+  (loop repeat count
+        for h = (handler-case (arena-spawn arena) (error () nil))
+        while h
+        collect (progn
+                  (arena-set-position arena h origin-x origin-y)
+                  (arena-set-velocity arena h
+                                       (- (random (* 2.0 speed-range) rng) speed-range)
+                                       (- (random (* 2.0 speed-range) rng) speed-range))
+                  (arena-set-spawn-time arena h (float now 1.0))
+                  h)))
+
+(declaim (ftype (function (arena double-float double-float) fixnum) despawnExpired))
+(defun despawnExpired (arena now max-age)
+  "Despawns every live particle older than MAX-AGE seconds. Returns
+the count despawned."
+  (let ((count 0))
+    (dolist (h (arena-live-handles arena))
+      (when (> (- now (float (arena-spawn-time arena h) 1.0d0)) max-age)
+        (arena-despawn arena h)
+        (incf count)))
+    count))

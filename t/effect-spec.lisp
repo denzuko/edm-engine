@@ -57,3 +57,33 @@ each pulse) must not interfere with each other."
   (ese :bdd-key-a t 1.0d0)
   (ese :bdd-key-b t 2.0d0)
   (is (not (= (ese :bdd-key-a t 5.0d0) (ese :bdd-key-b t 5.0d0)))))
+
+;; #46's confetti/particle work — the arena's first real adoption per
+;; #33 (correctly designed, never adopted). Grounded in Yahtzee's win
+;; overlay (#34, now fixed), #46's own named consumer. BDD, per
+;; docs/test-layer-separation.md — written before SPAWNCONFETTI/
+;; DESPAWNEXPIRED exist.
+
+(test spawn-confetti-populates-the-arena-with-live-particles
+  "GOAL: a win should produce a visible burst of particles, not
+nothing and not an error."
+  (let ((arena (make-arena 50)))
+    (spawnConfetti arena 0.0 0.0 20 0.0d0 (make-random-state t))
+    (is (= 20 (length (arena-live-handles arena))))))
+
+(test spawn-confetti-never-exceeds-arena-capacity
+  "GOAL: requesting more particles than the arena can hold should
+gracefully spawn as many as fit, never signal an error that could
+take down the whole session (#23's own standing discipline, extended
+here to a new subsystem)."
+  (let ((arena (make-arena 5)))
+    (spawnConfetti arena 0.0 0.0 20 0.0d0 (make-random-state t))
+    (is (= 5 (length (arena-live-handles arena))))))
+
+(test despawn-expired-removes-old-particles-but-not-fresh-ones
+  "GOAL: particles should disappear after they've lived their expected
+lifetime, not linger forever or vanish immediately."
+  (let ((arena (make-arena 10)))
+    (spawnConfetti arena 0.0 0.0 5 0.0d0 (make-random-state t))
+    (despawnExpired arena 10.0d0 2.0d0)
+    (is (= 0 (length (arena-live-handles arena))))))
