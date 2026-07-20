@@ -88,6 +88,42 @@ lifetime, not linger forever or vanish immediately."
     (despawnExpired arena 10.0d0 2.0d0)
     (is (= 0 (length (arena-live-handles arena))))))
 
+;;; PARTICLE-EFFECT — a thin wrapper struct (ARENA . HANDLE) so a
+;;; single arena-backed particle genuinely implements the generic
+;;; EFFECT protocol (EFFECT-FINISHED-P/EFFECT-APPLY), same as TWEEN
+;;; does, per the design doc's own stated goal ('card-flip tweens,
+;;; camera shake, and particle bursts all implement this'). Attempted
+;;; directly rather than concluded not to fit without trying — a real,
+;;; individual particle genuinely is a single effect instance, tracked
+;;; via its own arena handle; the arena itself (a pool of many) is a
+;;; different thing from any one EFFECT instance within it, which is
+;;; what this wraps.
+
+(test particle-effect-finished-p-is-true-once-the-handle-is-despawned
+  "GOAL: 'finished' for a particle means genuinely despawned (no longer
+alive in its arena), the actual, real lifecycle event — not a
+duration-based guess the way TWEEN's own finished-p works, since a
+particle's lifetime is enforced by DESPAWNEXPIRED acting on the arena,
+not tracked by the wrapper itself."
+  (let* ((arena (make-arena 10))
+         (handles (spawnConfetti arena 0.0 0.0 1 0.0d0 (make-random-state t)))
+         (pe (make-particle-effect :arena arena :handle (first handles))))
+    (is (not (effect-finished-p pe 0.0d0)))
+    (despawnExpired arena 10.0d0 2.0d0)
+    (is (effect-finished-p pe 10.0d0))))
+
+(test particle-effect-apply-matches-arena-position-directly
+  "Same composition principle as TWEEN's own EFFECT-APPLY method — this
+returns exactly what ARENA-POSITION itself would for the wrapped
+handle, not a reimplementation of position lookup."
+  (let* ((arena (make-arena 10))
+         (handles (spawnConfetti arena 5.0 7.0 1 0.0d0 (make-random-state t)))
+         (pe (make-particle-effect :arena arena :handle (first handles))))
+    (multiple-value-bind (ex ey) (effect-apply pe 0.0d0)
+      (multiple-value-bind (ax ay) (arena-position arena (first handles))
+        (is (= ex ax))
+        (is (= ey ay))))))
+
 ;;; DEFEFFECT-STATE — #37's own explicitly-named remaining scope
 ;;; ("the macro/DSL syntax around this is real, separate, later
 ;;; scope" — effect.lisp's own header comment), the declarative layer

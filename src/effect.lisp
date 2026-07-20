@@ -97,6 +97,32 @@ the count despawned."
         (incf count)))
     count))
 
+;;; PARTICLE-EFFECT — a thin (ARENA . HANDLE) wrapper so a single
+;;; arena-backed particle genuinely implements the generic EFFECT
+;;; protocol (TWEEN.LISP), same as TWEEN does, per the design doc's
+;;; own stated goal. Attempted directly rather than concluded not to
+;;; fit without trying: an individual particle IS a single effect
+;;; instance (tracked via its own arena handle); the arena itself (the
+;;; pool of many) is a different thing from any one EFFECT instance
+;;; within it, which is what this wraps — not a strained fit, once
+;;; the actual unit of "one effect" is identified correctly.
+
+(defstruct particle-effect
+  (arena nil :type (or null arena))
+  (handle nil))
+
+(defmethod effect-finished-p ((effect particle-effect) now)
+  (declare (ignore now))
+  "\"Finished\" for a particle means genuinely despawned — the real
+lifecycle event DESPAWNEXPIRED enforces on the arena, not a duration
+tracked by this wrapper itself (unlike TWEEN's own duration-based
+FINISHED-P)."
+  (not (arena-alive-p (particle-effect-arena effect) (particle-effect-handle effect))))
+
+(defmethod effect-apply ((effect particle-effect) now)
+  (declare (ignore now))
+  (arena-position (particle-effect-arena effect) (particle-effect-handle effect)))
+
 ;;; DEFEFFECT-STATE — the declarative macro layer this file's own
 ;;; earlier header comment named as explicit, real, separate remaining
 ;;; scope ("the macro/DSL syntax around this is real, separate, later

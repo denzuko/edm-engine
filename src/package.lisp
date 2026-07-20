@@ -46,6 +46,7 @@
    #:centered-row-positions #:wrap-text-lines #:centered-grid-positions #:center-within #:lrp #:anchor-at-edge #:deflayout
    #:defstylesheet #:get-style #:resolve-style-role #:resolve-style-role-keyword #:*stylesheets*
    #:pulseVal #:ese #:clearEse #:*ese* #:spawnConfetti #:despawnExpired #:defeffect-state #:defeffect-sequence
+   #:particle-effect #:make-particle-effect #:particle-effect-arena #:particle-effect-handle
    #:+die-sides+ #:roll-die #:roll-dice-n #:roll-percentile
    #:roll-animation #:make-roll-animation #:roll-animation-finished-p #:roll-animation-display-values
    #:roll-animation-start-time #:roll-animation-duration #:roll-animation-final-values
