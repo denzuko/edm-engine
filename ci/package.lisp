@@ -86,6 +86,16 @@ qlot exec ros run \\
   --eval '(let ((r (fiveam:run (quote :edm-engine-e2e)))) (fiveam:explain! r) (unless (fiveam:results-status r) (uiop:quit 1)))' \\
   --eval '(uiop:quit 0)'")
 
+;; Experimental, per direct correction: re-testing whether 40ANTS/CI's
+;; own standard, zero-configuration RUN-TESTS job type (40ants/setup-
+;; lisp@v4 + 40ants/run-tests@v2, qlot already set up as part of that
+;; action) actually works now, rather than assuming the earlier
+;; diagnosis ("both actions broken on ubuntu-latest") still holds.
+;; Added as a genuinely new, third job rather than replacing either
+;; proven existing one — if this fails, nothing else breaks; if it
+;; passes, it's real evidence toward simplifying the other two jobs
+;; onto this same standard mechanism later, not assumed without
+;; checking.
 (defworkflow ci
   :on-push-to "main"
   :on-pull-request t
@@ -98,4 +108,7 @@ qlot exec ros run \\
                          :name "build-binary"
                          :os "ubuntu-latest"
                          :steps (list (action "Checkout Code" "actions/checkout@v4")
-                                      (sh "Provision and Build" +provision-and-build+)))))
+                                      (sh "Provision and Build" +provision-and-build+)))
+         (make-instance '40ants-ci/jobs/run-tests:run-tests
+                         :name "standard-run-tests"
+                         :asdf-system "edm-engine/tests/all")))
