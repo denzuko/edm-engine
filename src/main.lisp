@@ -257,7 +257,8 @@ actual tokens — see src/palette.lisp), not a flat CLEAR-BACKGROUND."
        (let ((game (arcade-state-current-game state)))
          (game-render game window-width window-height)
          (when (arcade-state-popup-open state)
-           (draw-popup-menu state window-width window-height)))))))
+           (draw-popup-menu state window-width window-height))
+         (gameOverlayEffects game window-width window-height))))))
 
 (defvar *debug-arcade-state* nil
   "The live ARCADE-STATE, exposed for SWANK inspection when

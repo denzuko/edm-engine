@@ -158,10 +158,25 @@ each face value 1-6 — the standard arrangement on a real die.")
     (t nil)))
 
 (defmethod edm-engine:game-render ((game yahtzee-game) window-width window-height)
+  (draw-yahtzee-table game window-width window-height))
+
+(defmethod edm-engine:gameOverlayEffects ((game yahtzee-game) window-width window-height)
   ;; #46's confetti, #33's arena's first real adoption — a status
   ;; transition INTO :won specifically (not every frame while already
   ;; :won) is the trigger, matching how a real celebration moment
   ;; should fire once, not continuously.
+  ;;
+  ;; Lives in GAMEOVERLAYEFFECTS, not GAME-RENDER, for a real reason
+  ;; found and fixed during live verification, not assumed correct at
+  ;; write time: #54's own fix made the outcome popup fully opaque,
+  ;; and that popup opens the same frame a win is detected — so
+  ;; anything drawn inside GAME-RENDER (which runs BEFORE the popup in
+  ;; ARCADE-RENDER's own flow) gets immediately painted over by it,
+  ;; regardless of draw order within GAME-RENDER itself. A pixel-level
+  ;; check (zero moving teal pixels between consecutive frames, despite
+  ;; the arena correctly holding 80 live particles) is what actually
+  ;; caught this, not visual inspection alone. GAMEOVERLAYEFFECTS runs
+  ;; after the popup in ARCADE-RENDER, a true top layer.
   (when (and (eq (yahtzee-game-status game) :won) (not (eq *confettiPrevStatus* :won)))
     (edm-engine:spawnConfetti *confettiArena* (/ window-width 2.0) (/ window-height 3.0) 80
                                (raylib:get-time) (make-random-state t) :speed-range 180.0))
@@ -170,8 +185,7 @@ each face value 1-6 — the standard arrangement on a real die.")
   (edm-engine:despawnExpired *confettiArena* (raylib:get-time) +confettiLifetime+)
   (dolist (h (edm-engine:arena-live-handles *confettiArena*))
     (multiple-value-bind (x y) (edm-engine:arena-position *confettiArena* h)
-      (raylib:draw-circle (round x) (round y) 4.0 (edm-engine:rgb-color (edm-engine:theme-color :accent)))))
-  (draw-yahtzee-table game window-width window-height))
+      (raylib:draw-circle (round x) (round y) 4.0 (edm-engine:rgb-color (edm-engine:theme-color :accent))))))
 
 (defmethod edm-engine:game-stop-audio ((game yahtzee-game))
   (declare (ignore game))

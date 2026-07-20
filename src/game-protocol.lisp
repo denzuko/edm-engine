@@ -45,6 +45,18 @@ overlap with the next table's theme. Default no-op; games without
 background audio don't need a method.")
   (:method (game) (declare (ignore game)) nil))
 
+(defgeneric gameOverlayEffects (game window-width window-height)
+  (:documentation "Called by the arcade shell after DRAW-POPUP-MENU
+(#54's own fix made that popup fully opaque — covering everything
+GAME-RENDER draws, including any per-game celebratory effect drawn
+there). A true top-layer overlay, drawn last, for effects that need to
+stay visible regardless of whether the outcome popup is open — #46's
+confetti is the first real consumer, not a scaffolded hook. Default
+no-op; games without an overlay effect don't need a method.")
+  (:method (game window-width window-height)
+    (declare (ignore game window-width window-height))
+    nil))
+
 (defstruct game-entry
   "One arcade menu entry. CONSTRUCTOR takes no args and returns a fresh
 game instance — called on selection, not at registration, so games with

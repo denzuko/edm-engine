@@ -20,7 +20,7 @@
    #:ruleset-load #:ruleset-unload
    ;; game protocol
    #:game-title #:game-update #:game-render #:game-outcome #:game-score #:game-save-data
-   #:game-stop-audio
+   #:game-stop-audio #:gameOverlayEffects
    #:game-entry #:game-entry-title #:game-entry-constructor #:game-entry-restore-fn
    #:game-entry-ai-capable-p
    #:*games* #:register-game
