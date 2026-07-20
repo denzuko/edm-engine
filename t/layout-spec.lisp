@@ -123,3 +123,37 @@ correctly, not just the three Hearts happens to use."
   (multiple-value-bind (x y) (anchor-at-edge :bottom 40.0 1024.0 768.0 46.0 0.0)
     (is (= 489.0 x))
     (is (= 728.0 y))))
+
+;;; DEFLAYOUT — #36's own remaining, central scope: declaring a
+;;; screen's layout as data, composing the primitives above, rather
+;;; than per-screen arithmetic. BDD-first: written before DEFLAYOUT
+;;; exists, expected to fail until implemented.
+
+(test deflayout-row-defines-a-function-matching-lrp-directly
+  "GOAL: a :ROW shape's generated function must compute the exact same
+position LRP itself would for the same parameters — DEFLAYOUT composes
+the existing primitive, it doesn't reimplement the math. Checked
+against Hearts' actual HAND-CARD-X shape (20 base, 55 item-size, 0
+gap), not an arbitrary example."
+  (deflayout test-hand-card-x (i)
+    (:row :anchor 20 :item-size 55 :gap 0 :index i))
+  (is (= (lrp 20 0 55 0) (test-hand-card-x 0)))
+  (is (= (lrp 20 3 55 0) (test-hand-card-x 3))))
+
+(test deflayout-row-rejects-a-bare-nonzero-gap-literal-at-macro-expansion-time
+  "GOAL: the design doc's own stated enforcement — a bare pixel literal
+in :GAP position is a compile error, not a style nit caught in review.
+Zero is the absence of spacing, not a spacing value, and is the one
+literal explicitly allowed without resolving to the +SPACE-N+ scale —
+checked as its own case above, not assumed exempt here."
+  (signals error
+    (macroexpand-1 '(deflayout bad-layout (i)
+                      (:row :anchor 20 :item-size 55 :gap 55 :index i)))))
+
+(test deflayout-row-accepts-a-named-space-scale-symbol-for-gap
+  "The actual, intended way to specify real spacing — a +SPACE-N+
+symbol, not a literal, and not rejected the way the bad-literal case
+above is."
+  (deflayout test-spaced-row (i)
+    (:row :anchor 0 :item-size 50 :gap +space-2+ :index i))
+  (is (= (lrp 0 2 50 8) (test-spaced-row 2))))

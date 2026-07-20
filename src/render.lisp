@@ -209,10 +209,6 @@ requested, scaled down from this — normal raylib font usage.")
 (defun ui-text-width (text font-size)
   (round (3d-vectors:vx (raylib:measure-text-ex (ensure-ui-font) text (float font-size 1.0) 1.0))))
 
-;;; unifiedspec's spacing scale (4px base unit) and border-radius scale
-;;; — named so layout code reads as intent, not magic numbers.
-
-(defparameter +space-1+ 4) (defparameter +space-2+ 8) (defparameter +space-3+ 12)
-(defparameter +space-4+ 16) (defparameter +space-5+ 24) (defparameter +space-6+ 32)
-(defparameter +space-7+ 48) (defparameter +space-8+ 64)
-(defparameter +radius-sm+ 0.03) (defparameter +radius-md+ 0.06) (defparameter +radius-lg+ 0.1)
+;;; unifiedspec's spacing/radius scale moved to layout.lisp (#36) — pure
+;;; data, no raylib dependency, needed at macro-expansion time by
+;;; DEFLAYOUT, which can't live in this raylib I/O boundary system.

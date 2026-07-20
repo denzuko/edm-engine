@@ -36,7 +36,11 @@ never tweened, e.g. a hand card that hasn't moved)."
         (edm-engine:tween-position tw (raylib:get-time))
         (values (float default-x 1.0) (float default-y 1.0)))))
 
-(defun hand-card-x (i) (edm-engine:lrp 20 i 55 0))
+;; #36's DEFLAYOUT retrofit — HAND-CARD-X was already an LRP call
+;; (this session's own earlier retrofit); now declared as data rather
+;; than a bare function body, the macro's own first real consumer.
+(edm-engine:deflayout hand-card-x (i)
+  (:row :anchor 20 :item-size 55 :gap 0 :index i))
 (defun hand-card-y (window-height) (- window-height 90))
 
 (defun trick-card-x (window-width i) (+ (/ window-width 2.0) (* i 55) -110))

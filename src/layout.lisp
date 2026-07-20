@@ -99,3 +99,49 @@ never split mid-word."
                 (progn (push current lines) (setf current word)))))
         (when current (push current lines))
         (nreverse lines)))))
+
+;;; unifiedspec's spacing/radius scale (moved from render.lisp, #36) —
+;;; pure integer/float data, no raylib dependency, needed here at
+;;; macro-expansion time by DEFLAYOUT below.
+
+(defparameter +space-1+ 4) (defparameter +space-2+ 8) (defparameter +space-3+ 12)
+(defparameter +space-4+ 16) (defparameter +space-5+ 24) (defparameter +space-6+ 32)
+(defparameter +space-7+ 48) (defparameter +space-8+ 64)
+(defparameter +radius-sm+ 0.03) (defparameter +radius-md+ 0.06) (defparameter +radius-lg+ 0.1)
+
+;;; DEFLAYOUT — #36's own remaining, central scope: declaring a
+;;; screen's layout as data, composing the primitives above (starting
+;;; with the :ROW/LRP shape, Hearts' HAND-CARD-X's actual retrofit
+;;; case; other shapes are real, separate follow-on scope, not
+;;; attempted in this first version, matching the design doc's own
+;;; "library first, proven against one real consumer" discipline).
+
+(defparameter +space-scale-symbols+ '(+space-1+ +space-2+ +space-3+ +space-4+
+                                       +space-5+ +space-6+ +space-7+ +space-8+)
+  "The symbols DEFLAYOUT's :GAP enforcement checks against — the design
+doc's own stated rule: a bare pixel literal in :GAP position should be
+a compile error, not a style nit caught in review. Checked as symbol
+names at macro-expansion time (before GAP's value even exists), not a
+runtime type check against the resolved integer, which couldn't tell
+a real +SPACE-N+ reference apart from a bare literal that happens to
+equal the same number.")
+
+(defmacro deflayout (name lambda-list shape)
+  "Defines NAME as a function taking LAMBDA-LIST, whose body computes a
+position per SHAPE. SHAPE is currently (:ROW :ANCHOR anchor-form
+:ITEM-SIZE size-form :GAP gap-form :INDEX index-var) — LRP's own
+shape, composed here rather than reimplemented. :GAP must be the
+literal 0 (the absence of spacing, not a spacing value, exempted from
+the scale check for exactly that reason) or one of the +SPACE-N+
+symbols above — a bare non-zero literal like 55 is a real
+macro-expansion-time error, not a runtime one."
+  (destructuring-bind (kind &key anchor item-size gap index) shape
+    (ecase kind
+      (:row
+       (unless (or (eql gap 0) (member gap +space-scale-symbols+))
+         (error "DEFLAYOUT ~A: :GAP must be 0 or one of ~A, got ~S (a bare non-zero literal is not a spacing scale reference)"
+                name +space-scale-symbols+ gap))
+       (let ((ignorable-params (remove index lambda-list)))
+         `(defun ,name ,lambda-list
+            ,@(when ignorable-params `((declare (ignorable ,@ignorable-params))))
+            (lrp ,anchor ,index ,item-size ,gap)))))))
