@@ -146,14 +146,4 @@ qlot exec ros run \\
          (make-instance '40ants-ci/jobs/run-tests:run-tests
                          :name "standard-run-tests"
                          :asdf-system "edm-engine/tests/all"
-                         :custom +standard-run-tests-custom+
-                         ;; Per direct suggestion (cl-coveralls) — this
-                         ;; is exactly what 40ants/run-tests@v2 wraps
-                         ;; internally when coverage is enabled, using
-                         ;; the repo's own GITHUB_TOKEN rather than a
-                         ;; separate Coveralls account/token, per
-                         ;; 40ants-ci/jobs/run-tests' own coverage slot
-                         ;; logic (checked directly in its source, not
-                         ;; assumed): a single-job (non-matrix) run
-                         ;; passes ${{ secrets.github_token }} as-is.
-                         :coverage t)))
+                         :custom +standard-run-tests-custom+)))
