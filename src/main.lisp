@@ -264,6 +264,28 @@ actual tokens — see src/palette.lisp), not a flat CLEAR-BACKGROUND."
 EDM_ENGINE_SWANK_PORT is set — read-only from another thread (GL calls
 from a non-main thread are unsafe; don't draw with this, just inspect).")
 
+(defvar *debug-frozen-p* nil
+  "When T, the main loop skips ARCADE-UPDATE but keeps calling
+ARCADE-RENDER every frame — a stable, non-advancing visual state to
+inspect via SWANK/screenshot without a timing race against the game
+continuing to run. Set from another thread via SWANK; only the main
+loop itself reads it.")
+
+(defvar *debug-screenshot-request* nil
+  "A file path, or NIL. RAYLIB:TAKE-SCREENSHOT needs the GL context,
+which only the main loop thread owns — calling it directly from a
+SWANK connection silently does nothing (confirmed directly: the
+requested file never appears). Setting this from SWANK and letting the
+main loop consume it on its own next frame is the actual fix, the
+'tick freeze, then screendump the render buffer' pattern, distinct
+from screenshotting the X11 window from outside the process.
+
+Use a RELATIVE filename, not an absolute path — confirmed directly
+during verification: an absolute path (e.g. \"/home/x/shot.png\")
+silently produces no file at all, while a bare relative name writes
+correctly to the process's own working directory. Genuinely different
+result, not a guess.")
+
 (defparameter *max-crashes-per-session* 20
   "A safeguard against an infinite crash-loop: if the SAME class of bug
 fires every single frame (e.g. a bug in a table's GAME-RENDER that
@@ -295,8 +317,11 @@ specific table — that's the whole point."
          (loop until (window-should-close-p)
                do (handler-case
                       (wTmr "render.frame_time"
-                        (arcade-update state)
-                        (arcade-render state 1024 768))
+                        (unless *debug-frozen-p* (arcade-update state))
+                        (arcade-render state 1024 768)
+                        (when *debug-screenshot-request*
+                          (raylib:take-screenshot *debug-screenshot-request*)
+                          (setf *debug-screenshot-request* nil)))
                     (error (c)
                       (log-crash c)
                       (incf crash-count)
