@@ -68,7 +68,7 @@
           "uses": "40ants/run-tests@v2",
           "with": {
             "asdf-system": "edm-engine/tests/all",
-            "run-tests": "(ql:quickload :edm-engine/tests/all)\n(let ((results (list (fiveam:run! :edm-engine) (fiveam:run! :edm-engine-wordle)\n                      (fiveam:run! :edm-engine-audio) (fiveam:run! :edm-engine-queens)\n                      (fiveam:run! :edm-engine-hearts))))\n  (unless (every #'identity results) (error \"one or more edm-engine FiveAM suites failed\")))"
+            "run-tests": "(ql:quickload :edm-engine/tests/all)\n(let ((results (list (uiop:symbol-call :fiveam :run! :edm-engine)\n                      (uiop:symbol-call :fiveam :run! :edm-engine-wordle)\n                      (uiop:symbol-call :fiveam :run! :edm-engine-audio)\n                      (uiop:symbol-call :fiveam :run! :edm-engine-queens)\n                      (uiop:symbol-call :fiveam :run! :edm-engine-hearts))))\n  (unless (every #'identity results) (error \"one or more edm-engine FiveAM suites failed\")))"
           }
         }
       ]

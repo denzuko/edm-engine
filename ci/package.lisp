@@ -100,11 +100,24 @@ qlot exec ros run \\
 ;; its ASDF:TEST-SYSTEM invocation entirely and calling the exact same
 ;; FIVEAM:RUN! forms EDM-ENGINE/TESTS/ALL's own TEST-OP method already
 ;; runs (edm-engine.asd) — proven logic, not new.
+;; 40ants/run-tests@v2 hit a second, genuinely different real issue
+;; here too, not assumed fixed by the first change alone: "Package
+;; FIVEAM does not exist" — a read-time, not eval-time, error. The
+;; action's own wrapper reads the entire CUSTOM string as forms before
+;; evaluating any of them, so a direct FIVEAM:RUN! reference gets read
+;; — and fails to resolve the FIVEAM package — before the preceding
+;; QL:QUICKLOAD form has actually run. This is precisely why EDM-
+;; ENGINE/TESTS/ALL's own TEST-OP method (edm-engine.asd) uses
+;; UIOP:SYMBOL-CALL (string-based, no read-time package resolution)
+;; instead of a direct FIVEAM:RUN! reference — matching that exact,
+;; already-proven pattern here too, not guessed at freshly.
 (defparameter +standard-run-tests-custom+
   "(ql:quickload :edm-engine/tests/all)
-(let ((results (list (fiveam:run! :edm-engine) (fiveam:run! :edm-engine-wordle)
-                      (fiveam:run! :edm-engine-audio) (fiveam:run! :edm-engine-queens)
-                      (fiveam:run! :edm-engine-hearts))))
+(let ((results (list (uiop:symbol-call :fiveam :run! :edm-engine)
+                      (uiop:symbol-call :fiveam :run! :edm-engine-wordle)
+                      (uiop:symbol-call :fiveam :run! :edm-engine-audio)
+                      (uiop:symbol-call :fiveam :run! :edm-engine-queens)
+                      (uiop:symbol-call :fiveam :run! :edm-engine-hearts))))
   (unless (every #'identity results) (error \"one or more edm-engine FiveAM suites failed\")))")
 
 (defworkflow ci
