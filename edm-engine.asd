@@ -182,7 +182,8 @@ suite since it needs that plus a full raylib build."
   :depends-on ("edm-engine" "clx" "bordeaux-threads" "fiveam")
   :components ((:file "t/e2e/support")
                (:file "t/e2e/menu-e2e")
-               (:file "t/e2e/yahtzee-e2e")))
+               (:file "t/e2e/yahtzee-e2e")
+               (:file "t/e2e/hearts-e2e")))
 
 (defsystem "edm-engine/tests"
   :description "FiveAM spec suite over edm-engine/core. Written before implementation, per BDD gate."
