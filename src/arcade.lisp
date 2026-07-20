@@ -126,10 +126,22 @@ its AI logic cares."
 
 (defun arcade-popup-items (game)
   "RESUME is only offered while GAME is still in progress — nothing to
-resume once it's over."
-  (if (game-outcome game)
-      '("New Game" "Save State" "Return to Tables")
-      '("Resume" "New Game" "Save State" "Return to Tables")))
+resume once it's over. SAVE STATE is only offered when GAME-SAVE-DATA
+is genuinely supported (non-NIL) — #9's actual fix. Showing it
+regardless was the real bug: a game with the protocol's default NIL
+method would still write a plausible-looking slot (real title, score,
+timestamp, screenshot) with a NIL :DATA field, indistinguishable from
+a genuine save until the player tries to load it and finds nothing to
+restore. Omitting the item entirely, not showing a 'not supported'
+message in its place — the simpler of the two options this issue
+named, and the one it recommended."
+  (let ((base (if (game-outcome game)
+                   '("New Game" "Return to Tables")
+                   '("Resume" "New Game" "Return to Tables"))))
+    (if (game-save-data game)
+        (let ((insert-at (position "New Game" base :test #'string=)))
+          (append (subseq base 0 (1+ insert-at)) (list "Save State") (subseq base (1+ insert-at))))
+        base)))
 
 (defun arcade-open-popup (state)
   (setf (arcade-state-popup-open state) t

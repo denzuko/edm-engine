@@ -98,20 +98,37 @@ and what it writes should actually be useful for debugging, not just
 ;;; Pause/outcome popup
 
 (defclass spec-outcome-game () ((outcome :initarg :outcome :initform nil :accessor spec-game-outcome)
-                                 (score :initarg :score :initform 0 :accessor spec-game-score)))
+                                 (score :initarg :score :initform 0 :accessor spec-game-score)
+                                 (save-data :initarg :save-data :initform nil :accessor spec-game-save-data)))
 (defmethod game-outcome ((g spec-outcome-game)) (spec-game-outcome g))
 (defmethod game-score ((g spec-outcome-game)) (spec-game-score g))
+(defmethod game-save-data ((g spec-outcome-game)) (spec-game-save-data g))
 
+;; #9: SAVE STATE must never appear for a game whose GAME-SAVE-DATA is
+;; NIL (the default protocol method) — showing it anyway is the actual
+;; bug this issue names: a fake-successful save that silently discards
+;; state. SPEC-OUTCOME-GAME's own default (no :SAVE-DATA given) is NIL,
+;; matching the real, unmodified games (Queens/Hearts/Yahtzee) that
+;; still use the protocol's default method.
 (test popup-items-include-resume-only-while-in-progress
-  (is (equal '("Resume" "New Game" "Save State" "Return to Tables")
+  (is (equal '("Resume" "New Game" "Return to Tables")
              (arcade-popup-items (make-instance 'spec-outcome-game :outcome nil))))
-  (is (equal '("New Game" "Save State" "Return to Tables")
+  (is (equal '("New Game" "Return to Tables")
              (arcade-popup-items (make-instance 'spec-outcome-game :outcome :win)))))
+
+(test popup-items-include-save-state-only-when-game-save-data-is-supported
+  "GOAL: #9's actual fix — SAVE STATE only appears when the game
+genuinely supports it, never as a fake-successful, silently-discarded
+save."
+  (is (equal '("Resume" "New Game" "Save State" "Return to Tables")
+             (arcade-popup-items (make-instance 'spec-outcome-game :outcome nil :save-data '(:some "data")))))
+  (is (equal '("New Game" "Save State" "Return to Tables")
+             (arcade-popup-items (make-instance 'spec-outcome-game :outcome :win :save-data '(:some "data"))))))
 
 (test popup-cycling-wraps-for-the-in-progress-variant
   (let ((edm-engine::*games* nil)
         (state (make-arcade-state)))
-    (register-game "Stub" (lambda () (make-instance 'spec-outcome-game)))
+    (register-game "Stub" (lambda () (make-instance 'spec-outcome-game :save-data '(:some "data"))))
     (setf (arcade-state-mode state) :tables)
     (arcade-launch-selected state)
     (arcade-open-popup state)
@@ -149,7 +166,7 @@ and what it writes should actually be useful for debugging, not just
 (test popup-confirm-return-to-tables-dispatches-correctly
   (let ((edm-engine::*games* nil)
         (state (make-arcade-state)))
-    (register-game "Stub" (lambda () (make-instance 'spec-outcome-game :outcome :win)))
+    (register-game "Stub" (lambda () (make-instance 'spec-outcome-game :outcome :win :save-data '(:some "data"))))
     (setf (arcade-state-mode state) :tables)
     (arcade-launch-selected state)
     (arcade-open-popup state)
@@ -192,7 +209,7 @@ and what it writes should actually be useful for debugging, not just
   (with-temp-save-directory-for-arcade
     (let ((edm-engine::*games* nil)
           (state (make-arcade-state)))
-      (register-game "Stub" (lambda () (make-instance 'spec-outcome-game)))
+      (register-game "Stub" (lambda () (make-instance 'spec-outcome-game :save-data '(:some "data"))))
       (setf (arcade-state-mode state) :tables)
       (arcade-launch-selected state)
       (setf (arcade-state-save-slot-index state) 3)
