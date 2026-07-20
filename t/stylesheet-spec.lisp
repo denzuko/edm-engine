@@ -51,3 +51,23 @@ compilation, matching how macro-time validation actually manifests
   (signals error
     (eval '(defstylesheet :test-bad-role
              (:selector (:test :bad) :fill (:role :not-a-real-role))))))
+
+;;; RESOLVE-STYLE-ROLE-KEYWORD — #37's design doc section 4's actual
+;;; remaining gap: DRAW-CHROME-RECT's own ROLE parameter feeds its
+;;; shader's HSV computation directly (a genuinely GPU-driven color,
+;;; not a pre-resolved RGB) -- checked directly in RENDER.LISP, not
+;;; assumed. RESOLVE-STYLE-ROLE (above) resolves (:ROLE X) to an RGB
+;;; triple, the wrong shape for this case; this returns just the role
+;;; KEYWORD a stylesheet declared, so a shader-driven caller like
+;;; DRAW-CHROME-RECT can pass it straight through to its own THEME-HSV
+;;; call, the actual style-attribute-to-shader-parameter wiring the
+;;; design doc names, not built speculatively without this real case.
+
+(test resolve-style-role-keyword-returns-just-the-keyword-not-a-color
+  "GOAL: unlike RESOLVE-STYLE-ROLE, this must NOT resolve to an RGB
+value -- a shader-driven caller needs the role itself to do its own
+GPU-side HSV computation, not a CPU-resolved color that would defeat
+the whole point of a GPU-driven shader."
+  (defstylesheet :test-shader-role
+    (:selector (:test :shader-target) :fill (:role :accent)))
+  (is (eq :accent (resolve-style-role-keyword '(:test :shader-target) :fill))))

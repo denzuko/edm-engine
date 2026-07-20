@@ -88,8 +88,34 @@ in this engine, composed rather than duplicated."
         (theme-color (second value))
         value)))
 
+(declaim (ftype (function (list keyword) keyword) resolve-style-role-keyword))
+(defun resolve-style-role-keyword (selector attr)
+  "The other real shape a (:ROLE X) declaration needs to resolve to —
+just X itself, not RESOLVE-STYLE-ROLE's resolved RGB. A shader-driven
+consumer like DRAW-CHROME-RECT needs the role keyword to do its own
+GPU-side THEME-HSV computation; handing it a pre-resolved CPU color
+would defeat the actual point of a shader-driven color (#37's design
+doc section 4's own stated wiring: 'a resolved style attribute...
+maps directly onto the existing SET-SHADER-FLOAT/INT calls')."
+  (let ((value (get-style selector attr)))
+    (if (and (consp value) (eq (first value) :role))
+        (second value)
+        (error "RESOLVE-STYLE-ROLE-KEYWORD: ~S's ~S attribute is ~S, not a (:ROLE X) declaration"
+               selector attr value))))
+
 ;;; The actual first real retrofit — Hearts' AI-avatar glyph-color,
 ;;; hardcoded to (THEME-COLOR :INFO) before this, now declared as data.
 (defstylesheet :core
   (:selector (:hearts :ai-avatar)
-    :glyph-color (:role :info)))
+    :glyph-color (:role :info))
+  ;; #37 section 4's real retrofit — the difficulty-selection card
+  ;; fill, hardcoded to :ACCENT/:PANEL directly in MAIN.LISP's own
+  ;; DRAW-CHROME-RECT call before this, now declared as data. Genuine
+  ;; shader-driven consumer (checked directly, not assumed): DRAW-
+  ;; CHROME-RECT's ROLE parameter feeds THEME-HSV on the GPU side, not
+  ;; a pre-resolved CPU color — the actual case this section's own
+  ;; wiring needed to be proven against.
+  (:selector (:difficulty :card)
+    :fill (:role :panel))
+  (:selector (:difficulty :card-selected)
+    :fill (:role :accent)))

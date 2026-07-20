@@ -208,7 +208,11 @@ actual tokens — see src/palette.lisp), not a flat CLEAR-BACKGROUND."
                for x in xs
                for i from 0
                for selected-p = (= i (arcade-state-difficulty-index state))
-               do (draw-chrome-rect x y card-w card-h (if selected-p :accent :panel) (if selected-p 0.35 1.0))
+               do (draw-chrome-rect x y card-w card-h
+                                     (resolve-style-role-keyword
+                                      (if selected-p '(:difficulty :card-selected) '(:difficulty :card))
+                                      :fill)
+                                     (if selected-p 0.35 1.0))
                   (raylib:draw-rectangle-lines-ex
                    (raylib:make-rectangle :x (float x 1.0) :y (float y 1.0) :width (float card-w 1.0) :height (float card-h 1.0))
                    (if selected-p 3.0 1.0)
