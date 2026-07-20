@@ -111,6 +111,14 @@ qlot exec ros run \\
 ;; UIOP:SYMBOL-CALL (string-based, no read-time package resolution)
 ;; instead of a direct FIVEAM:RUN! reference — matching that exact,
 ;; already-proven pattern here too, not guessed at freshly.
+;; A third distinct issue on top of the two already fixed: all suites
+;; genuinely passed on the real runner (confirmed directly in the
+;; logs — 304/83/30/120/64, zero failures, zero unhandled errors) but
+;; the job still exited non-zero. UNLESS's own return value is NIL on
+;; its true-condition (success) path — if the action's own wrapper
+;; checks the CUSTOM code's last form's return value, not just whether
+;; an error was signaled, a success that returns NIL could still read
+;; as failure. Returning T explicitly on the success path instead.
 (defparameter +standard-run-tests-custom+
   "(ql:quickload :edm-engine/tests/all)
 (let ((results (list (uiop:symbol-call :fiveam :run! :edm-engine)
@@ -118,7 +126,9 @@ qlot exec ros run \\
                       (uiop:symbol-call :fiveam :run! :edm-engine-audio)
                       (uiop:symbol-call :fiveam :run! :edm-engine-queens)
                       (uiop:symbol-call :fiveam :run! :edm-engine-hearts))))
-  (unless (every #'identity results) (error \"one or more edm-engine FiveAM suites failed\")))")
+  (if (every #'identity results)
+      t
+      (error \"one or more edm-engine FiveAM suites failed\")))")
 
 (defworkflow ci
   :on-push-to "main"
