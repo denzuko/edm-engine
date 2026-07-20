@@ -42,7 +42,7 @@
    #:+render-modes+ #:*render-mode* #:toggle-render-mode
    #:lerp #:ease-out-cubic #:tween #:make-tween #:tween-position #:tween-finished-p
    #:tween-start-x #:tween-start-y #:tween-end-x #:tween-end-y #:tween-start-time #:tween-duration
-   #:centered-row-positions #:wrap-text-lines #:centered-grid-positions #:center-within #:lrp
+   #:centered-row-positions #:wrap-text-lines #:centered-grid-positions #:center-within #:lrp #:anchor-at-edge
    #:defstylesheet #:get-style #:resolve-style-role #:*stylesheets*
    #:pulseVal #:ese #:clearEse #:*ese* #:spawnConfetti #:despawnExpired
    #:+die-sides+ #:roll-die #:roll-dice-n #:roll-percentile

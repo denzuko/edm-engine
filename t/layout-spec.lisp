@@ -83,3 +83,43 @@ additive -- (item-size=50, gap=5) must produce the same result as
 stride math already works (ITEM-SIZE + GAP), not a different
 convention for the fixed-start sibling."
   (is (= (lrp 20 3 55 0) (lrp 20 3 50 5))))
+
+;; BDD-first, per #36's own open question ("anchor-to-container-edge
+;; ... probably general, even though Hearts is currently the only
+;; consumer") now resolved yes — written before ANCHOR-AT-EDGE exists,
+;; expected to fail until implemented. Checked against Hearts'
+;; existing AI-ORIGIN-POSITION values directly (not invented): a
+;; fixed offset from the named edge, centered on the OTHER axis —
+;; single-float throughout, matching the raylib-coordinate convention
+;; this shape's actual, only consumer needs.
+(test anchor-at-edge-left-fixes-x-and-centers-y
+  "Hearts player 1's actual shape: 24.0 from the left edge, vertically
+centered for a 62.0-tall content stack in a 768.0-tall container."
+  (multiple-value-bind (x y) (anchor-at-edge :left 24.0 1024.0 768.0 0.0 62.0)
+    (is (= 24.0 x))
+    (is (= 353.0 y))))
+
+(test anchor-at-edge-right-offsets-from-the-right-edge
+  "Hearts player 3's actual shape: 70.0 from the right edge (so X =
+container-width - offset, not just the offset itself), same vertical
+centering as player 1."
+  (multiple-value-bind (x y) (anchor-at-edge :right 70.0 1024.0 768.0 0.0 62.0)
+    (is (= 954.0 x))
+    (is (= 353.0 y))))
+
+(test anchor-at-edge-top-fixes-y-and-centers-x
+  "Hearts player 2's actual shape: 40.0 from the top edge, horizontally
+centered for a 46.0-wide content stack in a 1024.0-wide container —
+the perpendicular case from LEFT/RIGHT, checked independently rather
+than assumed symmetric from those two alone."
+  (multiple-value-bind (x y) (anchor-at-edge :top 40.0 1024.0 768.0 46.0 0.0)
+    (is (= 489.0 x))
+    (is (= 40.0 y))))
+
+(test anchor-at-edge-bottom-offsets-from-the-bottom-edge
+  "The fourth edge, not yet a real consumer anywhere in this codebase
+but a genuine, symmetric case the primitive should still support
+correctly, not just the three Hearts happens to use."
+  (multiple-value-bind (x y) (anchor-at-edge :bottom 40.0 1024.0 768.0 46.0 0.0)
+    (is (= 489.0 x))
+    (is (= 728.0 y))))

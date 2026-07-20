@@ -45,11 +45,15 @@ never tweened, e.g. a hand card that hasn't moved)."
 (defun ai-origin-position (player window-width window-height)
   "Approximate screen position of PLAYER's card stack — cards fly FROM
 here, not from an exact per-card hand layout (AI hands are shown as a
-face-down stack, not individually laid out)."
+face-down stack, not individually laid out). ANCHOR-AT-EDGE retrofit
+(#36) — the content dimensions passed in (0.0 x 62.0, 46.0 x 0.0) are
+the same implicit content-stack sizes this function's own literals
+(31.0, 23.0) always meant, named once instead of duplicated as bare
+half-width/half-height arithmetic per player."
   (ecase player
-    (1 (values 24.0 (- (/ window-height 2.0) 31.0)))
-    (2 (values (- (/ window-width 2.0) 23.0) 40.0))
-    (3 (values (- window-width 70.0) (- (/ window-height 2.0) 31.0)))))
+    (1 (edm-engine:anchor-at-edge :left 24.0 window-width window-height 0.0 62.0))
+    (2 (edm-engine:anchor-at-edge :top 40.0 window-width window-height 46.0 0.0))
+    (3 (edm-engine:anchor-at-edge :right 70.0 window-width window-height 0.0 62.0))))
 
 (defun ensure-theme-playing ()
   "#22: non-blocking. The old PATTERN-SOUND call synchronously paid

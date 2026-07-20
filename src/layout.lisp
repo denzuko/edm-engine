@@ -60,6 +60,28 @@ tile before this retrofit, named once."
   (values (round (+ container-x (/ (- container-w content-w) 2.0)))
           (round (+ container-y (/ (- container-h content-h) 2.0)))))
 
+;; #36's own open question resolved: yes, general — Hearts' three
+;; AI-opponent positions (a fixed offset from one edge, centered on
+;; the perpendicular axis) is a real, reusable shape, not something
+;; that stays hand-rolled just because Hearts is currently its only
+;; consumer. Single-float throughout — this shape's actual consumer
+;; needs raylib-coordinate precision, not fixnum pixel-grid math like
+;; CENTERED-ROW-POSITIONS/LRP/CENTER-WITHIN above.
+(declaim (ftype (function ((member :left :right :top :bottom)
+                            single-float single-float single-float single-float single-float)
+                          (values single-float single-float))
+                anchor-at-edge))
+(defun anchor-at-edge (edge offset container-w container-h content-w content-h)
+  "A CONTENT-W x CONTENT-H element positioned OFFSET from EDGE of a
+CONTAINER-W x CONTAINER-H container, centered on the perpendicular
+axis — the shape Hearts' three AI-opponent card-stack origins share,
+found duplicated three separate times before this retrofit."
+  (ecase edge
+    (:left (values offset (/ (- container-h content-h) 2.0)))
+    (:right (values (- container-w offset) (/ (- container-h content-h) 2.0)))
+    (:top (values (/ (- container-w content-w) 2.0) offset))
+    (:bottom (values (/ (- container-w content-w) 2.0) (- container-h offset)))))
+
 (declaim (ftype (function (string (function (string) fixnum) fixnum) list) wrap-text-lines))
 (defun wrap-text-lines (text measure-fn max-width)
   "Greedy word-wrap TEXT into lines that fit MAX-WIDTH per MEASURE-FN
