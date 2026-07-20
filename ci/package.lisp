@@ -86,16 +86,27 @@ qlot exec ros run \\
   --eval '(let ((r (fiveam:run (quote :edm-engine-e2e)))) (fiveam:explain! r) (unless (fiveam:results-status r) (uiop:quit 1)))' \\
   --eval '(uiop:quit 0)'")
 
-;; Experimental, per direct correction: re-testing whether 40ANTS/CI's
-;; own standard, zero-configuration RUN-TESTS job type (40ants/setup-
-;; lisp@v4 + 40ants/run-tests@v2, qlot already set up as part of that
-;; action) actually works now, rather than assuming the earlier
-;; diagnosis ("both actions broken on ubuntu-latest") still holds.
-;; Added as a genuinely new, third job rather than replacing either
-;; proven existing one — if this fails, nothing else breaks; if it
-;; passes, it's real evidence toward simplifying the other two jobs
-;; onto this same standard mechanism later, not assumed without
-;; checking.
+;; Confirmed 40ants/setup-lisp@v4 genuinely works now (its own steps
+;; correctly set shell: lispsh -eo pipefail internally, per its own
+;; docs) — the earlier session's "both actions broken on ubuntu-latest"
+;; diagnosis doesn't hold for this action specifically, checked
+;; directly against a real CI run rather than left assumed.
+;;
+;; 40ants/run-tests@v2 itself hit a real, different, more specific
+;; failure: "Component NIL not found" when driving EDM-ENGINE/TESTS/
+;; ALL's own TEST-OP method through the action's internal wrapper
+;; (RUN-TESTS.ROS) — not reproduced or explained further here. Worked
+;; around with the action's own documented CUSTOM parameter, bypassing
+;; its ASDF:TEST-SYSTEM invocation entirely and calling the exact same
+;; FIVEAM:RUN! forms EDM-ENGINE/TESTS/ALL's own TEST-OP method already
+;; runs (edm-engine.asd) — proven logic, not new.
+(defparameter +standard-run-tests-custom+
+  "(ql:quickload :edm-engine/tests/all)
+(let ((results (list (fiveam:run! :edm-engine) (fiveam:run! :edm-engine-wordle)
+                      (fiveam:run! :edm-engine-audio) (fiveam:run! :edm-engine-queens)
+                      (fiveam:run! :edm-engine-hearts))))
+  (unless (every #'identity results) (error \"one or more edm-engine FiveAM suites failed\")))")
+
 (defworkflow ci
   :on-push-to "main"
   :on-pull-request t
@@ -111,4 +122,5 @@ qlot exec ros run \\
                                       (sh "Provision and Build" +provision-and-build+)))
          (make-instance '40ants-ci/jobs/run-tests:run-tests
                          :name "standard-run-tests"
-                         :asdf-system "edm-engine/tests/all")))
+                         :asdf-system "edm-engine/tests/all"
+                         :custom +standard-run-tests-custom+)))
