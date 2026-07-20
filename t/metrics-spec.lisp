@@ -78,12 +78,21 @@ PUSHNEW's own semantics reading correctly for this use."
   (is (= 1 (count 'recordGcMetrics sb-ext:*after-gc-hooks*))))
 
 (test a-real-gc-increments-gc-run-count-and-records-bytes-allocated
-  "Not mocked — triggers an actual SB-EXT:GC and confirms the hook
-genuinely fired, the direct answer to #50's memory-management
-question, which this session had zero instrumentation for before this."
+  "Not mocked — RECORDGCMETRICS itself is called directly (real code,
+not a stub), after a genuine SB-EXT:GC. Doesn't rely on
+SB-EXT:*AFTER-GC-HOOKS* firing synchronously before the next form runs
+— checked directly, not assumed: on a different SBCL build (2.6.6 vs
+this sandbox's 2.2.9), a real CI run showed that timing isn't
+guaranteed, and the hook's own INSTALLATION is already covered
+separately (GC-HOOK-IS-INSTALLED-ONCE-EVEN-IF-CALLED-TWICE, above) —
+this test's actual job is confirming RECORDGCMETRICS itself correctly
+updates metrics when it runs, the direct answer to #50's memory-
+management question, which this session had zero instrumentation for
+before this."
   (clearMetrics)
   (installGcHook)
   (sb-ext:gc :full t)
+  (recordGcMetrics)
   (is (>= (mCounterValue (gethash "gc.run_count" *metrics*)) 1))
   (is (> (mGaugeValue (gethash "gc.bytes_allocated" *metrics*)) 0)))
 
