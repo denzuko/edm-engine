@@ -87,3 +87,74 @@ lifetime, not linger forever or vanish immediately."
     (spawnConfetti arena 0.0 0.0 5 0.0d0 (make-random-state t))
     (despawnExpired arena 10.0d0 2.0d0)
     (is (= 0 (length (arena-live-handles arena))))))
+
+;;; DEFEFFECT-STATE — #37's own explicitly-named remaining scope
+;;; ("the macro/DSL syntax around this is real, separate, later
+;;; scope" — effect.lisp's own header comment), the declarative layer
+;;; composing PULSEVAL/ESE rather than reimplementing them. BDD-first,
+;;; written before DEFEFFECT-STATE exists.
+
+(test defeffect-state-pulse-elapsed-matches-ese-directly
+  "GOAL: the :RETURN :ELAPSED variant must return exactly what ESE
+itself would for the same key — Queens' actual, correct use case (a
+GPU shader computing its own sin() from raw elapsed time, not a
+CPU-computed pulse value), not forcing every consumer through
+PULSEVAL just to prove the macro composes something."
+  (clearEse)
+  (defeffect-state test-cursor-pulse (active-p now)
+    (:pulse :key :test-cursor-key :active active-p :now now :return :elapsed))
+  (is (= (ese :test-cursor-key t 5.0d0) (test-cursor-pulse t 5.0d0))))
+
+(test defeffect-state-pulse-value-matches-pulseval-of-the-elapsed-time
+  "GOAL: the :RETURN :VALUE variant composes ESE's elapsed time through
+PULSEVAL — a genuinely different consumer shape (CPU-side, wants the
+oscillating value itself) from the :ELAPSED case above, not the same
+thing under a different name."
+  (clearEse)
+  (defeffect-state test-cpu-pulse (active-p now)
+    (:pulse :key :test-cpu-key :active active-p :now now :return :value
+            :period 1.0d0 :base 0.5 :amplitude 0.5))
+  (let ((elapsed (ese :test-cpu-key t 3.0d0)))
+    (clearEse)
+    (is (= (pulseVal elapsed :period 1.0d0 :base 0.5 :amplitude 0.5)
+           (test-cpu-pulse t 3.0d0)))))
+
+(test defeffect-state-pulse-returns-nil-when-inactive
+  "GOAL: inactive state means no pulse at all, matching ESE's own NIL-
+when-inactive contract directly, not a special zero/false value the
+caller has to know to check for separately."
+  (clearEse)
+  (defeffect-state test-inactive-pulse (active-p now)
+    (:pulse :key :test-inactive-key :active active-p :now now :return :elapsed))
+  (is (null (test-inactive-pulse nil 1.0d0))))
+
+(test defeffect-state-key-can-reference-other-lambda-list-parameters
+  "GOAL: Queens' actual retrofit case — the key needs CURSOR-ROW/
+CURSOR-COL, parameters beyond just ACTIVE/NOW — checked directly, not
+assumed possible from the simpler cases above alone."
+  (clearEse)
+  (defeffect-state test-cell-pulse (row col active-p now)
+    (:pulse :key (list :test-cell row col) :active active-p :now now :return :elapsed))
+  (is (= (ese (list :test-cell 2 3) t 5.0d0) (test-cell-pulse 2 3 t 5.0d0))))
+
+;;; DEFEFFECT-SEQUENCE — the event-triggered counterpart to
+;;; DEFEFFECT-STATE above, scoped to :CONFETTI, the one event-
+;;; triggered primitive that genuinely exists (Yahtzee's win overlay).
+;;; The full bus-event trigger mechanism (:TRIGGER :EVENT :CARD-PLAYED,
+;;; per the design doc's own sketch) isn't built — that's the VFX
+;;; processor, real, separate, later scope, same as #37's own doc
+;;; names it. This composes SPAWNCONFETTI as a callable sequence; the
+;;; caller still decides *when* to invoke it (Yahtzee's own status-
+;;; transition check), matching the doc's own distinction that the
+;;; macro's job is "which primitives chain together," not "when to
+;;; fire."
+
+(test defeffect-sequence-confetti-spawns-exactly-the-declared-count
+  "GOAL: the generated function spawns particles matching SPAWNCONFETTI
+directly — the macro composes the primitive, it doesn't reimplement
+spawning logic of its own."
+  (defeffect-sequence test-confetti-burst (arena origin-x origin-y now rng)
+    (:confetti :count 30 :speed-range 150.0))
+  (let ((arena (make-arena 50)))
+    (test-confetti-burst arena 0.0 0.0 0.0d0 (make-random-state t))
+    (is (= 30 (length (arena-live-handles arena))))))

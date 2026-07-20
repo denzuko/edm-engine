@@ -96,3 +96,76 @@ the count despawned."
         (arena-despawn arena h)
         (incf count)))
     count))
+
+;;; DEFEFFECT-STATE — the declarative macro layer this file's own
+;;; earlier header comment named as explicit, real, separate remaining
+;;; scope ("the macro/DSL syntax around this is real, separate, later
+;;; scope — this is the primitive it would compile down to"), composing
+;;; PULSEVAL/ESE rather than reimplementing them. Scoped to the :PULSE
+;;; shape only, the one primitive that genuinely exists — #46's own
+;;; taxonomy is itself an unimplemented catalog; validating against
+;;; primitives that don't exist yet (:ZOOM, per the design doc's own
+;;; sketch) would be speculative, not a real macro-time check.
+
+(defmacro defeffect-state (name lambda-list shape)
+  "Defines NAME as a function taking LAMBDA-LIST, whose body computes a
+state-triggered effect value per SHAPE. SHAPE is currently
+(:PULSE :KEY key-form :ACTIVE active-var :NOW now-var
+ :RETURN (:ELAPSED | :VALUE) &KEY period base amplitude) — :ACTIVE/
+:NOW name which of LAMBDA-LIST's parameters play those roles (matching
+DEFLAYOUT's own :INDEX/:ROW-INDEX convention), so KEY-FORM can
+reference other LAMBDA-LIST parameters too — Queens' actual retrofit
+case needs CURSOR-ROW/CURSOR-COL in its key, not just ACTIVE/NOW.
+:ELAPSED returns exactly what ESE itself returns for KEY (Queens'
+actual, correct use case: a GPU shader computing its own sin() from
+raw elapsed time), :VALUE composes that elapsed time through PULSEVAL
+(a genuinely different consumer shape — CPU-side, wants the
+oscillating value itself, not raw time) — two real cases, not the
+same thing under two names."
+  (destructuring-bind (kind &key key active now return period base amplitude) shape
+    (ecase kind
+      (:pulse
+       (let ((ignorable-params (remove active (remove now lambda-list))))
+         (ecase return
+           (:elapsed
+            `(defun ,name ,lambda-list
+               ,@(when ignorable-params `((declare (ignorable ,@ignorable-params))))
+               (ese ,key ,active ,now)))
+           (:value
+            `(defun ,name ,lambda-list
+               ,@(when ignorable-params `((declare (ignorable ,@ignorable-params))))
+               (let ((elapsed (ese ,key ,active ,now)))
+                 (when elapsed
+                   (pulseVal elapsed
+                             ,@(when period `(:period ,period))
+                             ,@(when base `(:base ,base))
+                             ,@(when amplitude `(:amplitude ,amplitude)))))))))))))
+
+;;; DEFEFFECT-SEQUENCE — the event-triggered counterpart to
+;;; DEFEFFECT-STATE above, scoped to :CONFETTI, the one event-
+;;; triggered primitive that genuinely exists (Yahtzee's win overlay,
+;;; #34/#46). The full bus-event trigger mechanism the design doc
+;;; sketches (:TRIGGER :EVENT :CARD-PLAYED) isn't built here — that's
+;;; the VFX processor, real, separate, later scope per the design
+;;; doc's own section on it, not conflated with this macro's actual
+;;; job: composing which primitives chain together. The caller still
+;;; decides *when* to invoke the generated function (a status-
+;;; transition check, a bus-drain loop once that exists, whatever fits
+;;; — this macro is agnostic to the trigger mechanism, matching how
+;;; SPAWNCONFETTI itself was already agnostic to it).
+
+(defmacro defeffect-sequence (name lambda-list shape)
+  "Defines NAME as a function taking LAMBDA-LIST, whose body runs the
+chained primitives in SHAPE. SHAPE is currently
+(:CONFETTI :COUNT count-form :SPEED-RANGE range-form) — SPAWNCONFETTI's
+own shape, composed here rather than reimplemented. LAMBDA-LIST is
+expected to supply (arena origin-x origin-y now rng), SPAWNCONFETTI's
+own required arguments, in that order — DEFEFFECT-SEQUENCE doesn't
+invent a different calling convention for its one real consumer."
+  (destructuring-bind (kind &key count speed-range) shape
+    (ecase kind
+      (:confetti
+       (destructuring-bind (arena-var origin-x-var origin-y-var now-var rng-var) lambda-list
+         `(defun ,name (,arena-var ,origin-x-var ,origin-y-var ,now-var ,rng-var)
+            (spawnConfetti ,arena-var ,origin-x-var ,origin-y-var ,count ,now-var ,rng-var
+                            :speed-range ,speed-range)))))))

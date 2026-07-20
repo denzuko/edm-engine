@@ -42,8 +42,13 @@ each face value 1-6 — the standard arrangement on a real die.")
 ;;; current, not game state itself.
 (defvar *confettiArena* (edm-engine:make-arena 200))
 (defvar *confettiTick* (edm-engine:make-tick))
-(defvar *confettiPrevStatus* :playing)
 (defparameter +confettiLifetime+ 3.0d0)
+
+;; #37's DEFEFFECT-SEQUENCE — Yahtzee's win-overlay confetti burst
+;; (#34/#46) is its own real, named retrofit target, now declared as
+;; data rather than a bare SPAWNCONFETTI call inline below.
+(edm-engine:defeffect-sequence yahtzee-confetti-burst (arena origin-x origin-y now rng)
+  (:confetti :count 80 :speed-range 180.0))
 
 (defun ensure-theme-playing ()
   "#22: non-blocking — see Hearts' identical comment."
@@ -160,7 +165,14 @@ each face value 1-6 — the standard arrangement on a real die.")
      (when (game-over-p game)
        (edm-engine/audio:play-tone :sine 1000.0 0.3)
        (setf (yahtzee-game-status game)
-             (if (= 0 (winner-index game)) :won :lost))))
+             (if (= 0 (winner-index game)) :won :lost))
+       ;; #37's bus-driven VFX trigger, retrofit against a real
+       ;; consumer (this exact win transition) rather than built
+       ;; speculatively: game logic pushes a semantic event, never
+       ;; calls a draw/effect function directly — GAMEOVERLAYEFFECTS
+       ;; drains this on the render side, below.
+       (when (= 0 (winner-index game))
+         (edm-engine:bus-push edm-engine:*engine-bus* :vfx (list :yahtzee-won)))))
     (t nil)))
 
 (defmethod edm-engine:game-render ((game yahtzee-game) window-width window-height)
@@ -183,10 +195,22 @@ each face value 1-6 — the standard arrangement on a real die.")
   ;; the arena correctly holding 80 live particles) is what actually
   ;; caught this, not visual inspection alone. GAMEOVERLAYEFFECTS runs
   ;; after the popup in ARCADE-RENDER, a true top layer.
-  (when (and (eq (yahtzee-game-status game) :won) (not (eq *confettiPrevStatus* :won)))
-    (edm-engine:spawnConfetti *confettiArena* (/ window-width 2.0) (/ window-height 3.0) 80
-                               (raylib:get-time) (make-random-state t) :speed-range 180.0))
-  (setf *confettiPrevStatus* (yahtzee-game-status game))
+  ;;
+  ;; #37's bus-driven VFX processor, retrofit against this real
+  ;; consumer — drains the :vfx topic until empty (never blocks; a
+  ;; frame with nothing pending does zero work beyond the poll
+  ;; itself), matching the design doc's own stated shape: producers
+  ;; can be any thread, only the main/render thread (this runs from)
+  ;; touches the arena/GPU-bound state. Replaces the earlier status-
+  ;; polling detection (*CONFETTIPREVSTATUS* tracking a transition
+  ;; every frame) with the actual event GAME-UPDATE now pushes once,
+  ;; at the moment it happens — not a per-frame poll for a change that
+  ;; already occurred.
+  (loop for (event received-p) = (multiple-value-list (edm-engine:bus-try-pop edm-engine:*engine-bus* :vfx))
+        while received-p
+        when (eq (first event) :yahtzee-won)
+          do (yahtzee-confetti-burst *confettiArena* (/ window-width 2.0) (/ window-height 3.0)
+                                      (raylib:get-time) (make-random-state t)))
   (edm-engine:advance-tick *confettiArena* *confettiTick* (raylib:get-frame-time))
   (edm-engine:despawnExpired *confettiArena* (raylib:get-time) +confettiLifetime+)
   (dolist (h (edm-engine:arena-live-handles *confettiArena*))

@@ -62,3 +62,41 @@ have returned T. Locking in the specific case that was found broken,
 not just the general shape already covered above."
   (let ((tw (make-tween :start-time 10.0d0 :duration 0.3d0)))
     (is (tween-finished-p tw 10.3d0))))
+
+;;; The generic EFFECT protocol — #37's own design doc names this
+;;; directly (EFFECT-UPDATE/EFFECT-FINISHED-P/EFFECT-APPLY), TWEEN as
+;;; the first concrete implementation, matching GAME-PROTOCOL.LISP's
+;;; established style. #31 itself is already fixed (closed) — this is
+;;; the separate, real remaining piece: one shared interface future
+;;; effect types (camera shake, particle bursts) implement, instead of
+;;; being unrelated ad hoc systems each reinventing timing, per the
+;;; design doc's own stated goal. BDD-first, written before the
+;;; generic functions/TWEEN methods exist.
+
+(test effect-apply-on-a-tween-matches-tween-position-directly
+  "GOAL: the generic protocol composes TWEEN-POSITION, it doesn't
+reimplement the interpolation math a second time under a new name."
+  (let ((tw (make-tween :start-x 0.0 :start-y 0.0 :end-x 100.0 :end-y 200.0
+                         :start-time 0.0d0 :duration 1.0d0)))
+    (multiple-value-bind (ex ey) (effect-apply tw 0.5d0)
+      (multiple-value-bind (tx ty) (tween-position tw 0.5d0)
+        (is (= ex tx))
+        (is (= ey ty))))))
+
+(test effect-finished-p-on-a-tween-matches-tween-finished-p-directly
+  "Same composition principle as EFFECT-APPLY above, checked
+independently for EFFECT-FINISHED-P rather than assumed shared just
+because both wrap TWEEN functions."
+  (let ((tw (make-tween :start-time 10.0d0 :duration 0.3d0)))
+    (is (eq (tween-finished-p tw 10.3d0) (effect-finished-p tw 10.3d0)))))
+
+(test effect-update-on-a-tween-is-a-genuine-no-op-not-an-error
+  "GOAL: TWEEN has no internal state EFFECT-UPDATE needs to advance —
+TWEEN-POSITION is already a pure function of NOW, unlike a future
+stateful effect type (a particle system's own physics tick). The
+generic default method must exist and do nothing harmful for a type
+with nothing to update, not signal a NO-APPLICABLE-METHOD error that
+would force every effect type to define a method even when there's
+truly nothing to do."
+  (let ((tw (make-tween :start-time 0.0d0 :duration 1.0d0)))
+    (is (not (null (nth-value 0 (ignore-errors (effect-update tw 0.5d0) t)))))))

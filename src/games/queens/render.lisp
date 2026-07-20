@@ -100,23 +100,30 @@ letter tile also duplicated) — now composes CENTER-WITHIN."
          (edm-engine:draw-glyph-text +queen-glyph+ tx ty font-size
                                       (if conflicted (edm-engine:rgb-color edm-engine:+color-red+) :black)))))))
 
+;; #37's DEFEFFECT-STATE — Queens' cursor pulse is its own real, named
+;; retrofit target (this session's own pulseVal/ese generalization),
+;; now declared as data rather than a bare ESE call inline in
+;; DRAW-QUEENS-BOARD's own LET* below.
+(edm-engine:defeffect-state queens-cursor-pulse (cursor-row cursor-col active-p now)
+  (:pulse :key (list :queens-cursor cursor-row cursor-col) :active active-p :now now
+          :return :elapsed))
+
 (defun draw-queens-board (game window-width window-height)
   (let* ((board (queens-game-board game))
          (size (queens-board-size board))
          (conflicts (queens-conflicts game))
          (cursor-row (queens-game-cursor-row game))
          (cursor-col (queens-game-cursor-col game))
-         ;; #37's DEFEFFECT-STATE generalization, proven against this
-         ;; exact cell — ESE tracks time since the cursor most recently
-         ;; entered ITS CURRENT CELL, not raw wall-clock, so the pulse
-         ;; starts fresh on every cursor move rather than staying
-         ;; phase-locked to program start. Computed once per frame
-         ;; (not once per cell) with a key encoding the cursor's actual
-         ;; position — calling ESE per-cell with one shared key would
-         ;; have every non-cursor cell's call clear the cursor cell's
-         ;; own tracked state within the same frame, a real bug caught
-         ;; and fixed before this landed, not shipped as written first.
-         (cursor-elapsed (edm-engine:ese (list :queens-cursor cursor-row cursor-col) t (raylib:get-time))))
+         ;; ESE tracks time since the cursor most recently entered ITS
+         ;; CURRENT CELL, not raw wall-clock, so the pulse starts fresh
+         ;; on every cursor move rather than staying phase-locked to
+         ;; program start. Computed once per frame (not once per cell)
+         ;; with a key encoding the cursor's actual position — calling
+         ;; ESE per-cell with one shared key would have every non-
+         ;; cursor cell's call clear the cursor cell's own tracked
+         ;; state within the same frame, a real bug caught and fixed
+         ;; before this landed, not shipped as written first.
+         (cursor-elapsed (queens-cursor-pulse cursor-row cursor-col t (raylib:get-time))))
     (multiple-value-bind (ox oy) (queens-grid-origin window-width window-height size)
       (dotimes (row size)
         (dotimes (col size)
