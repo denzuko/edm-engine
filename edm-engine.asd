@@ -52,9 +52,20 @@ same convention as render.lisp."
 
 (defsystem "edm-engine/render"
   :description "cl-raylib I/O boundary. Never unit-tested; kept thin by design."
-  :depends-on ("edm-engine/core" "cl-raylib" "3d-vectors")
+  :depends-on ("edm-engine/core" "edm-engine/asset-embed" "cl-raylib" "3d-vectors")
   :serial t
   :components ((:file "src/render")))
+
+(defsystem "edm-engine/asset-embed"
+  :description "#24's fix: compile-time asset embedding (fonts, shaders), so
+the standalone binary needs zero runtime file access to its own assets and
+is genuinely relocatable. Deliberately its own system, not part of
+edm-engine/core (\"pure engine logic, no I/O\") — this genuinely does file
+I/O, just entirely at compile/build time, never at runtime, which is a
+different, honest category from the runtime-I/O boundary EDM-ENGINE/RENDER
+exists to isolate."
+  :depends-on ("qbase64")
+  :components ((:file "src/asset-embed")))
 
 (defsystem "edm-engine/cards"
   :description "Deck/card primitives shared across any card game — extracted
@@ -113,7 +124,7 @@ edm-engine/ruleset docstring for when constraint engines are warranted."
 (defsystem "edm-engine/games/wordle/render"
   :description "Wordle tile-grid renderer. Screen-centered; tile color is
 a GLSL fragment-shader function of state, never a Lisp-side branch."
-  :depends-on ("edm-engine/games/wordle" "edm-engine/render" "edm-engine/audio" "cffi")
+  :depends-on ("edm-engine/games/wordle" "edm-engine/render" "edm-engine/audio" "edm-engine/asset-embed" "cffi")
   :components ((:file "src/games/wordle/render")))
 
 (defsystem "edm-engine/games/queens"
@@ -132,7 +143,7 @@ Wordle never needed one."
   :description "Queens board renderer. Region colors reuse the engine's
 existing CPU-side HSV->RGB (src/palette.lisp) rather than a second GPU
 shader copy of the same math."
-  :depends-on ("edm-engine/games/queens" "edm-engine/render" "edm-engine/audio")
+  :depends-on ("edm-engine/games/queens" "edm-engine/render" "edm-engine/audio" "edm-engine/asset-embed")
   :components ((:file "src/games/queens/render")))
 
 (defsystem "edm-engine/games/queens/tests"
@@ -187,7 +198,7 @@ suite since it needs that plus a full raylib build."
 
 (defsystem "edm-engine/tests"
   :description "FiveAM spec suite over edm-engine/core. Written before implementation, per BDD gate."
-  :depends-on ("edm-engine/core" "fiveam")
+  :depends-on ("edm-engine/core" "edm-engine/asset-embed" "fiveam")
   :serial t
   :components ((:file "t/package")
                (:file "t/handle-spec")
@@ -195,6 +206,7 @@ suite since it needs that plus a full raylib build."
                (:file "t/bus-spec")
                (:file "t/arena-spec")
                (:file "t/arena-impl-spec")
+               (:file "t/asset-embed-spec")
                (:file "t/ruleset-spec")
                (:file "t/game-registry-spec")
                (:file "t/arcade-menu-spec")

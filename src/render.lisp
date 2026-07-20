@@ -51,23 +51,21 @@ No logic here; ARENA state is produced entirely by ADVANCE-TICK."
 (defvar *chrome-value-loc* nil)
 (defvar *chrome-alpha-loc* nil)
 
-(defun chrome-fragment-shader-path ()
-  (namestring (asdf:system-relative-pathname :edm-engine "src/shaders/chrome.fs")))
-
-(defun chrome-vertex-shader-path ()
-  "PASSTHROUGH.VS is shared — chrome.fs.lisp never had its own paired
-.vs; the vertex-shader half is identical to what tile.vs.lisp does,
-so it's one shared file, not a same-named chrome.vs that never
-actually got generated. (LOAD-SHADER silently falls back to raylib's
-own default vertex shader when this path doesn't resolve, which is
-functionally close enough to go unnoticed visually — but silently
-wrong is still wrong.)"
-  (namestring (asdf:system-relative-pathname :edm-engine "src/shaders/passthrough.vs")))
+;; #24's fix: embedded at compile time, not resolved via a runtime
+;; file path — the actual reason PASSTHROUGH.VS is shared (one
+;; embedded copy, not a same-named chrome.vs that never got
+;; generated) is unchanged from before; only how the source reaches
+;; RAYLIB changes, from a file path LOAD-SHADER reads at runtime to a
+;; string LOAD-SHADER-FROM-MEMORY already has in hand.
+(defparameter +chrome-fragment-shader-source+
+  (edm-engine/asset-embed:embedFileString "src/shaders/chrome.fs"))
+(defparameter +chrome-vertex-shader-source+
+  (edm-engine/asset-embed:embedFileString "src/shaders/passthrough.vs"))
 
 (defun ensure-chrome-shader ()
   (unless *chrome-shader*
     (setf *chrome-shader*
-          (raylib:load-shader (chrome-vertex-shader-path) (chrome-fragment-shader-path)))
+          (raylib:load-shader-from-memory +chrome-vertex-shader-source+ +chrome-fragment-shader-source+))
     (setf *chrome-hue-loc* (raylib:get-shader-location *chrome-shader* "hue"))
     (setf *chrome-saturation-loc* (raylib:get-shader-location *chrome-shader* "saturation"))
     (setf *chrome-value-loc* (raylib:get-shader-location *chrome-shader* "value"))
@@ -120,8 +118,9 @@ another glyph; it's one shared font, not one per table.")
 (defvar *glyph-font* nil)
 (defvar *glyph-font-size* 32)
 
-(defun glyph-font-path ()
-  (namestring (asdf:system-relative-pathname :edm-engine "assets/fonts/DejaVuSans.ttf")))
+;; #24's fix — embedded at compile time, zero runtime file access.
+(defparameter +glyph-font-bytes+
+  (edm-engine/asset-embed:embedFileBytes "assets/fonts/DejaVuSans.ttf"))
 
 (defun ensure-glyph-font ()
   (unless *glyph-font*
@@ -130,7 +129,10 @@ another glyph; it's one shared font, not one per table.")
            (n (length codepoints)))
       (cffi:with-foreign-object (arr :int n)
         (loop for i from 0 for cp in codepoints do (setf (cffi:mem-aref arr :int i) cp))
-        (setf *glyph-font* (raylib:load-font-ex (glyph-font-path) *glyph-font-size* arr n)))))
+        (cffi:with-pointer-to-vector-data (data-ptr +glyph-font-bytes+)
+          (setf *glyph-font*
+                (raylib:load-font-from-memory ".ttf" data-ptr (length +glyph-font-bytes+)
+                                               *glyph-font-size* arr n))))))
   *glyph-font*)
 
 (declaim (ftype (function (string fixnum fixnum fixnum t &optional single-float) null) draw-glyph-text))
@@ -175,19 +177,26 @@ caller can lay out whatever comes after it."
 requested, scaled down from this — normal raylib font usage.")
 (defparameter +mono-font-size+ 32)
 
-(defun ui-font-path ()
-  (namestring (asdf:system-relative-pathname :edm-engine "assets/fonts/TitilliumWeb-Bold.ttf")))
-(defun mono-font-path ()
-  (namestring (asdf:system-relative-pathname :edm-engine "assets/fonts/Inconsolata-Regular.ttf")))
+;; #24's fix — embedded at compile time, zero runtime file access.
+(defparameter +ui-font-bytes+
+  (edm-engine/asset-embed:embedFileBytes "assets/fonts/TitilliumWeb-Bold.ttf"))
+(defparameter +mono-font-bytes+
+  (edm-engine/asset-embed:embedFileBytes "assets/fonts/Inconsolata-Regular.ttf"))
 
 (defun ensure-ui-font ()
   (unless *ui-font*
-    (setf *ui-font* (raylib:load-font-ex (ui-font-path) +ui-font-size+ (cffi:null-pointer) 0)))
+    (cffi:with-pointer-to-vector-data (data-ptr +ui-font-bytes+)
+      (setf *ui-font*
+            (raylib:load-font-from-memory ".ttf" data-ptr (length +ui-font-bytes+)
+                                           +ui-font-size+ (cffi:null-pointer) 0))))
   *ui-font*)
 
 (defun ensure-mono-font ()
   (unless *mono-font*
-    (setf *mono-font* (raylib:load-font-ex (mono-font-path) +mono-font-size+ (cffi:null-pointer) 0)))
+    (cffi:with-pointer-to-vector-data (data-ptr +mono-font-bytes+)
+      (setf *mono-font*
+            (raylib:load-font-from-memory ".ttf" data-ptr (length +mono-font-bytes+)
+                                           +mono-font-size+ (cffi:null-pointer) 0))))
   *mono-font*)
 
 (declaim (ftype (function (string fixnum fixnum fixnum t &optional single-float) null) draw-ui-text))

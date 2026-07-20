@@ -11,18 +11,16 @@
 (defvar *tile-outcome-loc* nil)
 (defvar *tile-time-loc* nil)
 
-(defun tile-shader-path (extension)
-  (namestring (asdf:system-relative-pathname
-               :edm-engine/games/wordle
-               (format nil "src/games/wordle/shaders/tile.~A" extension))))
+;; #24's fix — embedded at compile time, zero runtime file access.
+(defparameter +tile-vertex-shader-source+
+  (edm-engine/asset-embed:embedFileString "src/games/wordle/shaders/tile.vs" :system :edm-engine/games/wordle))
+(defparameter +tile-fragment-shader-source+
+  (edm-engine/asset-embed:embedFileString "src/games/wordle/shaders/tile.fs" :system :edm-engine/games/wordle))
 
 (defun ensure-tile-shader ()
-  "Lazily loads the tile shader pair. cl-raylib's LOAD-SHADER takes plain
-:string CFFI args, so NIL (raylib's own \"use default vertex shader\"
-convention) doesn't translate to NULL here — the vertex shader is a
-standard raylib passthrough, loaded explicitly instead."
+  "Lazily loads the tile shader pair."
   (unless *tile-shader*
-    (setf *tile-shader* (raylib:load-shader (tile-shader-path "vs") (tile-shader-path "fs")))
+    (setf *tile-shader* (raylib:load-shader-from-memory +tile-vertex-shader-source+ +tile-fragment-shader-source+))
     (setf *tile-state-loc* (raylib:get-shader-location *tile-shader* "state"))
     (setf *tile-outcome-loc* (raylib:get-shader-location *tile-shader* "outcome"))
     (setf *tile-time-loc* (raylib:get-shader-location *tile-shader* "time"))))

@@ -17,17 +17,23 @@
 (defvar *cell-cursor-loc* nil)
 (defvar *cell-time-loc* nil)
 
-(defun cell-vertex-shader-path ()
-  "Shared with chrome.fs — see PASSTHROUGH.VS.LISP's own docstring for
-why this isn't a same-named per-shader-pack .vs file."
-  (namestring (asdf:system-relative-pathname :edm-engine "src/shaders/passthrough.vs")))
-
-(defun cell-fragment-shader-path ()
-  (namestring (asdf:system-relative-pathname :edm-engine/games/queens "src/games/queens/shaders/cell.fs")))
+;; #24's fix — embedded at compile time. PASSTHROUGH.VS's own source is
+;; already embedded once in RENDER.LISP (+CHROME-VERTEX-SHADER-SOURCE+);
+;; re-embedding it here rather than referencing that variable directly
+;; keeps this file's own system (EDM-ENGINE/GAMES/QUEENS/RENDER) from
+;; needing a cross-system reference for one shared string — the actual
+;; DejaVuSans-style "one shared file" reasoning is unchanged, just
+;; embedded independently in each of its two consumers rather than
+;; loaded from one shared path both read at runtime.
+(defparameter +cell-vertex-shader-source+
+  (edm-engine/asset-embed:embedFileString "src/shaders/passthrough.vs"))
+(defparameter +cell-fragment-shader-source+
+  (edm-engine/asset-embed:embedFileString "src/games/queens/shaders/cell.fs"
+                                           :system :edm-engine/games/queens))
 
 (defun ensure-cell-shader ()
   (unless *cell-shader*
-    (setf *cell-shader* (raylib:load-shader (cell-vertex-shader-path) (cell-fragment-shader-path)))
+    (setf *cell-shader* (raylib:load-shader-from-memory +cell-vertex-shader-source+ +cell-fragment-shader-source+))
     (setf *cell-hue-loc* (raylib:get-shader-location *cell-shader* "hue"))
     (setf *cell-cursor-loc* (raylib:get-shader-location *cell-shader* "cursor"))
     (setf *cell-time-loc* (raylib:get-shader-location *cell-shader* "time"))))
