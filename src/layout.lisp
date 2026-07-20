@@ -126,22 +126,69 @@ runtime type check against the resolved integer, which couldn't tell
 a real +SPACE-N+ reference apart from a bare literal that happens to
 equal the same number.")
 
+(defun check-deflayout-gap (name gap)
+  "DEFLAYOUT's own real enforcement, shared across every shape that
+takes a gap-style argument: GAP must be the literal 0 (the absence of
+spacing, not a spacing value, exempted from the scale check for
+exactly that reason) or one of the +SPACE-N+ symbols — a bare non-zero
+literal like 55 is a real macro-expansion-time error, checked as
+symbol identity before GAP's value even exists, not a runtime check
+against the resolved integer."
+  (unless (or (eql gap 0) (member gap +space-scale-symbols+))
+    (error "DEFLAYOUT ~A: gap arguments must be 0 or one of ~A, got ~S (a bare non-zero literal is not a spacing scale reference)"
+           name +space-scale-symbols+ gap)))
+
 (defmacro deflayout (name lambda-list shape)
   "Defines NAME as a function taking LAMBDA-LIST, whose body computes a
-position per SHAPE. SHAPE is currently (:ROW :ANCHOR anchor-form
-:ITEM-SIZE size-form :GAP gap-form :INDEX index-var) — LRP's own
-shape, composed here rather than reimplemented. :GAP must be the
-literal 0 (the absence of spacing, not a spacing value, exempted from
-the scale check for exactly that reason) or one of the +SPACE-N+
-symbols above — a bare non-zero literal like 55 is a real
-macro-expansion-time error, not a runtime one."
-  (destructuring-bind (kind &key anchor item-size gap index) shape
+position per SHAPE. SHAPE is one of:
+
+  (:ROW :ANCHOR anchor-form :ITEM-SIZE size-form :GAP gap-form
+   :INDEX index-var) — LRP's own shape, Hearts' HAND-CARD-X's real
+  retrofit case.
+
+  (:GRID :ROWS rows-form :COLS cols-form :ITEM-W w-form :ITEM-H h-form
+   :GAP-X gx-form :GAP-Y gy-form :CONTAINER-W cw-form
+   :CONTAINER-H ch-form :ROW-INDEX row-var :COL-INDEX col-var) —
+  CENTERED-GRID-POSITIONS' own origin composed with the per-cell
+  offset in one step, matching Queens' actual retrofit case (which
+  needed both the origin and a manual per-cell derivation, not the
+  origin alone).
+
+  (:ANCHOR :EDGE edge-form :OFFSET offset-form :CONTAINER-W cw-form
+   :CONTAINER-H ch-form :CONTENT-W contw-form :CONTENT-H conth-form)
+   — ANCHOR-AT-EDGE's own shape, Hearts' AI-ORIGIN-POSITION's real
+  retrofit case.
+
+:GAP/:GAP-X/:GAP-Y must each be the literal 0 (the absence of spacing,
+not a spacing value, exempted from the scale check for exactly that
+reason) or one of the +SPACE-N+ symbols above — a bare non-zero
+literal like 55 is a real macro-expansion-time error, not a runtime
+one, checked as symbol identity before the value even exists."
+  (destructuring-bind (kind &rest args) shape
     (ecase kind
       (:row
-       (unless (or (eql gap 0) (member gap +space-scale-symbols+))
-         (error "DEFLAYOUT ~A: :GAP must be 0 or one of ~A, got ~S (a bare non-zero literal is not a spacing scale reference)"
-                name +space-scale-symbols+ gap))
-       (let ((ignorable-params (remove index lambda-list)))
-         `(defun ,name ,lambda-list
-            ,@(when ignorable-params `((declare (ignorable ,@ignorable-params))))
-            (lrp ,anchor ,index ,item-size ,gap)))))))
+       (destructuring-bind (&key anchor item-size gap index) args
+         (check-deflayout-gap name gap)
+         (let ((ignorable-params (remove index lambda-list)))
+           `(defun ,name ,lambda-list
+              ,@(when ignorable-params `((declare (ignorable ,@ignorable-params))))
+              (lrp ,anchor ,index ,item-size ,gap)))))
+      (:grid
+       (destructuring-bind (&key rows cols item-w item-h gap-x gap-y
+                               container-w container-h row-index col-index)
+           args
+         (check-deflayout-gap name gap-x)
+         (check-deflayout-gap name gap-y)
+         (let ((ignorable-params (remove row-index (remove col-index lambda-list))))
+           `(defun ,name ,lambda-list
+              ,@(when ignorable-params `((declare (ignorable ,@ignorable-params))))
+              (multiple-value-bind (row-origins col-origins)
+                  (centered-grid-positions ,rows ,cols ,item-w ,item-h ,gap-x ,gap-y
+                                            ,container-w ,container-h)
+                (values (nth ,col-index col-origins) (nth ,row-index row-origins)))))))
+      (:anchor
+       (destructuring-bind (&key edge offset container-w container-h content-w content-h) args
+         (let ((ignorable-params (remove edge lambda-list)))
+           `(defun ,name ,lambda-list
+              ,@(when ignorable-params `((declare (ignorable ,@ignorable-params))))
+              (anchor-at-edge ,edge ,offset ,container-w ,container-h ,content-w ,content-h))))))))

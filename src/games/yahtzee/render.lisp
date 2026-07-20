@@ -78,6 +78,12 @@ each face value 1-6 — the standard arrangement on a real die.")
                                 (+ x 150) (+ y (* i row-h)) 16
                                 (edm-engine:rgb-color (edm-engine:theme-color :muted))))))
 
+;; #36's DEFLAYOUT retrofit — was a bare LRP call inline in the draw
+;; loop below; now declared as data, matching Hearts' HAND-CARD-X
+;; retrofit.
+(edm-engine:deflayout dice-row-x (i)
+  (:row :anchor 20 :item-size 70 :gap 0 :index i))
+
 (defun draw-yahtzee-table (game window-width window-height)
   (declare (ignore window-width))
   (raylib:draw-text (format nil "Player ~D of ~D   Rolls left: ~D"
@@ -94,7 +100,7 @@ each face value 1-6 — the standard arrangement on a real die.")
     (loop for v in display-values
           for h in (yahtzee-game-held game)
           for i from 0
-          do (draw-die (edm-engine:lrp 20 i 70 0) 90 v h (= i (yahtzee-game-cursor game)))))
+          do (draw-die (dice-row-x i) 90 v h (= i (yahtzee-game-cursor game)))))
   (draw-scorecard game window-height)
   (raylib:draw-text "Left/Right: dice | Enter: hold | Up: roll | Down: category list | Enter on category: score"
                      20 (- window-height 30) 12 (edm-engine:rgb-color (edm-engine:theme-color :muted))))

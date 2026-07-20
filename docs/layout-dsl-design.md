@@ -162,19 +162,25 @@ be a compile error, not a style nit caught in review.
   commitment. Should be refined against Queens' or Wordle's actual
   retrofit as the first real test, not designed in the abstract further
   than this.
-- Whether `AI-ORIGIN-POSITION`-style anchor-to-container-edge positions
-  (Hearts' 3-AI-opponents-around-a-table arrangement) belong in the
-  general DSL or stay a Hearts-specific table (probably general —
-  "anchor at edge of container, centered on the other axis" is a real,
-  reusable primitive, not Hearts-specific, even though Hearts is
-  currently the only consumer).
-- Whether this should also carry font-register selection (UI vs. mono
-  vs. glyph) as part of a `(text ...)` declaration, closing #11
-  structurally, or stay purely positional and leave font choice to the
-  caller. Leaning toward carrying it, since "what font does this text
-  use" and "where does it go" are usually decided together, but not
-  committing without a real retrofit to test the idea against.
+- `AI-ORIGIN-POSITION`-style anchor-to-container-edge positions
+  (Hearts' 3-AI-opponents-around-a-table arrangement): resolved yes,
+  general — `ANCHOR-AT-EDGE` (#36), proven against Hearts' own real
+  retrofit.
+- Font-register selection (UI vs. mono vs. glyph) as part of a
+  `(text ...)` declaration: resolved to stay purely positional,
+  leaving font choice to the caller — decided directly, not left
+  speculative. DEFLAYOUT's own shapes (:ROW/:GRID/:ANCHOR) return
+  positions; carrying a font-register keyword through them would
+  either couple this core, raylib-free system to render-level font
+  accessors (breaking the same core/render separation +SPACE-N+'s own
+  move to LAYOUT.LISP was made to preserve) or add a second,
+  data-only "font keyword" indirection whose only real payoff was
+  closing #11 "structurally" — a nice-to-have, not something #36's
+  own positioning scope actually needs to be complete. #11 keeps its
+  own, separate scope for typography/spacing reaching game screens.
 
-Not implemented. This is the design and problem statement; scoping a
-first PR (name, exact macro form, which game becomes the first real
-consumer) is the next step once this direction is confirmed.
+Implemented (#36): DEFLAYOUT (src/layout.lisp) with :ROW/:GRID/:ANCHOR
+shapes, macro-time :GAP enforcement, and a real retrofit across all
+four games (Queens' QUEENS-CELL-POSITION, Wordle's WORDLE-CELL-
+POSITION, Hearts' HAND-CARD-X and three AI-ORIGIN-N functions,
+Yahtzee's DICE-ROW-X) — not left as a design statement alone.

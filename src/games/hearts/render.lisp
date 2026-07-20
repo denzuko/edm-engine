@@ -46,18 +46,26 @@ never tweened, e.g. a hand card that hasn't moved)."
 (defun trick-card-x (window-width i) (+ (/ window-width 2.0) (* i 55) -110))
 (defun trick-card-y (window-height) (- (/ window-height 2.0) 31))
 
+;; #36's DEFLAYOUT retrofit — was three direct ANCHOR-AT-EDGE calls;
+;; now each declared as data via DEFLAYOUT itself.
+(edm-engine:deflayout ai-origin-1 (window-width window-height)
+  (:anchor :edge :left :offset 24.0 :container-w window-width :container-h window-height
+           :content-w 0.0 :content-h 62.0))
+(edm-engine:deflayout ai-origin-2 (window-width window-height)
+  (:anchor :edge :top :offset 40.0 :container-w window-width :container-h window-height
+           :content-w 46.0 :content-h 0.0))
+(edm-engine:deflayout ai-origin-3 (window-width window-height)
+  (:anchor :edge :right :offset 70.0 :container-w window-width :container-h window-height
+           :content-w 0.0 :content-h 62.0))
+
 (defun ai-origin-position (player window-width window-height)
   "Approximate screen position of PLAYER's card stack — cards fly FROM
 here, not from an exact per-card hand layout (AI hands are shown as a
-face-down stack, not individually laid out). ANCHOR-AT-EDGE retrofit
-(#36) — the content dimensions passed in (0.0 x 62.0, 46.0 x 0.0) are
-the same implicit content-stack sizes this function's own literals
-(31.0, 23.0) always meant, named once instead of duplicated as bare
-half-width/half-height arithmetic per player."
+face-down stack, not individually laid out)."
   (ecase player
-    (1 (edm-engine:anchor-at-edge :left 24.0 window-width window-height 0.0 62.0))
-    (2 (edm-engine:anchor-at-edge :top 40.0 window-width window-height 46.0 0.0))
-    (3 (edm-engine:anchor-at-edge :right 70.0 window-width window-height 0.0 62.0))))
+    (1 (ai-origin-1 window-width window-height))
+    (2 (ai-origin-2 window-width window-height))
+    (3 (ai-origin-3 window-width window-height))))
 
 (defun ensure-theme-playing ()
   "#22: non-blocking. The old PATTERN-SOUND call synchronously paid

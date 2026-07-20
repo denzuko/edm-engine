@@ -33,18 +33,21 @@
 (defun state-code (state)
   (ecase state (:empty 0) (:gray 1) (:yellow 2) (:green 3)))
 
+;; #36's DEFLAYOUT retrofit — was a bare CENTERED-GRID-POSITIONS call;
+;; now declared as data via DEFLAYOUT itself, matching Queens' own
+;; retrofit. +TILE-GAP+'s own value (8.0) genuinely IS +SPACE-2+ (8)
+;; — checked directly, not assumed — used explicitly here.
+(edm-engine:deflayout wordle-cell-position (row col window-width window-height rows cols)
+  (:grid :rows rows :cols cols :item-w (round +tile-size+) :item-h (round +tile-size+)
+         :gap-x edm-engine:+space-2+ :gap-y edm-engine:+space-2+
+         :container-w window-width :container-h window-height
+         :row-index row :col-index col))
+
 (defun grid-origin (window-width window-height rows cols)
   "Top-left of a ROWS x COLS tile grid, centered in a WINDOW-WIDTH x
-WINDOW-HEIGHT window.
-
-#36's second retrofit (after Queens) — was hand-rolled 2D-centering
-math independently duplicating Queens' own version; now composes the
-shared primitive, same as Queens' QUEENS-GRID-ORIGIN was retrofitted."
-  (multiple-value-bind (row-origins col-origins)
-      (edm-engine:centered-grid-positions rows cols (round +tile-size+) (round +tile-size+)
-                                           (round +tile-gap+) (round +tile-gap+)
-                                           window-width window-height)
-    (values (float (first col-origins) 1.0) (float (first row-origins) 1.0))))
+WINDOW-HEIGHT window."
+  (multiple-value-bind (x y) (wordle-cell-position 0 0 window-width window-height rows cols)
+    (values (float x 1.0) (float y 1.0))))
 
 (defun draw-tile (x y state letter &optional (highlight 0.0) (outcome nil) (elapsed 0.0))
   "Draws one tile. Color comes entirely from the fragment shader via the

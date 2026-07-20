@@ -157,3 +157,51 @@ above is."
   (deflayout test-spaced-row (i)
     (:row :anchor 0 :item-size 50 :gap +space-2+ :index i))
   (is (= (lrp 0 2 50 8) (test-spaced-row 2))))
+
+(test deflayout-grid-defines-a-function-returning-per-cell-position
+  "GOAL: a :GRID shape's generated function returns the actual (x y)
+position for a given (row col) — composing CENTERED-GRID-POSITIONS'
+own origin plus the per-cell offset in one step, matching what Queens'
+real retrofit case (QUEENS-GRID-ORIGIN + a manual per-cell offset
+loop) actually needs, not just the origin alone. Checked against
+Queens' own real parameters (8x8, 60x60 cells, 700x700 container) —
+and its actual gap, 4.0, genuinely IS +SPACE-1+ already, just not
+referenced by name before this retrofit; caught directly by
+DEFLAYOUT's own enforcement when this spec first used the bare
+literal 4 instead, a real case the check was built for, not a
+contrived one."
+  (deflayout test-grid (row col)
+    (:grid :rows 8 :cols 8 :item-w 60 :item-h 60 :gap-x +space-1+ :gap-y +space-1+
+           :container-w 700 :container-h 700 :row-index row :col-index col))
+  (multiple-value-bind (ox oy) (test-grid 0 0)
+    (multiple-value-bind (rows cols) (centered-grid-positions 8 8 60 60 4 4 700 700)
+      (is (= (first cols) ox))
+      (is (= (first rows) oy))))
+  (multiple-value-bind (x y) (test-grid 2 3)
+    (multiple-value-bind (rows cols) (centered-grid-positions 8 8 60 60 4 4 700 700)
+      (is (= (nth 3 cols) x))
+      (is (= (nth 2 rows) y)))))
+
+(test deflayout-grid-rejects-a-bare-nonzero-gap-literal-at-macro-expansion-time
+  "Same enforcement as :ROW, checked independently for :GRID rather
+than assumed shared just because both shapes take :GAP-style
+arguments."
+  (signals error
+    (macroexpand-1 '(deflayout bad-grid (row col)
+                      (:grid :rows 8 :cols 8 :item-w 60 :item-h 60 :gap-x 4 :gap-y 4
+                             :container-w 700 :container-h 700 :row-index row :col-index col)))))
+
+;;; :ANCHOR shape — composes ANCHOR-AT-EDGE, Hearts' own
+;;; AI-ORIGIN-POSITION retrofit case (currently three direct calls,
+;;; not yet declared via DEFLAYOUT itself).
+
+(test deflayout-anchor-defines-a-function-matching-anchor-at-edge-directly
+  "Checked against Hearts' actual player-1 shape (left edge, 24.0
+offset, 0.0x62.0 content) — not an arbitrary example."
+  (deflayout test-anchor (edge)
+    (:anchor :edge edge :offset 24.0 :container-w 1024.0 :container-h 768.0
+             :content-w 0.0 :content-h 62.0))
+  (multiple-value-bind (x y) (test-anchor :left)
+    (multiple-value-bind (ex ey) (anchor-at-edge :left 24.0 1024.0 768.0 0.0 62.0)
+      (is (= ex x))
+      (is (= ey y)))))

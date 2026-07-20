@@ -55,19 +55,27 @@
         (if cursor-p 2.5 1.0) line-color)
        (raylib:draw-text (format nil "~D" region-id) (round (+ x 4)) (round (+ y 4)) 12 line-color)))))
 
+;; #36's DEFLAYOUT retrofit — was hand-rolled 2D-centering math
+;; duplicating what Wordle independently reimplements too (this
+;; session's own earlier CENTERED-GRID-POSITIONS retrofit); now
+;; declared as data via DEFLAYOUT itself, not a bare function body
+;; calling the primitive directly. +CELL-GAP+'s own value (4.0)
+;; genuinely IS +SPACE-1+ (4) — checked directly, not assumed — used
+;; explicitly here rather than the untyped float literal it's always
+;; equaled.
+(edm-engine:deflayout queens-cell-position (row col window-width window-height size)
+  (:grid :rows size :cols size :item-w (round +cell-size+) :item-h (round +cell-size+)
+         :gap-x edm-engine:+space-1+ :gap-y edm-engine:+space-1+
+         :container-w window-width :container-h window-height
+         :row-index row :col-index col))
+
 (defun queens-grid-origin (window-width window-height size)
-  "#36's first real retrofit — was hand-rolled 2D-centering math
-duplicating what Wordle independently reimplements too; now composes
-the shared primitive. Only the origin (row 0, col 0) is needed here,
-not the full per-cell list — CENTERED-GRID-POSITIONS still returns
-every row/col origin, matching CENTERED-ROW-POSITIONS' own 'list of
-positions' convention, but DRAW-QUEENS-BOARD's loop only needs the
-first of each."
-  (multiple-value-bind (rows cols)
-      (edm-engine:centered-grid-positions size size (round +cell-size+) (round +cell-size+)
-                                           (round +cell-gap+) (round +cell-gap+)
-                                           window-width window-height)
-    (values (float (first cols) 1.0) (float (first rows) 1.0))))
+  "Only the origin (row 0, col 0) is needed here, not the full per-cell
+lookup — DRAW-QUEENS-BOARD's own loop still derives each cell's
+position from the origin plus a per-cell offset (below), matching how
+it already worked before this retrofit."
+  (multiple-value-bind (x y) (queens-cell-position 0 0 window-width window-height size)
+    (values (float x 1.0) (float y 1.0))))
 
 (defun draw-cell-glyph (game x y row col conflicts)
   "The 'miss-placed X' and queen states both need real visual feedback:
