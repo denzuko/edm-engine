@@ -230,4 +230,4 @@ work (see GH #3), not implemented yet. Not pretending otherwise."
   (declare (ignore game))
   (when *theme-sound* (raylib:stop-sound *theme-sound*)))
 
-(edm-engine:register-game "Hearts" (lambda () (make-hearts-game)) :ai-capable-p t)
+(edm-engine:register-game "Hearts" (lambda () (make-hearts-game)) :ai-capable-p t :restore-fn #'hearts-restore-game)

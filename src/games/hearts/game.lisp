@@ -28,6 +28,47 @@
 (defun find-two-of-clubs-holder (hands)
   (position-if (lambda (hand) (member (cons 2 :clubs) hand :test #'equal)) hands))
 
+;; #9's piece 2, continuing — real save/restore. Unlike Queens' board,
+;; Hearts' dealt/passed/played hands can't be regenerated from
+;; SEED+ROUND alone once play has modified them (cards removed via
+;; PLAY-CARD, exchanged via passing) — the full live state is captured
+;; directly, not reconstructed from a seed.
+(defmethod edm-engine:game-save-data ((game hearts-game))
+  (list :hands (hearts-game-hands game)
+        :scores (hearts-game-scores game)
+        :round-points (hearts-game-round-points game)
+        :current-trick (hearts-game-current-trick game)
+        :leader (hearts-game-leader game)
+        :turn (hearts-game-turn game)
+        :hearts-broken (hearts-game-hearts-broken game)
+        :round (hearts-game-round game)
+        :phase (hearts-game-phase game)
+        :passed-cards (hearts-game-passed-cards game)
+        :cursor (hearts-game-cursor game)
+        :pass-selection (hearts-game-pass-selection game)
+        :status (hearts-game-status game)
+        :ai-difficulty (hearts-game-ai-difficulty game)))
+
+(defun hearts-restore-game (data)
+  "Reconstructs a HEARTS-GAME from a GAME-SAVE-DATA plist — the paired
+half of that method, registered as this table's GAME-ENTRY RESTORE-FN.
+Uses %MAKE-HEARTS-GAME (the raw constructor, bypassing MAKE-HEARTS-
+GAME's own shuffle-and-deal) since the exact, already-in-progress
+state is being restored directly, not regenerated. TRICK-PAUSE-UNTIL
+resets to 0.0d0 — a transient animation-pause timestamp, not
+meaningful to carry across a save/load boundary."
+  (destructuring-bind (&key hands scores round-points current-trick leader turn
+                          hearts-broken round phase passed-cards cursor
+                          pass-selection status ai-difficulty &allow-other-keys)
+      data
+    (%make-hearts-game :hands hands :scores scores :round-points round-points
+                        :current-trick current-trick :leader leader :turn turn
+                        :hearts-broken hearts-broken :round round :phase phase
+                        :passed-cards passed-cards :cursor cursor
+                        :pass-selection pass-selection :status status
+                        :ai-difficulty ai-difficulty
+                        :trick-pause-until 0.0d0)))
+
 (defun make-hearts-game (&key (seed (random 1000000)) (round 1) (scores '(0 0 0 0)))
   (let* ((hands (deal-hands (shuffled-deck seed)))
          (direction (pass-direction-for-round round))

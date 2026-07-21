@@ -106,3 +106,39 @@ reads it many frames later."
     (let ((edm-engine:*ai-difficulty* :standard))
       (setf game (make-hearts-game :seed 1)))
     (is (eq :standard (hearts-game-ai-difficulty game)))))
+
+;;; #9's piece 2, continuing — real GAME-SAVE-DATA/RESTORE-FN for
+;;; Hearts. Unlike Queens' board, Hearts' dealt/passed/played hands
+;;; can't be regenerated from SEED+ROUND alone once play has modified
+;;; them — the full live state is captured directly, not reconstructed.
+
+(test hearts-save-data-captures-real-in-progress-state
+  "GOAL: GAME-SAVE-DATA must reflect genuine mid-game state -- a card
+actually played, not values that happen to match a freshly-dealt
+game."
+  (let ((game (make-hearts-game :seed 8 :round 4))) ; leader=0, deterministic, checked directly earlier this session
+    (let ((hand-before (length (first (hearts-game-hands game)))))
+      (play-card game 0 (cons 2 :clubs))
+      (let ((data (edm-engine:game-save-data game)))
+        (is (< (length (first (getf data :hands))) hand-before))
+        (is (eq :playing (getf data :phase)))
+        (is (= 4 (getf data :round)))))))
+
+(test hearts-restore-game-round-trips-real-mid-trick-state-exactly
+  "GOAL: hands, scores, the in-progress trick, turn, and AI difficulty
+all survive a real save/restore round trip -- one combined scenario,
+not each field verified in isolation and assumed to compose correctly."
+  (let ((game (make-hearts-game :seed 8 :round 4)))
+    (play-card game 0 (cons 2 :clubs))
+    (let* ((data (edm-engine:game-save-data game))
+           (restored (edm-engine/games/hearts::hearts-restore-game data)))
+      (is (equal (hearts-game-hands game) (hearts-game-hands restored)))
+      (is (equal (hearts-game-scores game) (hearts-game-scores restored)))
+      (is (equal (hearts-game-current-trick game) (hearts-game-current-trick restored)))
+      (is (= (hearts-game-leader game) (hearts-game-leader restored)))
+      (is (= (hearts-game-turn game) (hearts-game-turn restored)))
+      (is (eq (hearts-game-hearts-broken game) (hearts-game-hearts-broken restored)))
+      (is (= (hearts-game-round game) (hearts-game-round restored)))
+      (is (eq (hearts-game-phase game) (hearts-game-phase restored)))
+      (is (eq (hearts-game-status game) (hearts-game-status restored)))
+      (is (eq (hearts-game-ai-difficulty game) (hearts-game-ai-difficulty restored))))))
