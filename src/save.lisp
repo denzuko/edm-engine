@@ -25,35 +25,57 @@ taking the actual screenshot is raylib I/O, done by the caller
 (defun ensure-save-directory ()
   (ensure-directories-exist *save-directory*))
 
+(declaim (ftype (function (t) fixnum) save-data-checksum))
+(defun save-data-checksum (data)
+  "SXHASH, not a cryptographic HMAC: the real threat model here is
+accidental corruption (a partial write, a disk error, a hand-edited
+file with a typo), not a malicious actor with write access to the
+save file — anyone with that access could forge any checksum this
+code computed anyway, so a full crypto dependency buys nothing real
+for this specific, local, single-player use case."
+  (sxhash data))
+
 (declaim (ftype (function ((integer 0 9) string t fixnum) (integer 0 9)) save-game-to-slot))
 (defun save-game-to-slot (slot table-title game score)
-  "Writes SLOT's data: table title, score, a save timestamp, and
-GAME-SAVE-DATA. Returns SLOT."
+  "Writes SLOT's data: table title, score, a save timestamp,
+GAME-SAVE-DATA, and a checksum of that data (verified on load — #9's
+own integrity-checking gap). Returns SLOT."
   (ensure-save-directory)
-  (with-open-file (out (save-slot-data-path slot) :direction :output
-                                                    :if-exists :supersede :if-does-not-exist :create)
-    (prin1 (list :table-title table-title :score score
-                 :timestamp (get-universal-time)
-                 :data (game-save-data game))
-           out))
+  (let ((data (game-save-data game)))
+    (with-open-file (out (save-slot-data-path slot) :direction :output
+                                                      :if-exists :supersede :if-does-not-exist :create)
+      (prin1 (list :table-title table-title :score score
+                   :timestamp (get-universal-time)
+                   :data data
+                   :checksum (save-data-checksum data))
+             out)))
   slot)
 
 (declaim (ftype (function ((integer 0 9)) t) load-game-from-slot))
 (defun load-game-from-slot (slot)
   "Returns (values table-title score timestamp data), or NIL if SLOT is
-empty OR corrupted. A malformed/truncated save file (a real failure
-mode — a partial write from a crash mid-save, disk error, or an
-old-format save from before some field existed) is treated the same
-as an empty slot, not a special error case LIST-SAVE-SLOTS' own
-per-slot loop would need its own handling for — one corrupted slot
-must not prevent the other, genuinely valid slots from listing."
+empty, corrupted, OR fails its own checksum. A malformed/truncated
+save file (a real failure mode — a partial write from a crash
+mid-save, disk error, or an old-format save from before some field
+existed) is treated the same as an empty slot, not a special error
+case LIST-SAVE-SLOTS' own per-slot loop would need its own handling
+for — one corrupted slot must not prevent the other, genuinely valid
+slots from listing. A save whose :DATA doesn't match its own
+:CHECKSUM (SAVE-DATA-CHECKSUM's own integrity check, #9's remaining
+scope) is rejected the same way, not silently trusted — an old-format
+save with no :CHECKSUM field at all (NIL from a missing plist key)
+also fails this check, correctly treated as unloadable rather than
+loaded with unverified data."
   (let ((path (save-slot-data-path slot)))
     (when (probe-file path)
       (handler-case
           (with-open-file (in path)
             (let ((saved (read in)))
-              (values (getf saved :table-title) (getf saved :score)
-                      (getf saved :timestamp) (getf saved :data))))
+              (if (eql (getf saved :checksum) (save-data-checksum (getf saved :data)))
+                  (values (getf saved :table-title) (getf saved :score)
+                          (getf saved :timestamp) (getf saved :data))
+                  (progn (log-crash (format nil "load-game-from-slot ~D: checksum mismatch" slot))
+                         nil))))
         (error (c)
           (log-crash (format nil "load-game-from-slot ~D: ~A" slot c))
           nil)))))

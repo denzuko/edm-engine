@@ -78,3 +78,36 @@ LOAD-GAME-FROM-SLOT's own contract assumed to compose correctly."
       (is (getf (nth 0 slots) :table-title))
       (is (null (nth 1 slots)))
       (is (getf (nth 2 slots) :table-title)))))
+
+;;; #9's remaining scope — save integrity checking. SXHASH, not a
+;;; cryptographic HMAC: the actual threat model here is accidental
+;;; corruption (a partial write, a disk error, a hand-edited file with
+;;; a typo), not a malicious actor with write access to the save file
+;;; -- anyone with that access could forge any checksum this code
+;;; computed anyway, so a full crypto dependency buys nothing real
+;;; here. BDD-first, written before the checksum field exists.
+
+(test save-game-to-slot-writes-a-checksum-that-load-game-from-slot-verifies
+  "GOAL: a save written by SAVE-GAME-TO-SLOT itself must load back
+cleanly -- the checksum mechanism must not break the ordinary,
+uncorrupted case it's meant to protect."
+  (with-temp-save-directory
+    (save-game-to-slot 0 "Queens" (make-instance 'spec-save-game :data 100) 42)
+    (multiple-value-bind (title score timestamp data) (load-game-from-slot 0)
+      (declare (ignore timestamp))
+      (is (string= "Queens" title))
+      (is (= 42 score))
+      (is (= 100 data)))))
+
+(test load-game-from-slot-returns-nil-when-the-data-has-been-tampered-with
+  "GOAL: a save file whose :DATA has been altered after writing (a
+real corruption scenario a checksum specifically exists to catch,
+distinct from the malformed-sexp case above) must be rejected, not
+silently trusted."
+  (with-temp-save-directory
+    (save-game-to-slot 0 "Queens" (make-instance 'spec-save-game :data 100) 42)
+    (let ((path (save-slot-data-path 0)))
+      (let ((saved (with-open-file (in path) (read in))))
+        (with-open-file (out path :direction :output :if-exists :supersede)
+          (prin1 (append (list :data 999) (alexandria:remove-from-plist saved :data)) out))))
+    (is (null (load-game-from-slot 0)))))
