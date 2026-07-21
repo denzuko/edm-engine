@@ -32,6 +32,38 @@
 (defun toggle-hold (game i)
   (setf (nth i (yahtzee-game-held game)) (not (nth i (yahtzee-game-held game)))))
 
+;; #9's piece 2, completing — real save/restore. Same shape as Hearts:
+;; dice/held/scores/turn are all live, in-progress state, not
+;; regeneratable from ROLL-SEED alone once rolls/holds/scoring have
+;; modified it.
+(defmethod edm-engine:game-save-data ((game yahtzee-game))
+  (list :dice (yahtzee-game-dice game)
+        :held (yahtzee-game-held game)
+        :rolls-remaining (yahtzee-game-rolls-remaining game)
+        :scores (yahtzee-game-scores game)
+        :turn (yahtzee-game-turn game)
+        :player-count (yahtzee-game-player-count game)
+        :cursor (yahtzee-game-cursor game)
+        :roll-seed (yahtzee-game-roll-seed game)
+        :status (yahtzee-game-status game)
+        :ai-difficulty (yahtzee-game-ai-difficulty game)))
+
+(defun yahtzee-restore-game (data)
+  "Reconstructs a YAHTZEE-GAME from a GAME-SAVE-DATA plist — the paired
+half of that method, registered as this table's GAME-ENTRY RESTORE-FN.
+Uses %MAKE-YAHTZEE-GAME (the raw constructor) since the exact,
+already-in-progress state is restored directly, not regenerated.
+ROLL-ANIMATION resets to NIL — a transient in-progress animation, not
+meaningful across a save/load boundary, same reasoning as Hearts'
+TRICK-PAUSE-UNTIL."
+  (destructuring-bind (&key dice held rolls-remaining scores turn player-count
+                          cursor roll-seed status ai-difficulty &allow-other-keys)
+      data
+    (%make-yahtzee-game :dice dice :held held :rolls-remaining rolls-remaining
+                         :scores scores :turn turn :player-count player-count
+                         :cursor cursor :roll-seed roll-seed :roll-animation nil
+                         :status status :ai-difficulty ai-difficulty)))
+
 (defun available-categories (game player)
   (remove-if (lambda (cat) (getf (nth player (yahtzee-game-scores game)) cat)) +categories+))
 

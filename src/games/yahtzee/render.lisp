@@ -221,4 +221,4 @@ each face value 1-6 — the standard arrangement on a real die.")
   (declare (ignore game))
   (when *theme-sound* (raylib:stop-sound *theme-sound*)))
 
-(edm-engine:register-game "Yahtzee" (lambda () (make-yahtzee-game)) :ai-capable-p t)
+(edm-engine:register-game "Yahtzee" (lambda () (make-yahtzee-game)) :ai-capable-p t :restore-fn #'yahtzee-restore-game)

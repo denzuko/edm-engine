@@ -106,3 +106,40 @@ arcade's running total never banked Yahtzee points at all."
     (let ((edm-engine:*ai-difficulty* :expert))
       (setf game (make-yahtzee-game :seed 1)))
     (is (eq :expert (yahtzee-game-ai-difficulty game)))))
+
+;;; #9's piece 2, completing — real GAME-SAVE-DATA/RESTORE-FN for
+;;; Yahtzee. Same shape as Hearts: dice/held/scores/turn are all live,
+;;; in-progress state, not regeneratable from ROLL-SEED alone once
+;;; rolls/holds/scoring have modified it.
+
+(test yahtzee-save-data-captures-real-in-progress-state
+  "GOAL: GAME-SAVE-DATA must reflect genuine mid-game state -- an
+actual roll and a held die, not values that happen to match a
+freshly-constructed game."
+  (let ((game (make-yahtzee-game :seed 1 :player-count 4)))
+    (roll-turn-dice game)
+    (setf (first (yahtzee-game-held game)) t)
+    (let ((data (edm-engine:game-save-data game)))
+      (is (= 2 (getf data :rolls-remaining)))
+      (is (first (getf data :held)))
+      (is (equal (yahtzee-game-dice game) (getf data :dice))))))
+
+(test yahtzee-restore-game-round-trips-real-in-progress-state-exactly
+  "GOAL: dice, held, rolls-remaining, scores, turn, and AI difficulty
+all survive a real save/restore round trip -- one combined scenario,
+not each field verified in isolation."
+  (let ((game (make-yahtzee-game :seed 1 :player-count 4)))
+    (roll-turn-dice game)
+    (setf (first (yahtzee-game-held game)) t)
+    (roll-turn-dice game)
+    (commit-score game :ones)
+    (let* ((data (edm-engine:game-save-data game))
+           (restored (edm-engine/games/yahtzee::yahtzee-restore-game data)))
+      (is (equal (yahtzee-game-dice game) (yahtzee-game-dice restored)))
+      (is (equal (yahtzee-game-held game) (yahtzee-game-held restored)))
+      (is (= (yahtzee-game-rolls-remaining game) (yahtzee-game-rolls-remaining restored)))
+      (is (equal (yahtzee-game-scores game) (yahtzee-game-scores restored)))
+      (is (= (yahtzee-game-turn game) (yahtzee-game-turn restored)))
+      (is (= (yahtzee-game-player-count game) (yahtzee-game-player-count restored)))
+      (is (eq (yahtzee-game-status game) (yahtzee-game-status restored)))
+      (is (eq (yahtzee-game-ai-difficulty game) (yahtzee-game-ai-difficulty restored))))))
