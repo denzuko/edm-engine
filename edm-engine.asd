@@ -214,6 +214,7 @@ suite since it needs that plus a full raylib build."
                (:file "t/render-mode-spec")
                (:file "t/tween-spec")
                (:file "t/layout-spec")
+               (:file "t/save-spec")
                (:file "t/stylesheet-spec")
                (:file "t/effect-spec")
                (:file "t/effect-impl-spec")

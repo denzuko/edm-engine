@@ -40,13 +40,23 @@ GAME-SAVE-DATA. Returns SLOT."
 
 (declaim (ftype (function ((integer 0 9)) t) load-game-from-slot))
 (defun load-game-from-slot (slot)
-  "Returns (values table-title score timestamp data), or NIL if SLOT is empty."
+  "Returns (values table-title score timestamp data), or NIL if SLOT is
+empty OR corrupted. A malformed/truncated save file (a real failure
+mode — a partial write from a crash mid-save, disk error, or an
+old-format save from before some field existed) is treated the same
+as an empty slot, not a special error case LIST-SAVE-SLOTS' own
+per-slot loop would need its own handling for — one corrupted slot
+must not prevent the other, genuinely valid slots from listing."
   (let ((path (save-slot-data-path slot)))
     (when (probe-file path)
-      (with-open-file (in path)
-        (let ((saved (read in)))
-          (values (getf saved :table-title) (getf saved :score)
-                  (getf saved :timestamp) (getf saved :data)))))))
+      (handler-case
+          (with-open-file (in path)
+            (let ((saved (read in)))
+              (values (getf saved :table-title) (getf saved :score)
+                      (getf saved :timestamp) (getf saved :data))))
+        (error (c)
+          (log-crash (format nil "load-game-from-slot ~D: ~A" slot c))
+          nil)))))
 
 (defun delete-save-slot (slot)
   (let ((data-path (save-slot-data-path slot))
