@@ -210,3 +210,53 @@ marks have no rule significance."
     (is (= 2 (queens-game-level game)))
     (is (= 0 (queens-game-cursor-row game)))
     (is (= 0 (queens-game-cursor-col game)))))
+
+;;; #9's piece 2 — real GAME-SAVE-DATA/RESTORE-FN for Queens, written
+;;; before either exists. The board itself is reconstructed
+;;; deterministically from LEVEL (MAKE-QUEENS-GAME's own constructor
+;;; already regenerates it from LEVEL+a level-derived seed) — no need
+;;; to serialize the board itself, only the player's actual progress.
+
+(test queens-save-data-captures-real-progress-not-just-the-starting-state
+  "GOAL: GAME-SAVE-DATA must reflect genuine, in-progress player state
+-- a placed queen and a moved cursor, not values that happen to match
+a freshly-constructed game."
+  (let ((game (make-queens-game :level 1)))
+    (move-cursor game 2 1)
+    (cycle-cell-at-cursor game)
+    (let ((data (edm-engine:game-save-data game)))
+      (is (equal (list (cons 2 1)) (getf data :marked)))
+      (is (= 2 (getf data :cursor-row)))
+      (is (= 1 (getf data :cursor-col))))))
+
+(test queens-restore-game-reconstructs-the-exact-board-from-level
+  "GOAL: restoring must regenerate the identical board LEVEL originally
+produced -- checked directly against a fresh MAKE-QUEENS-GAME at the
+same level, not assumed identical from the seed being deterministic
+in principle."
+  (let* ((original (make-queens-game :level 2))
+         (data (edm-engine:game-save-data original))
+         (restored (edm-engine/games/queens::queens-restore-game data))
+         (fresh (make-queens-game :level 2)))
+    (is (equal (queens-board-placement (queens-game-board fresh))
+               (queens-board-placement (queens-game-board restored))))))
+
+(test queens-restore-game-round-trips-real-in-progress-state-exactly
+  "GOAL: a placed queen, a mark, a moved cursor, and a nonzero score all
+survive a real save/restore round trip -- checked as one combined
+scenario, not each field verified in isolation and assumed to compose
+correctly together."
+  (let ((game (make-queens-game :level 1)))
+    (move-cursor game 1 0)
+    (cycle-cell-at-cursor game)
+    (move-cursor game 2 1)
+    (place-queen game 2 1)
+    (let* ((data (edm-engine:game-save-data game))
+           (restored (edm-engine/games/queens::queens-restore-game data)))
+      (is (= (queens-game-level game) (queens-game-level restored)))
+      (is (= (queens-game-score game) (queens-game-score restored)))
+      (is (equal (queens-game-placed game) (queens-game-placed restored)))
+      (is (equal (queens-game-marked game) (queens-game-marked restored)))
+      (is (eq (queens-game-status game) (queens-game-status restored)))
+      (is (= (queens-game-cursor-row game) (queens-game-cursor-row restored)))
+      (is (= (queens-game-cursor-col game) (queens-game-cursor-col restored))))))

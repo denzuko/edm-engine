@@ -188,4 +188,4 @@ job before) is now async."
 ;; first playable pass. An honest scope cut, not an oversight: the
 ;; slot system's contract (GAME-ENTRY-RESTORE-FN nil = "this table
 ;; doesn't support save/load") already handles it cleanly.
-(edm-engine:register-game "Queens" (lambda () (make-queens-game)))
+(edm-engine:register-game "Queens" (lambda () (make-queens-game)) :restore-fn #'queens-restore-game)

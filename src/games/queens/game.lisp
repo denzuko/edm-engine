@@ -24,6 +24,36 @@
 board-size unit."
   (* 100 (queens-board-size-for-level level)))
 
+;; #9's piece 2 — real save/restore, not the deceptive fake success
+;; #9's own fix (ARCADE-POPUP-ITEMS omitting SAVE STATE) was papering
+;; over. The board itself doesn't need serializing — MAKE-QUEENS-GAME
+;; already regenerates it deterministically from LEVEL+a level-derived
+;; seed; only the player's actual progress does.
+(defmethod edm-engine:game-save-data ((game queens-game))
+  (list :level (queens-game-level game)
+        :score (queens-game-score game)
+        :placed (queens-game-placed game)
+        :marked (queens-game-marked game)
+        :status (queens-game-status game)
+        :cursor-row (queens-game-cursor-row game)
+        :cursor-col (queens-game-cursor-col game)))
+
+(defun queens-restore-game (data)
+  "Reconstructs a QUEENS-GAME from a GAME-SAVE-DATA plist — the paired
+half of that method, registered as this table's GAME-ENTRY RESTORE-FN.
+MAKE-QUEENS-GAME's own constructor regenerates the board from LEVEL
+alone (deterministic seed), then the player's real progress is
+restored on top of that fresh board."
+  (destructuring-bind (&key level score placed marked status cursor-row cursor-col &allow-other-keys) data
+    (let ((game (make-queens-game :level level)))
+      (setf (queens-game-score game) score
+            (queens-game-placed game) placed
+            (queens-game-marked game) marked
+            (queens-game-status game) status
+            (queens-game-cursor-row game) cursor-row
+            (queens-game-cursor-col game) cursor-col)
+      game)))
+
 (declaim (ftype (function (queens-game fixnum fixnum) (member :empty :marked :queen)) cell-state))
 (defun cell-state (game row col)
   (let ((cell (cons row col)))
