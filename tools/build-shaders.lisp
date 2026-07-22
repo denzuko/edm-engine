@@ -49,11 +49,25 @@ calls differing only in class name.")
       (format out "~%"))
     (format t "~&[build-shaders] wrote ~A~%" output-path)))
 
-(let ((*package* (find-package :cmu-glsl)))
-  (setf (readtable-case *readtable*) :invert)
-  (dolist (source (append
-                    (directory (merge-pathnames "src/games/*/shaders/*.*.lisp" (uiop:getcwd)))
-                    (directory (merge-pathnames "src/shaders/*.*.lisp" (uiop:getcwd)))))
-    (let* ((namestring (namestring source))
-           (output (parse-namestring (subseq namestring 0 (- (length namestring) 5))))) ; strip ".lisp"
-      (compile-glsl-file source output))))
+;; SETF on READTABLE-CASE mutates *READTABLE* itself, not a dynamic
+;; binding LET could scope — restoring it explicitly afterward,
+;; UNWIND-PROTECTed, is required: this script is meant to be LOADed
+;; from within a larger build process (make-edm-engine.ros), not run
+;; standalone and discarded, so leaving the reader case-inverted for
+;; whatever loads next in the same image is a real bug, not a
+;; theoretical one — caught directly (EDM-ENGINE itself failed to
+;; load right after, with a genuinely confusing "unbound variable"
+;; error, not an obviously readtable-shaped one) before this fix
+;; landed, not assumed safe from reading the code alone.
+(let ((*package* (find-package :cmu-glsl))
+      (original-case (readtable-case *readtable*)))
+  (unwind-protect
+       (progn
+         (setf (readtable-case *readtable*) :invert)
+         (dolist (source (append
+                           (directory (merge-pathnames "src/games/*/shaders/*.*.lisp" (uiop:getcwd)))
+                           (directory (merge-pathnames "src/shaders/*.*.lisp" (uiop:getcwd)))))
+           (let* ((namestring (namestring source))
+                  (output (parse-namestring (subseq namestring 0 (- (length namestring) 5))))) ; strip ".lisp"
+             (compile-glsl-file source output))))
+    (setf (readtable-case *readtable*) original-case)))

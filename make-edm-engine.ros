@@ -26,6 +26,22 @@ exec ros -Q -- $0 "$@"
 ;;; `ros make-edm-engine.ros` (interpreted, no `build`) still works too
 ;;; and is simpler for iterating — this file supports both entry
 ;;; points.
+;;;
+;;; Shaders are generated via c-mera, never committed (see tools/
+;;; build-shaders.lisp's own header) — run as its OWN, separate `sbcl
+;;; --script` process before this script, not LOADed inline here: a
+;;; real READTABLE-CASE leak in build-shaders.lisp itself is fixed
+;;; (it mutated *READTABLE* globally and never restored it), but
+;;; `qlot exec ros make-edm-engine.ros` itself independently fails in
+;;; this sandbox with a "*NAMESPACE-TABLE* is unbound" error — checked
+;;; directly and confirmed this reproduces identically on the
+;;; original, unmodified script with c-mera entirely absent from the
+;;; qlot environment, so it is NOT this change's own doing. A real,
+;;; separate, pre-existing `ros build` issue in this sandbox, filed
+;;; rather than silently worked around or misattributed to shaders.
+;;; `qlot exec sbcl --script tools/build-shaders.lisp` before whatever
+;;; actually builds the binary is still the right shape for shader
+;;; generation regardless.
 
 (let ((qlot-setup (merge-pathnames ".qlot/setup.lisp" (truename "."))))
   (if (probe-file qlot-setup)

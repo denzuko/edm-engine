@@ -46,3 +46,7 @@
  (:class qlot/source/git:source-git
   :initargs (:remote-url "https://github.com/denzuko/dps-meta.git")
   :version "git-5992c2046067edaab2720dd215d6618a9ff0414a"))
+("c-mera" .
+ (:class qlot/source/git:source-git
+  :initargs (:remote-url "https://github.com/kiselgra/c-mera.git")
+  :version "git-afadc614083a95b3925d0d806b019a0099ad0a0d"))
