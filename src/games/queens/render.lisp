@@ -1,5 +1,13 @@
 (in-package :edm-engine/games/queens)
 
+;; #59's audio piece — was five direct, inline PLAY-TONE calls in
+;; GAME-UPDATE, now declared as data.
+(edm-engine/audio:defaudio-cues :queens
+  (:cursor-moved :sine 500.0 0.03)
+  (:level-advanced :sine 1000.0 0.3)
+  (:cell-marked :square 400.0 0.04)
+  (:queen-placed :square 700.0 0.05)
+  (:cell-cleared :square 250.0 0.05))
 
 (defparameter +cell-size+ 60.0)
 (defparameter +cell-gap+ 4.0)
@@ -166,16 +174,18 @@ job before) is now async."
     (when (raylib:is-key-pressed :key-left) (move-cursor game 0 -1))
     (when (raylib:is-key-pressed :key-right) (move-cursor game 0 1))
     (when (or (/= before-row (queens-game-cursor-row game)) (/= before-col (queens-game-cursor-col game)))
-      (edm-engine/audio:play-tone :sine 500.0 0.03))
+      (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :queens :cue :cursor-moved)))
     (when (raylib:is-key-pressed :key-enter)
       (let ((state-before (cell-state game (queens-game-cursor-row game) (queens-game-cursor-col game))))
         (cycle-cell-at-cursor game)
         (cond
           ((> (queens-game-level game) before-level)
-           (edm-engine/audio:play-tone :sine 1000.0 0.3))
-          ((eq state-before :empty) (edm-engine/audio:play-tone :square 400.0 0.04))   ; -> marked
-          ((eq state-before :marked) (edm-engine/audio:play-tone :square 700.0 0.05))  ; -> queen
-          (t (edm-engine/audio:play-tone :square 250.0 0.05)))))))                     ; -> cleared
+           (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :queens :cue :level-advanced)))
+          ((eq state-before :empty)
+           (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :queens :cue :cell-marked)))
+          ((eq state-before :marked)
+           (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :queens :cue :queen-placed)))
+          (t (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :queens :cue :cell-cleared))))))))
 
 (defmethod edm-engine:game-render ((game queens-game) window-width window-height)
   (draw-queens-board game window-width window-height))

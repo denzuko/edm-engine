@@ -39,13 +39,15 @@ DSL is for, not pre-recorded samples."
   :description "raylib playback boundary for generated tones. Untested I/O,
 same convention as render.lisp."
   :depends-on ("edm-engine/audio/tone" "edm-engine/core" "cl-raylib" "cffi")
-  :components ((:file "src/audio/playback")))
+  :components ((:file "src/audio/playback")
+               (:file "src/audio/cues")))
 
 (defsystem "edm-engine/audio/tests"
-  :description "FiveAM spec suite for edm-engine/audio/tone."
-  :depends-on ("edm-engine/audio/tone" "fiveam")
+  :description "FiveAM spec suite for edm-engine/audio."
+  :depends-on ("edm-engine/audio" "fiveam")
   :components ((:file "t/audio/tone-spec")
-               (:file "t/audio/tracker-spec"))
+               (:file "t/audio/tracker-spec")
+               (:file "t/audio/cues-spec"))
   :perform (test-op (o c)
              (unless (uiop:symbol-call :fiveam :run! :edm-engine-audio)
                (error "edm-engine/audio FiveAM suite failed"))))

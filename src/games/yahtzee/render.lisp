@@ -2,6 +2,19 @@
 
 (declaim (optimize (speed 3) (safety 3)))
 
+;; #59's audio piece — was five direct, inline PLAY-TONE calls
+;; scattered across GAME-UPDATE/MAYBE-RUN-AI-TURN, now declared as
+;; data. AI-DICE-ROLLED/PLAYER-DICE-ROLLED stay genuinely separate
+;; cues rather than unified into one, preserving a real, pre-existing
+;; discrepancy in the original code (0.04s vs 0.05s duration) rather
+;; than silently changing behavior as part of this retrofit.
+(edm-engine/audio:defaudio-cues :yahtzee
+  (:ai-dice-rolled :square 500.0 0.04)
+  (:player-dice-rolled :square 500.0 0.05)
+  (:die-held :square 600.0 0.03)
+  (:category-scored :sine 700.0 0.15)
+  (:game-over :sine 1000.0 0.3))
+
 ;;; Dice as actual pip-faced squares — same lesson as Hearts' cards:
 ;;; a die shown as bare text ("3") reads as a terminal readout, not a
 ;;; die. Panel + border (matching the established card/chrome visual
@@ -128,11 +141,11 @@ each face value 1-6 — the standard arrangement on a real die.")
          (setf (yahtzee-game-held game) (ai-choose-holds (yahtzee-game-dice game) (yahtzee-game-held game))))
        (roll-turn-dice game)
        (start-roll-animation game)
-       (edm-engine/audio:play-tone :square 500.0 0.04))
+       (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :yahtzee :cue :ai-dice-rolled)))
       (t
        (let ((cat (ai-choose-category (yahtzee-game-dice game) (available-categories game (yahtzee-game-turn game)))))
          (commit-score game cat)
-         (edm-engine/audio:play-tone :sine 700.0 0.15))))
+         (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :yahtzee :cue :category-scored)))))
     (edm-engine:ai-timer-reset *ai-clock* (raylib:get-time) +yahtzee-ai-think-seconds+)))
 
 (defmethod edm-engine:game-update ((game yahtzee-game))
@@ -150,20 +163,20 @@ each face value 1-6 — the standard arrangement on a real die.")
              (when (plusp (yahtzee-game-rolls-remaining game))
                (roll-turn-dice game)
                (start-roll-animation game)
-               (edm-engine/audio:play-tone :square 500.0 0.05)))
+               (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :yahtzee :cue :player-dice-rolled))))
            (when (raylib:is-key-pressed :key-enter)
              (cond
                ((< (yahtzee-game-cursor game) 5)
                 (toggle-hold game (yahtzee-game-cursor game))
-                (edm-engine/audio:play-tone :square 600.0 0.03))
+                (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :yahtzee :cue :die-held)))
                ((< (yahtzee-game-rolls-remaining game) 3)
                 (let ((cat (nth (- (yahtzee-game-cursor game) 5) +categories+)))
                   (when (member cat available)
                     (commit-score game cat)
-                    (edm-engine/audio:play-tone :sine 700.0 0.15)))))))
+                    (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :yahtzee :cue :category-scored))))))))
          (maybe-run-ai-turn game))
      (when (game-over-p game)
-       (edm-engine/audio:play-tone :sine 1000.0 0.3)
+       (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :yahtzee :cue :game-over))
        (setf (yahtzee-game-status game)
              (if (= 0 (winner-index game)) :won :lost))
        ;; #37's bus-driven VFX trigger, retrofit against a real
