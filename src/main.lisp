@@ -246,16 +246,29 @@ actual tokens — see src/palette.lisp), not a flat CLEAR-BACKGROUND."
                                (getf entry :score) (format-save-timestamp (getf entry :timestamp)))
                        (format nil "Slot ~D: empty" i))
                    40 y 18 (menu-item-color (= i (arcade-state-save-slot-index state))))))
-       ;; TODO: visual thumbnail preview. Screenshots ARE correctly
-       ;; captured and stored (SAVE-SLOT-SCREENSHOT-PATH) — three
-       ;; different approaches to drawing one scaled here (DRAW-TEXTURE-EX
-       ;; with MAKE-VECTOR2, IMAGE-RESIZE, DRAW-TEXTURE-PRO with a plist
-       ;; origin) all hit the identical low-level failure ("not of type
-       ;; SB-SYS:SYSTEM-AREA-POINTER when binding SB-ALIEN::VALUE" deep in
-       ;; CFFI's struct-by-value marshalling), which looks like a real
-       ;; binding incompatibility in this cl-raylib/SBCL/CFFI combination,
-       ;; not a usage mistake worth more trial and error right now. The
-       ;; text listing above already gives players enough to pick a slot.
+       ;; Thumbnail preview — screenshots ARE correctly captured and
+       ;; stored (SAVE-SLOT-SCREENSHOT-PATH), and SAVE-SLOT-PREVIEW-
+       ;; TEXTURE already handles loading/caching one correctly; the
+       ;; real, actual gap was DRAW-TEXTURE-PRO's own call, previously
+       ;; attempted with RAYLIB:MAKE-VECTOR2/RAYLIB:MAKE-COLOR — neither
+       ;; function exists in this cl-raylib version at all (confirmed
+       ;; directly, not assumed), which is what the prior "CFFI struct-
+       ;; marshalling" diagnosis was actually hitting, not a real
+       ;; binding incompatibility. 3D-VECTORS:VEC2 and RAYLIB:GET-COLOR
+       ;; are this codebase's own, already-established constructors for
+       ;; exactly these types (DRAW-TEXT-EX, RGB-COLOR above) — using
+       ;; them here instead, live-verified working before landing.
+       (let ((tex (save-slot-preview-texture (arcade-state-save-slot-index state))))
+         (when tex
+           (raylib:draw-texture-pro
+            tex
+            (raylib:make-rectangle :x 0.0 :y 0.0
+                                    :width (float (raylib:texture-width tex) 1.0)
+                                    :height (float (raylib:texture-height tex) 1.0))
+            (raylib:make-rectangle :x 620.0 :y 80.0 :width 280.0 :height 210.0)
+            (3d-vectors:vec2 0.0 0.0)
+            0.0
+            (raylib:get-color #xFFFFFFFF))))
        (draw-back-hint window-height))
       (:playing
        (let ((game (arcade-state-current-game state)))
