@@ -98,3 +98,10 @@ async task."
        (remhash key *pattern-pending*)
        (setf (gethash key *pattern-cache*) (samples->raylib-sound samples)))
       (:wait nil))))
+
+;; #59's audio piece — *PLAY-TONE-FUNCTION* is declared NIL in the
+;; pure, raylib-free EDM-ENGINE/AUDIO/TONE system (cues.lisp); this
+;; file already depends on raylib and defines the real PLAY-TONE
+;; above, so this is where the two connect — set once, at this file's
+;; own load time, not left NIL in any build that actually loads raylib.
+(setf *play-tone-function* #'play-tone)

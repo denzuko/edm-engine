@@ -33,18 +33,18 @@ DSL is for, not pre-recorded samples."
   :serial t
   :components ((:file "src/audio/package")
                (:file "src/audio/tone")
-               (:file "src/audio/tracker")))
+               (:file "src/audio/tracker")
+               (:file "src/audio/cues")))
 
 (defsystem "edm-engine/audio"
   :description "raylib playback boundary for generated tones. Untested I/O,
 same convention as render.lisp."
   :depends-on ("edm-engine/audio/tone" "edm-engine/core" "cl-raylib" "cffi")
-  :components ((:file "src/audio/playback")
-               (:file "src/audio/cues")))
+  :components ((:file "src/audio/playback")))
 
 (defsystem "edm-engine/audio/tests"
-  :description "FiveAM spec suite for edm-engine/audio."
-  :depends-on ("edm-engine/audio" "fiveam")
+  :description "FiveAM spec suite for edm-engine/audio/tone."
+  :depends-on ("edm-engine/audio/tone" "fiveam")
   :components ((:file "t/audio/tone-spec")
                (:file "t/audio/tracker-spec")
                (:file "t/audio/cues-spec"))

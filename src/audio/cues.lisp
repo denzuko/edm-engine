@@ -15,11 +15,18 @@
   "Maps (GAME . CUE) conses to (WAVEFORM FREQUENCY DURATION) lists,
 registered via DEFAUDIO-CUES.")
 
-(defvar *play-tone-function* #'play-tone
+(defvar *play-tone-function* nil
   "The function PROCESS-AUDIO-EVENTS actually calls to play a resolved
-cue — defaults to PLAY-TONE itself, overridable (dynamically rebound)
-for testing without a real audio device, or for a future global-mute
-feature; not just a test-only hack.")
+cue. NIL by default — this file (EDM-ENGINE/AUDIO/TONE) is pure, no
+raylib, no I/O (matching PLAY-TONE itself living in the separate
+EDM-ENGINE/AUDIO system, the raylib playback boundary) — PLAYBACK.LISP
+sets this to #'PLAY-TONE at its own load time, once raylib is
+genuinely available. A NIL value means PROCESS-AUDIO-EVENTS correctly
+no-ops (nothing to play through) rather than erroring, matching how a
+headless/raylib-free test environment (CI's own RUN-TESTS job,
+confirmed directly as the actual cause of a real regression this
+fixes) needs to load and test this file's own logic without ever
+requiring raylib at all.")
 
 (defmacro defaudio-cues (game &body cues)
   "Registers each (CUE-KEYWORD WAVEFORM FREQUENCY DURATION) in CUES
@@ -48,5 +55,5 @@ alongside PROCESS-SAVE-GAME-EVENTS/PROCESS-LOAD-GAME-EVENTS."
                                    (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio))
         while received-p
         do (let ((cue (resolve-audio-cue (getf event :game) (getf event :cue))))
-             (when cue
+             (when (and cue *play-tone-function*)
                (apply *play-tone-function* cue)))))
