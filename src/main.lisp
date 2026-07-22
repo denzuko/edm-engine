@@ -112,21 +112,10 @@ isn't worth chasing for a thumbnail)."
           (when (raylib:is-key-pressed :key-down) (arcade-popup-next state))
           (when (raylib:is-key-pressed :key-up) (arcade-popup-previous state))
           (when (raylib:is-key-pressed :key-enter)
-            (let* ((selected (nth (arcade-state-popup-index state) (arcade-popup-items game)))
-                   (slot (arcade-state-save-slot-index state)))
+            (let ((selected (nth (arcade-state-popup-index state) (arcade-popup-items game))))
               (when (or (string= selected "New Game") (string= selected "Return to Tables"))
                 (edm-engine:game-stop-audio game))
-              (arcade-popup-confirm state)
-              (when (string= selected "Save State")
-                ;; raylib:take-screenshot always joins its path onto the
-                ;; process's CWD, even for an already-absolute path — so
-                ;; screenshot to a plain relative name, then move it with
-                ;; plain Lisp file I/O, which has no such quirk.
-                (raylib:take-screenshot "parencade-save-thumbnail-tmp.png")
-                (ensure-save-directory)
-                (uiop:rename-file-overwriting-target
-                 "parencade-save-thumbnail-tmp.png"
-                 (save-slot-screenshot-path slot))))))
+              (arcade-popup-confirm state))))
          ((game-outcome game) (arcade-open-popup state))
          ((raylib:is-key-pressed :key-escape) (arcade-open-popup state))
          (t (game-update game)))))))
@@ -277,6 +266,31 @@ actual tokens — see src/palette.lisp), not a flat CLEAR-BACKGROUND."
            (draw-popup-menu state window-width window-height))
          (gameOverlayEffects game window-width window-height))))))
 
+(defun process-save-game-events ()
+  "Drains *ENGINE-BUS*'s :SAVE-GAME topic, writing each event's already-
+computed data and taking a fresh screenshot. The consumer half of
+ARCADE-SAVE-CURRENT's own push (arcade.lisp) — #58 part 2's real
+architectural fix: game logic pushes a semantic event, never writes to
+disk directly. Called from the main loop itself, after ARCADE-RENDER,
+for two real reasons: RAYLIB:TAKE-SCREENSHOT needs a completed frame
+to capture, and the GL context this needs is thread-affine — only the
+main loop thread owns it, matching the same reasoning #24's own
+asset-embedding fix and #37's confetti trigger both already
+established directly, not assumed here."
+  (loop for (event received-p) = (multiple-value-list (bus-try-pop *engine-bus* :save-game))
+        while received-p
+        do (save-slot-data (getf event :slot) (getf event :table-title)
+                            (getf event :data) (getf event :score))
+           ;; raylib:take-screenshot always joins its path onto the
+           ;; process's CWD, even for an already-absolute path — so
+           ;; screenshot to a plain relative name, then move it with
+           ;; plain Lisp file I/O, which has no such quirk.
+           (raylib:take-screenshot "parencade-save-thumbnail-tmp.png")
+           (ensure-save-directory)
+           (uiop:rename-file-overwriting-target
+            "parencade-save-thumbnail-tmp.png"
+            (save-slot-screenshot-path (getf event :slot)))))
+
 (defvar *debug-arcade-state* nil
   "The live ARCADE-STATE, exposed for SWANK inspection when
 EDM_ENGINE_SWANK_PORT is set — read-only from another thread (GL calls
@@ -314,7 +328,8 @@ specific table — that's the whole point."
                do (handler-case
                       (wTmr "render.frame_time"
                         (arcade-update state)
-                        (arcade-render state 1024 768))
+                        (arcade-render state 1024 768)
+                        (process-save-game-events))
                     (error (c)
                       (log-crash c)
                       (incf crash-count)

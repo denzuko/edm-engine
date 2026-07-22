@@ -205,7 +205,12 @@ save."
        (when (probe-file edm-engine::*save-directory*)
          (uiop:delete-directory-tree edm-engine::*save-directory* :validate t)))))
 
-(test popup-save-state-writes-to-the-browsed-slot-and-returns-to-tables
+(test popup-save-state-pushes-a-save-game-event-and-returns-to-tables
+  "Updated per #58 part 2's own architectural fix: ARCADE-POPUP-CONFIRM
+(via ARCADE-SAVE-CURRENT) now pushes a :SAVE-GAME event rather than
+writing to disk directly — the actual write is a separate consumer's
+job (main.lisp's own render loop), covered by its own test once that
+consumer exists, not this one."
   (with-temp-save-directory-for-arcade
     (let ((edm-engine::*games* nil)
           (state (make-arcade-state)))
@@ -215,11 +220,15 @@ save."
       (setf (arcade-state-save-slot-index state) 3)
       (arcade-open-popup state)
       (setf (arcade-state-popup-index state) 2) ; "Save State" in the in-progress variant
+      (multiple-value-bind (event received-p) (bus-try-pop *engine-bus* :save-game)
+        (declare (ignore event received-p))) ; drain anything stale from a prior test
       (arcade-popup-confirm state)
-      (is (probe-file (save-slot-data-path 3)))
       (is (eq :tables (arcade-state-mode state)))
-      (multiple-value-bind (title) (load-game-from-slot 3)
-        (is (string= "Stub" title))))))
+      (multiple-value-bind (event received-p) (bus-try-pop *engine-bus* :save-game)
+        (is (not (null received-p)))
+        (is (= 3 (getf event :slot)))
+        (is (string= "Stub" (getf event :table-title)))
+        (is (equal '(:some "data") (getf event :data)))))))
 
 (test save-slot-browsing-wraps-through-all-ten
   (let ((state (make-arcade-state)))
@@ -258,3 +267,63 @@ save."
       (register-game "Stub" (lambda () (make-instance 'spec-outcome-game))) ; no :restore-fn
       (save-game-to-slot 0 "Stub" (make-instance 'spec-outcome-game) 50)
       (is (null (arcade-load-selected-save-slot state))))))
+
+;;; ARCADE-SAVE-CURRENT — #58 part 2, the actual architectural fix per
+;;; direct question: the real "Save State" UI flow was calling
+;;; SAVE-GAME-TO-SLOT and RAYLIB:TAKE-SCREENSHOT directly and
+;;; synchronously in the same key-handler — the exact direct-call
+;;; pattern #37's own bus-driven VFX trigger was built to replace,
+;;; never applied to save-game itself. Game logic (this function)
+;;; should push a semantic event, never write to disk directly; a
+;;; consumer (main.lisp's own render loop, since the screenshot needs
+;;; the GL context that thread owns) drains it. BDD-first, written
+;;; before ARCADE-SAVE-CURRENT pushes anything.
+
+(test arcade-save-current-pushes-a-save-game-event-with-precomputed-data
+  "GOAL: GAME-SAVE-DATA is computed at push time, while the game object
+is still current, not deferred to whatever drains the event later —
+the event payload carries DATA itself (SPEC-SAVE-GAME's own known
+value), not a game object the consumer would need to call back into."
+  (with-temp-save-directory-for-arcade
+    (let ((edm-engine::*games* nil)
+          (state (make-arcade-state)))
+      (register-game "Stub" (lambda () (make-instance 'spec-save-game :data 42)))
+      (setf (arcade-state-mode state) :tables)
+      (arcade-launch-selected state)
+      (multiple-value-bind (event received-p) (bus-try-pop *engine-bus* :save-game)
+        (declare (ignore event received-p))) ; drain anything stale from a prior test
+      (arcade-save-current state)
+      (multiple-value-bind (event received-p) (bus-try-pop *engine-bus* :save-game)
+        (is (not (null received-p)))
+        (is (= (arcade-state-save-slot-index state) (getf event :slot)))
+        (is (string= "Stub" (getf event :table-title)))
+        (is (= 42 (getf event :data)))))))
+
+(test arcade-save-current-does-not-write-to-disk-directly-itself
+  "GOAL: pushing the event is the whole job — no direct SAVE-GAME-TO-
+SLOT/SAVE-SLOT-DATA call happens inside ARCADE-SAVE-CURRENT itself,
+checked by confirming nothing lands on disk until a consumer actually
+drains the bus, not assumed from the push succeeding alone."
+  (with-temp-save-directory-for-arcade
+    (let ((edm-engine::*games* nil)
+          (state (make-arcade-state)))
+      (register-game "Stub" (lambda () (make-instance 'spec-save-game :data 1)))
+      (setf (arcade-state-mode state) :tables)
+      (arcade-launch-selected state)
+      (multiple-value-bind (event received-p) (bus-try-pop *engine-bus* :save-game)
+        (declare (ignore event received-p)))
+      (arcade-save-current state)
+      (is (null (load-game-from-slot (arcade-state-save-slot-index state)))))))
+
+(test arcade-save-current-still-returns-to-table-select-immediately
+  "GOAL: the UI transition (back to table select) isn't gated on the
+event actually being drained — a real UX property, checked directly
+rather than assumed to still hold after this architectural change."
+  (with-temp-save-directory-for-arcade
+    (let ((edm-engine::*games* nil)
+          (state (make-arcade-state)))
+      (register-game "Stub" (lambda () (make-instance 'spec-save-game :data 1)))
+      (setf (arcade-state-mode state) :tables)
+      (arcade-launch-selected state)
+      (arcade-save-current state)
+      (is (eq :tables (arcade-state-mode state))))))

@@ -190,15 +190,27 @@ finished, possibly a test double) current instance."
         (arcade-state-popup-index state) 0))
 
 (defun arcade-save-current (state)
-  "Saves the in-progress table into STATE's currently browsed slot
-(ARCADE-STATE-SAVE-SLOT-INDEX — pick a different one first via the
-Save/Load screen's up/down, same navigation as everywhere else), then
-returns to table select. Returns the slot index."
+  "Pushes a :SAVE-GAME event onto *ENGINE-BUS* for STATE's currently
+browsed slot (ARCADE-STATE-SAVE-SLOT-INDEX — pick a different one first
+via the Save/Load screen's up/down, same navigation as everywhere
+else), then returns to table select. Returns the slot index.
+
+#58 part 2's own real fix, per direct question: this used to call
+SAVE-GAME-TO-SLOT directly, writing to disk from inside game logic —
+the exact direct-call pattern #37's own bus-driven VFX trigger was
+built to replace, never applied to save-game itself. GAME-SAVE-DATA is
+computed here, now, while GAME is still current — the event payload
+carries that already-computed data, not the game object itself, since
+whatever drains this later shouldn't need to call back into a game
+instance that may have moved on by then. The actual write (and the
+screenshot, needing the GL context only the render thread owns)
+happens in the consumer, main.lisp's own render loop."
   (when (arcade-state-current-game state)
-    (save-game-to-slot (arcade-state-save-slot-index state)
-                        (arcade-state-current-table-title state)
-                        (arcade-state-current-game state)
-                        (arcade-state-total-score state)))
+    (bus-push *engine-bus* :save-game
+              (list :slot (arcade-state-save-slot-index state)
+                    :table-title (arcade-state-current-table-title state)
+                    :data (game-save-data (arcade-state-current-game state))
+                    :score (arcade-state-total-score state))))
   (arcade-return-to-table-select state)
   (arcade-state-save-slot-index state))
 
