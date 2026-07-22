@@ -29,14 +29,11 @@ board-size unit."
 ;; over. The board itself doesn't need serializing — MAKE-QUEENS-GAME
 ;; already regenerates it deterministically from LEVEL+a level-derived
 ;; seed; only the player's actual progress does.
-(defmethod edm-engine:game-save-data ((game queens-game))
-  (list :level (queens-game-level game)
-        :score (queens-game-score game)
-        :placed (queens-game-placed game)
-        :marked (queens-game-marked game)
-        :status (queens-game-status game)
-        :cursor-row (queens-game-cursor-row game)
-        :cursor-col (queens-game-cursor-col game)))
+;; #58's DEFSAVE-DATA retrofit — was a hand-written GAME-SAVE-DATA
+;; method identical in shape to the other three games' own methods,
+;; now declared as data via the macro composing this exact field list.
+(edm-engine:defsave-data queens-game
+  :level :score :placed :marked :status :cursor-row :cursor-col)
 
 (defun queens-restore-game (data)
   "Reconstructs a QUEENS-GAME from a GAME-SAVE-DATA plist — the paired

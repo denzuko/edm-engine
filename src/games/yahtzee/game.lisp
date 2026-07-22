@@ -36,17 +36,12 @@
 ;; dice/held/scores/turn are all live, in-progress state, not
 ;; regeneratable from ROLL-SEED alone once rolls/holds/scoring have
 ;; modified it.
-(defmethod edm-engine:game-save-data ((game yahtzee-game))
-  (list :dice (yahtzee-game-dice game)
-        :held (yahtzee-game-held game)
-        :rolls-remaining (yahtzee-game-rolls-remaining game)
-        :scores (yahtzee-game-scores game)
-        :turn (yahtzee-game-turn game)
-        :player-count (yahtzee-game-player-count game)
-        :cursor (yahtzee-game-cursor game)
-        :roll-seed (yahtzee-game-roll-seed game)
-        :status (yahtzee-game-status game)
-        :ai-difficulty (yahtzee-game-ai-difficulty game)))
+;; #58's DEFSAVE-DATA retrofit — was a hand-written GAME-SAVE-DATA
+;; method identical in shape to the other three games' own methods,
+;; now declared as data via the macro composing this exact field list.
+(edm-engine:defsave-data yahtzee-game
+  :dice :held :rolls-remaining :scores :turn :player-count :cursor
+  :roll-seed :status :ai-difficulty)
 
 (defun yahtzee-restore-game (data)
   "Reconstructs a YAHTZEE-GAME from a GAME-SAVE-DATA plist — the paired

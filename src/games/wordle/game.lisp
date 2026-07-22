@@ -128,11 +128,11 @@ zero on a loss or mid-game."
       (* 100 (1+ (- (wordle-game-max-rows game) (length (wordle-game-history game)))))
       0))
 
-(defmethod edm-engine:game-save-data ((game wordle-game))
-  (list :answer (wordle-game-answer game)
-        :history (wordle-game-history game)
-        :max-rows (wordle-game-max-rows game)
-        :status (wordle-game-status game)))
+;; #58's DEFSAVE-DATA retrofit — was a hand-written GAME-SAVE-DATA
+;; method identical in shape to the other three games' own methods,
+;; now declared as data via the macro composing this exact field list.
+(edm-engine:defsave-data wordle-game
+  :answer :history :max-rows :status)
 
 (defun wordle-restore-game (data)
   "Reconstructs a WORDLE-GAME from a GAME-SAVE-DATA plist — the paired

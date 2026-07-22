@@ -35,21 +35,56 @@ code computed anyway, so a full crypto dependency buys nothing real
 for this specific, local, single-player use case."
   (sxhash data))
 
+(defmacro defsave-data (struct-name &rest fields)
+  "Defines a GAME-SAVE-DATA method for STRUCT-NAME, composing a plist
+of :FIELD (STRUCT-NAME-FIELD game) pairs — #58's own finding: this
+half of the save/load boilerplate is genuinely, mechanically identical
+across all four games (checked directly, not assumed), only the field
+list differs. The paired RESTORE-*-GAME function stays hand-written
+per game — a real structural difference (Queens regenerates its board
+then restores progress on top; the other three construct directly from
+every field), not one this macro forces into a single shape."
+  (let ((game-var (gensym "GAME")))
+    `(defmethod game-save-data ((,game-var ,struct-name))
+       (list ,@(loop for field in fields
+                     append (list field `(,(intern (format nil "~A-~A" struct-name
+                                                             (string field)))
+                                            ,game-var)))))))
+
+(declaim (ftype (function ((integer 0 9) string t fixnum) (integer 0 9)) save-slot-data))
+(defun save-slot-data (slot table-title data score)
+  "Writes SLOT's data: table title, score, a save timestamp, DATA
+(already-computed GAME-SAVE-DATA, not a game object), and a checksum
+of DATA (verified on load — #9's own integrity-checking gap). Returns
+SLOT.
+
+The actual entry point for the :SAVE-GAME bus event's own consumer —
+per direct correction, the real 'Save State' UI flow was calling
+SAVE-GAME-TO-SLOT (which computes GAME-SAVE-DATA itself) and
+RAYLIB:TAKE-SCREENSHOT directly and synchronously in the same key-
+handler, the exact direct-call pattern #37's own bus-driven VFX
+trigger was built to replace and never applied here. GAME-SAVE-DATA
+needs computing at push time (while the game object is still current,
+before whatever handles the event runs later), so the event payload
+carries DATA itself, not a game object the consumer would need to
+call back into."
+  (ensure-save-directory)
+  (with-open-file (out (save-slot-data-path slot) :direction :output
+                                                    :if-exists :supersede :if-does-not-exist :create)
+    (prin1 (list :table-title table-title :score score
+                 :timestamp (get-universal-time)
+                 :data data
+                 :checksum (save-data-checksum data))
+           out))
+  slot)
+
 (declaim (ftype (function ((integer 0 9) string t fixnum) (integer 0 9)) save-game-to-slot))
 (defun save-game-to-slot (slot table-title game score)
-  "Writes SLOT's data: table title, score, a save timestamp,
-GAME-SAVE-DATA, and a checksum of that data (verified on load — #9's
-own integrity-checking gap). Returns SLOT."
-  (ensure-save-directory)
-  (let ((data (game-save-data game)))
-    (with-open-file (out (save-slot-data-path slot) :direction :output
-                                                      :if-exists :supersede :if-does-not-exist :create)
-      (prin1 (list :table-title table-title :score score
-                   :timestamp (get-universal-time)
-                   :data data
-                   :checksum (save-data-checksum data))
-             out)))
-  slot)
+  "Convenience wrapper over SAVE-SLOT-DATA for any direct, synchronous
+caller (ARCADE-SAVE-CURRENT, still used outside the :SAVE-GAME bus
+event path) — computes GAME-SAVE-DATA from GAME, then composes
+SAVE-SLOT-DATA rather than duplicating its own write logic."
+  (save-slot-data slot table-title (game-save-data game) score))
 
 (declaim (ftype (function ((integer 0 9)) t) load-game-from-slot))
 (defun load-game-from-slot (slot)

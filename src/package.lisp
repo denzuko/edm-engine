@@ -29,7 +29,7 @@
    ;; save/load — 10 slots, each with metadata + a screenshot
    #:*save-slot-count* #:*save-directory*
    #:save-slot-data-path #:save-slot-screenshot-path #:ensure-save-directory
-   #:save-game-to-slot #:load-game-from-slot #:delete-save-slot
+   #:save-game-to-slot #:load-game-from-slot #:delete-save-slot #:defsave-data #:save-slot-data
    #:list-save-slots #:format-save-timestamp #:log-crash #:*crash-log-path*
    ;; palette (chrome tokens + Okabe-Ito for functional state color)
    #:+color-dim+ #:+color-panel+ #:+color-brand-green+ #:+color-brand-green2+

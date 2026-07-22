@@ -33,21 +33,12 @@
 ;; SEED+ROUND alone once play has modified them (cards removed via
 ;; PLAY-CARD, exchanged via passing) — the full live state is captured
 ;; directly, not reconstructed from a seed.
-(defmethod edm-engine:game-save-data ((game hearts-game))
-  (list :hands (hearts-game-hands game)
-        :scores (hearts-game-scores game)
-        :round-points (hearts-game-round-points game)
-        :current-trick (hearts-game-current-trick game)
-        :leader (hearts-game-leader game)
-        :turn (hearts-game-turn game)
-        :hearts-broken (hearts-game-hearts-broken game)
-        :round (hearts-game-round game)
-        :phase (hearts-game-phase game)
-        :passed-cards (hearts-game-passed-cards game)
-        :cursor (hearts-game-cursor game)
-        :pass-selection (hearts-game-pass-selection game)
-        :status (hearts-game-status game)
-        :ai-difficulty (hearts-game-ai-difficulty game)))
+;; #58's DEFSAVE-DATA retrofit — was a hand-written GAME-SAVE-DATA
+;; method identical in shape to the other three games' own methods,
+;; now declared as data via the macro composing this exact field list.
+(edm-engine:defsave-data hearts-game
+  :hands :scores :round-points :current-trick :leader :turn :hearts-broken
+  :round :phase :passed-cards :cursor :pass-selection :status :ai-difficulty)
 
 (defun hearts-restore-game (data)
   "Reconstructs a HEARTS-GAME from a GAME-SAVE-DATA plist — the paired

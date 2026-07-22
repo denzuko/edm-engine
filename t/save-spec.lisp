@@ -111,3 +111,81 @@ silently trusted."
         (with-open-file (out path :direction :output :if-exists :supersede)
           (prin1 (append (list :data 999) (alexandria:remove-from-plist saved :data)) out))))
     (is (null (load-game-from-slot 0)))))
+
+;;; DEFSAVE-DATA — #58's own real finding: GAME-SAVE-DATA's own shape
+;;; (build a plist of :field (accessor game) pairs) is genuinely
+;;; identical across all four games, checked directly — only the
+;;; field names differ, zero real variation in the mechanism itself.
+;;; RESTORE-*-GAME stays hand-written (Queens' own regenerate-then-
+;;; restore-progress shape genuinely differs from the other three's
+;;; direct-construction shape — a real structural difference, not
+;;; forced into one macro just because half of the pair is
+;;; mechanical). BDD-first, written before DEFSAVE-DATA exists.
+
+(defstruct spec-macro-game field-a field-b field-c)
+
+(test defsave-data-generates-a-game-save-data-method-matching-manual-construction
+  "GOAL: the generated method must produce exactly what hand-writing
+(LIST :FIELD-A (SPEC-MACRO-GAME-FIELD-A GAME) ...) would — composing
+accessor calls via the field list, not a different mechanism."
+  (defsave-data spec-macro-game :field-a :field-b :field-c)
+  (let ((game (make-spec-macro-game :field-a 1 :field-b 2 :field-c 3)))
+    (is (equal (list :field-a 1 :field-b 2 :field-c 3) (game-save-data game)))))
+
+(test defsave-data-uses-the-struct-prefixed-accessor-name-directly
+  "GOAL: the accessor name is derived from the struct name and field
+name directly (SPEC-MACRO-GAME-FIELD-A, DEFSTRUCT's own default
+convention) -- checked with a struct whose fields are genuinely
+distinct values, not coincidentally identical ones a bug could hide
+behind."
+  (defsave-data spec-macro-game :field-a :field-b :field-c)
+  (let ((game (make-spec-macro-game :field-a :x :field-b :y :field-c :z)))
+    (is (equal (list :field-a :x :field-b :y :field-c :z) (game-save-data game)))))
+
+;;; SAVE-SLOT-DATA — the low-level writer SAVE-GAME-TO-SLOT itself now
+;;; composes. Split out per direct correction: the actual "Save State"
+;;; UI flow calls SAVE-GAME-TO-SLOT (which computes GAME-SAVE-DATA)
+;;; and RAYLIB:TAKE-SCREENSHOT directly and synchronously in the same
+;;; key-handler — the exact direct-call pattern #37's own bus-driven
+;;; VFX trigger was built to replace, never applied to save-game
+;;; itself. The real fix needs a :SAVE-GAME bus event carrying already-
+;;; computed GAME-SAVE-DATA (computed at push time, while the game
+;;; object is still current) to a consumer that writes it — this
+;;; function is that consumer's own write step, independent of
+;;; SAVE-GAME-TO-SLOT's own game-object-taking convenience wrapper.
+
+(test save-slot-data-writes-pre-computed-data-without-needing-a-game-object
+  "GOAL: the bus consumer receives already-computed GAME-SAVE-DATA (the
+event payload), not a game object — SAVE-SLOT-DATA must accept that
+data directly and produce the identical file SAVE-GAME-TO-SLOT itself
+would, not a different format the loader would need special-casing
+for."
+  (with-temp-save-directory
+    (save-slot-data 0 "Queens" 100 42)
+    (multiple-value-bind (title score timestamp data) (load-game-from-slot 0)
+      (declare (ignore timestamp))
+      (is (string= "Queens" title))
+      (is (= 42 score))
+      (is (= 100 data)))))
+
+(test save-game-to-slot-composes-save-slot-data-not-a-separate-implementation
+  "GOAL: SAVE-GAME-TO-SLOT (the existing, game-object-taking
+convenience wrapper still used by ARCADE-SAVE-CURRENT for any direct,
+synchronous caller) and SAVE-SLOT-DATA (the new, data-taking consumer
+entry point) must produce byte-identical files for equivalent inputs —
+one real implementation underneath two calling conventions, not two
+separately-maintained write paths that could silently drift apart."
+  (with-temp-save-directory
+    (save-game-to-slot 0 "Queens" (make-instance 'spec-save-game :data 100) 42)
+    (let ((via-wrapper (uiop:read-file-string (save-slot-data-path 0))))
+      (with-temp-save-directory
+        (save-slot-data 0 "Queens" 100 42)
+        ;; Timestamps will genuinely differ (real GET-UNIVERSAL-TIME
+        ;; calls, not injectable) -- compare everything else.
+        (let ((via-consumer (uiop:read-file-string (save-slot-data-path 0))))
+          (flet ((strip-timestamp (s)
+                   (let* ((plist (read-from-string s))
+                          (stripped (copy-list plist)))
+                     (remf stripped :timestamp)
+                     stripped)))
+            (is (equal (strip-timestamp via-wrapper) (strip-timestamp via-consumer)))))))))
