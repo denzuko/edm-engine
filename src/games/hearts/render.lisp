@@ -2,6 +2,16 @@
 
 (declaim (optimize (speed 3) (safety 3)))
 
+;; #59's audio piece — was five direct, inline PLAY-TONE calls
+;; scattered across GAME-UPDATE/MAYBE-RUN-AI-TURN, now declared as
+;; data.
+(edm-engine/audio:defaudio-cues :hearts
+  (:ai-card-played :square 500.0 0.04)
+  (:card-selected :square 500.0 0.03)
+  (:pass-executed :sine 800.0 0.15)
+  (:player-card-played :square 700.0 0.05)
+  (:round-scored :sine 1000.0 0.3))
+
 ;;; CARD-STRING/CARD-COLOR/+CARD-WIDTH+/+CARD-HEIGHT+/DRAW-CARD-FACE/
 ;;; DRAW-CARD-BACK now live in EDM-ENGINE/CARDS — generic to any card
 ;;; game, not Hearts-specific. This file's own contribution is the
@@ -171,7 +181,7 @@ work (see GH #3), not implemented yet. Not pretending otherwise."
         (start-card-tween card sx sy (trick-card-x 1024.0 trick-index) (trick-card-y 768.0)))
       (play-card game p card)
       (when (null (hearts-game-current-trick game)) (clrhash *card-tweens*))
-      (edm-engine/audio:play-tone :square 500.0 0.04)
+      (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :hearts :cue :ai-card-played))
       (edm-engine:ai-timer-reset *ai-clock* (raylib:get-time) +hearts-ai-think-seconds+))))
 
 (defmethod edm-engine:game-title ((game hearts-game)) "Hearts")
@@ -188,10 +198,10 @@ work (see GH #3), not implemented yet. Not pretending otherwise."
           (when (raylib:is-key-pressed :key-enter)
             (let ((card (nth (hearts-game-cursor game) hand)))
               (toggle-pass-selection game card)
-              (edm-engine/audio:play-tone :square 500.0 0.03)
+              (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :hearts :cue :card-selected))
               (when (= 3 (length (hearts-game-pass-selection game)))
                 (execute-pass game)
-                (edm-engine/audio:play-tone :sine 800.0 0.15))))))
+                (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :hearts :cue :pass-executed)))))))
        (:playing
         (if (= 0 (hearts-game-turn game))
             (let* ((hand (first (hearts-game-hands game)))
@@ -209,12 +219,12 @@ work (see GH #3), not implemented yet. Not pretending otherwise."
                     (play-card game 0 card)
                     (when (null (hearts-game-current-trick game)) (clrhash *card-tweens*))
                     (setf (hearts-game-cursor game) 0)
-                    (edm-engine/audio:play-tone :square 700.0 0.05)
+                    (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :hearts :cue :player-card-played))
                     (edm-engine:ai-timer-reset *ai-clock* (raylib:get-time) +hearts-ai-think-seconds+)))))
             (maybe-run-ai-turn game))
         (when (round-over-p game)
           (score-round game)
-          (edm-engine/audio:play-tone :sine 1000.0 0.3)
+          (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :hearts :cue :round-scored))
           (cond
             ((game-over-p (hearts-game-scores game))
              (setf (hearts-game-status game)

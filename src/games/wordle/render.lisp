@@ -1,5 +1,14 @@
 (in-package :edm-engine/games/wordle)
 
+;; #59's audio piece — was six direct, inline PLAY-TONE calls, now
+;; declared as data.
+(edm-engine/audio:defaudio-cues :wordle
+  (:letter-typed :square 800.0 0.05)
+  (:letter-deleted :square 400.0 0.05)
+  (:won :sine 1200.0 0.4)
+  (:lost :sine 150.0 0.5)
+  (:guess-submitted :sine 600.0 0.08)
+  (:rejected :square 200.0 0.15))
 
 (defparameter +cols+ 5)
 (defparameter +rows+ 6)
@@ -131,19 +140,19 @@ triggers are untested I/O."
         do (let ((before (fill-pointer (wordle-game-input game))))
              (push-letter game (code-char code))
              (when (> (fill-pointer (wordle-game-input game)) before)
-               (edm-engine/audio:play-tone :square 800.0 0.05))))
+               (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :wordle :cue :letter-typed)))))
   (when (raylib:is-key-pressed :key-backspace)
     (when (plusp (fill-pointer (wordle-game-input game)))
-      (edm-engine/audio:play-tone :square 400.0 0.05))
+      (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :wordle :cue :letter-deleted)))
     (pop-letter game))
   (when (raylib:is-key-pressed :key-enter)
     (case (try-submit game)
       (:submitted
        (ecase (wordle-game-status game)
-         (:won (edm-engine/audio:play-tone :sine 1200.0 0.4))
-         (:lost (edm-engine/audio:play-tone :sine 150.0 0.5))
-         (:playing (edm-engine/audio:play-tone :sine 600.0 0.08))))
-      (:rejected (edm-engine/audio:play-tone :square 200.0 0.15))))
+         (:won (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :wordle :cue :won)))
+         (:lost (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :wordle :cue :lost)))
+         (:playing (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :wordle :cue :guess-submitted)))))
+      (:rejected (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :wordle :cue :rejected)))))
   (tick-pulse game))
 
 (defmethod edm-engine:game-render ((game wordle-game) window-width window-height)
