@@ -238,6 +238,18 @@ consumer exists, not this one."
     (arcade-select-next-save-slot state)
     (is (= 0 (arcade-state-save-slot-index state)))))
 
+;;; ARCADE-LOAD-SELECTED-SAVE-SLOT — #59's own named gap, corrected
+;;; directly per "current loaded game is state not namespace": the old
+;;; version resolved the GAME-ENTRY (a namespace lookup by table-title
+;;; string) and called its RESTORE-FN synchronously, right here in
+;;; game logic — the exact direct-call shape #58's own SAVE-GAME fix
+;;; just corrected, not actually fixed for LOAD. The real fix: this
+;;; function only reads the raw slot data and pushes it as a
+;;; :LOAD-GAME event if the slot is genuinely occupied — it doesn't
+;;; resolve GAME-ENTRY/RESTORE-FN at all, that resolution is the
+;;; consumer's own job (PROCESS-LOAD-GAME-EVENTS, main.lisp), which is
+;;; where ARCADE-STATE's actual mutation belongs too.
+
 (test load-selected-save-slot-returns-nil-when-that-slot-is-empty
   (with-temp-save-directory-for-arcade
     (let ((edm-engine::*games* nil)
@@ -246,7 +258,10 @@ consumer exists, not this one."
                       :restore-fn (lambda (data) (declare (ignore data)) (make-instance 'spec-outcome-game)))
       (is (null (arcade-load-selected-save-slot state))))))
 
-(test load-selected-save-slot-round-trips-title-and-score-and-resumes-play
+(test load-selected-save-slot-pushes-a-load-game-event-with-the-raw-slot-data
+  "GOAL: pushes title/score/data exactly as stored, WITHOUT resolving
+GAME-ENTRY/RESTORE-FN at all -- that resolution belongs to the
+consumer, not this push site, per the actual architectural fix."
   (with-temp-save-directory-for-arcade
     (let ((edm-engine::*games* nil)
           (state (make-arcade-state)))
@@ -255,18 +270,47 @@ consumer exists, not this one."
                                     (make-instance 'spec-outcome-game)))
       (save-game-to-slot 5 "Stub" (make-instance 'spec-outcome-game) 777)
       (setf (arcade-state-save-slot-index state) 5)
+      (multiple-value-bind (event received-p) (bus-try-pop *engine-bus* :load-game)
+        (declare (ignore event received-p))) ; drain anything stale
       (is (eq t (arcade-load-selected-save-slot state)))
+      (multiple-value-bind (event received-p) (bus-try-pop *engine-bus* :load-game)
+        (is (not (null received-p)))
+        (is (string= "Stub" (getf event :table-title)))
+        (is (= 777 (getf event :score)))))))
+
+(test process-load-game-events-performs-the-actual-restore-and-state-mutation
+  "GOAL: the consumer, not the push site, resolves GAME-ENTRY/RESTORE-
+FN and mutates ARCADE-STATE — the actual state transition #59 says
+belongs here, checked as the real, combined scenario (push, then
+drain) rather than assuming the two halves compose correctly."
+  (with-temp-save-directory-for-arcade
+    (let ((edm-engine::*games* nil)
+          (state (make-arcade-state)))
+      (register-game "Stub" (lambda () (make-instance 'spec-outcome-game))
+                      :restore-fn (lambda (data) (declare (ignore data))
+                                    (make-instance 'spec-outcome-game)))
+      (save-game-to-slot 5 "Stub" (make-instance 'spec-outcome-game) 777)
+      (setf (arcade-state-save-slot-index state) 5)
+      (arcade-load-selected-save-slot state)
+      (process-load-game-events state)
       (is (eq :playing (arcade-state-mode state)))
       (is (string= "Stub" (arcade-state-current-table-title state)))
       (is (= 777 (arcade-state-total-score state))))))
 
-(test load-selected-save-slot-returns-nil-when-table-has-no-restore-fn
+(test process-load-game-events-does-nothing-when-table-has-no-restore-fn
+  "GOAL: a stale save from a table that no longer supports RESTORE-FN
+(dropped support, or never registered) is a genuine no-op at the
+consumer -- checked directly, not assumed from the push side alone,
+since the push side no longer even checks this."
   (with-temp-save-directory-for-arcade
     (let ((edm-engine::*games* nil)
           (state (make-arcade-state)))
       (register-game "Stub" (lambda () (make-instance 'spec-outcome-game))) ; no :restore-fn
       (save-game-to-slot 0 "Stub" (make-instance 'spec-outcome-game) 50)
-      (is (null (arcade-load-selected-save-slot state))))))
+      (setf (arcade-state-save-slot-index state) 0)
+      (arcade-load-selected-save-slot state)
+      (process-load-game-events state)
+      (is (null (arcade-state-current-table-title state))))))
 
 ;;; ARCADE-SAVE-CURRENT — #58 part 2, the actual architectural fix per
 ;;; direct question: the real "Save State" UI flow was calling

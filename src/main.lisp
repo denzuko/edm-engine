@@ -329,7 +329,8 @@ specific table — that's the whole point."
                       (wTmr "render.frame_time"
                         (arcade-update state)
                         (arcade-render state 1024 768)
-                        (process-save-game-events))
+                        (process-save-game-events)
+                        (process-load-game-events state))
                     (error (c)
                       (log-crash c)
                       (incf crash-count)

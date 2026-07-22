@@ -238,23 +238,48 @@ variants' lengths differ."
         (cycle-index (arcade-state-save-slot-index state) -1 *save-slot-count*)))
 
 (defun arcade-load-selected-save-slot (state)
-  "Loads STATE's currently browsed slot and resumes play. Returns T on
-success, NIL if the slot is empty, or the saved table no longer
-supports RESTORE-FN (dropped that support, or was never registered — a
-stale save from a build that no longer matches this one)."
+  "Reads STATE's currently browsed slot and, if genuinely occupied,
+pushes a :LOAD-GAME event carrying its raw title/score/data. Returns
+T if an event was pushed, NIL if the slot is empty.
+
+#59's own named gap, corrected directly: this used to resolve
+GAME-ENTRY (a namespace lookup by table-title string) and call its
+RESTORE-FN synchronously, mutating ARCADE-STATE right here in game
+logic — the exact direct-call shape #58's SAVE-GAME fix already
+corrected for the save side, not actually fixed for load. This
+function no longer resolves GAME-ENTRY/RESTORE-FN at all — that
+resolution, and the actual ARCADE-STATE mutation, is
+PROCESS-LOAD-GAME-EVENTS' own job (main.lisp), not this push site's:
+'the current loaded game is state, not namespace.'"
   (multiple-value-bind (title score timestamp data)
       (load-game-from-slot (arcade-state-save-slot-index state))
     (declare (ignore timestamp))
     (when title
-      (let ((entry (find title *games* :key #'game-entry-title :test #'string=)))
-        (when (and entry (game-entry-restore-fn entry))
-          (ruleset-unload (arcade-state-current-game state) (arcade-state-ruleset-handle state))
-          (let ((game (funcall (game-entry-restore-fn entry) data)))
-            (setf (arcade-state-current-game state) game
-                  (arcade-state-current-table-title state) title
-                  (arcade-state-total-score state) (or score 0)
-                  (arcade-state-ruleset-handle state) (ruleset-load game)
-                  (arcade-state-mode state) :playing
-                  (arcade-state-popup-open state) nil
-                  (arcade-state-popup-index state) 0)
-            t))))))
+      (bus-push *engine-bus* :load-game
+                (list :table-title title :score score :data data))
+      t)))
+
+(defun process-load-game-events (state)
+  "Drains *ENGINE-BUS*'s :LOAD-GAME topic, resolving each event's
+GAME-ENTRY (the namespace lookup ARCADE-LOAD-SELECTED-SAVE-SLOT no
+longer does) and mutating STATE if a RESTORE-FN is genuinely
+available — the actual state transition, matching #58's own
+PROCESS-SAVE-GAME-EVENTS pattern exactly: game logic pushes an event,
+a separate consumer does the work. A stale save from a table that no
+longer supports RESTORE-FN (dropped support, or never registered) is
+a genuine no-op here, not a special error case the push side would
+need to anticipate."
+  (loop for (event received-p) = (multiple-value-list (bus-try-pop *engine-bus* :load-game))
+        while received-p
+        do (let* ((title (getf event :table-title))
+                   (entry (find title *games* :key #'game-entry-title :test #'string=)))
+             (when (and entry (game-entry-restore-fn entry))
+               (ruleset-unload (arcade-state-current-game state) (arcade-state-ruleset-handle state))
+               (let ((game (funcall (game-entry-restore-fn entry) (getf event :data))))
+                 (setf (arcade-state-current-game state) game
+                       (arcade-state-current-table-title state) title
+                       (arcade-state-total-score state) (or (getf event :score) 0)
+                       (arcade-state-ruleset-handle state) (ruleset-load game)
+                       (arcade-state-mode state) :playing
+                       (arcade-state-popup-open state) nil
+                       (arcade-state-popup-index state) 0))))))

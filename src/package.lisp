@@ -80,7 +80,7 @@
    #:arcade-popup-items #:arcade-open-popup #:arcade-popup-next #:arcade-popup-previous
    #:arcade-popup-confirm #:arcade-bank-score #:arcade-save-current
    #:arcade-select-next-save-slot #:arcade-select-previous-save-slot
-   #:arcade-load-selected-save-slot
+   #:arcade-load-selected-save-slot #:process-load-game-events
    ;; arcade entry point (defined in the primary edm-engine system)
    #:main #:arcade-update #:arcade-render #:rgb-color #:rgb-float->hex
    ;; AI opponent library — pacing timer + difficulty tiers, shared
