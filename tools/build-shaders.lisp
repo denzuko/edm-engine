@@ -1,6 +1,6 @@
 ;;;; tools/build-shaders.lisp
 ;;;;
-;;;; Compiles every src/games/*/shaders/*.{vs,fs}.lisp (c-mera GLSL S-expression
+;;;; Compiles every src/shaders/**/*.{vs,fs}.lisp (c-mera GLSL S-expression
 ;;;; source) into the matching .vs/.fs GLSL text file raylib loads at runtime.
 ;;;;
 ;;;; c-mera's own CLI (roswell/cm.ros) parses argv via net.didierverna.clon,
@@ -64,9 +64,7 @@ calls differing only in class name.")
   (unwind-protect
        (progn
          (setf (readtable-case *readtable*) :invert)
-         (dolist (source (append
-                           (directory (merge-pathnames "src/games/*/shaders/*.*.lisp" (uiop:getcwd)))
-                           (directory (merge-pathnames "src/shaders/*.*.lisp" (uiop:getcwd)))))
+         (dolist (source (directory (merge-pathnames "src/shaders/**/*.*.lisp" (uiop:getcwd))))
            (let* ((namestring (namestring source))
                   (output (parse-namestring (subseq namestring 0 (- (length namestring) 5))))) ; strip ".lisp"
              (compile-glsl-file source output))))

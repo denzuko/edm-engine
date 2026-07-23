@@ -22,9 +22,9 @@
 
 ;; #24's fix — embedded at compile time, zero runtime file access.
 (defparameter +tile-vertex-shader-source+
-  (edm-engine/asset-embed:embedFileString "src/games/wordle/shaders/tile.vs" :system :edm-engine/games/wordle))
+  (edm-engine/asset-embed:embedFileString "src/shaders/wordle/tile.vs" :system :edm-engine/games/wordle))
 (defparameter +tile-fragment-shader-source+
-  (edm-engine/asset-embed:embedFileString "src/games/wordle/shaders/tile.fs" :system :edm-engine/games/wordle))
+  (edm-engine/asset-embed:embedFileString "src/shaders/wordle/tile.fs" :system :edm-engine/games/wordle))
 
 (defun ensure-tile-shader ()
   "Lazily loads the tile shader pair."

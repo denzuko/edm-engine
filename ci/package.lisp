@@ -45,6 +45,7 @@ export PATH=\"$PATH:$HOME/.roswell/bin\"
 which opa || (curl -sL https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static -o /tmp/opa && sudo install /tmp/opa /usr/local/bin/opa)
 ./tools/run-gate.sh
 qlot install
+./tools/check-ci-sync.sh
 qlot exec ros run --load deploy/provision.lisp \\
   --eval '(org.cimatrix.env.development:provision)' \\
   --eval '(uiop:quit 0)'

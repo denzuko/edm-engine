@@ -36,7 +36,7 @@
 (defparameter +cell-vertex-shader-source+
   (edm-engine/asset-embed:embedFileString "src/shaders/passthrough.vs"))
 (defparameter +cell-fragment-shader-source+
-  (edm-engine/asset-embed:embedFileString "src/games/queens/shaders/cell.fs"
+  (edm-engine/asset-embed:embedFileString "src/shaders/queens/cell.fs"
                                            :system :edm-engine/games/queens))
 
 (defun ensure-cell-shader ()
