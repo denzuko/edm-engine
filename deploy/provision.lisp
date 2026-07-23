@@ -23,18 +23,34 @@
 
 (ql:quickload :consfigurator :silent t)
 
-(defpackage :edm-engine-deploy
+(defpackage :org.cimatrix.env.development
   (:use :cl :consfigurator)
   (:local-nicknames (#:apt #:consfigurator.property.apt)
                      (#:git #:consfigurator.property.git)
                      (#:cmd #:consfigurator.property.cmd)
                      (#:os #:consfigurator.property.os))
   (:export #:provision))
-(in-package :edm-engine-deploy)
+
+(in-package :org.cimatrix.env.development)
 
 (defparameter *roswell-version* "23.10.14.114"
   "The roswell release to install. Update this, not the shell command
 in PROVISION, when a newer roswell release is needed.")
+
+(defparameter *roswell-uri* "https://github.com/roswell/roswell/releases/download"
+  "BaseURI for the latest roswell package")
+
+(defparameter *dev-dependencies* '("build-essential" "cmake" "git" "xvfb" "ffmpeg"
+                   "libasound2-dev" "libx11-dev" "libxrandr-dev" "libxi-dev"
+                   "libgl1-mesa-dev" "libglu1-mesa-dev" "libxcursor-dev"
+                   "libxinerama-dev" "libwayland-dev" "libxkbcommon-dev"))
+
+
+;; FIXME: consfigurator already has this function and one just calls the consfigurator version
+;;        
+;;        Where org.cimatrix.env.development is this package (using cispec/cimatrix abstractions)
+;;        and where one in that package uses (defhost org.cimatrix.env.development ()...)
+;;        and where one uses `(asdf:load-system :org.cimatrix.env.development) (deploy :sudo org.cimatrix.env.development)`
 
 (defun provision (&key (suite :noble) (arch :amd64))
   "Provisions a bare machine to the point where raylib and the
@@ -51,10 +67,7 @@ runner and this sandbox — override for a different target."
 
     ;; 1. Build tools + raylib's own dependencies, sourced from the
     ;; raylib wiki's own documented Ubuntu/Debian dependency line.
-    (apt:installed "build-essential" "cmake" "git"
-                   "libasound2-dev" "libx11-dev" "libxrandr-dev" "libxi-dev"
-                   "libgl1-mesa-dev" "libglu1-mesa-dev" "libxcursor-dev"
-                   "libxinerama-dev" "libwayland-dev" "libxkbcommon-dev")
+    (apply #'apt:installed *dev-dependencies*)
 
     ;; 2. raylib itself — clone and build from source, matching the exact
     ;; sequence already verified working manually earlier this session.
@@ -66,14 +79,19 @@ runner and this sandbox — override for a different target."
     ;; older, unaffected clone cached from earlier testing — the whole
     ;; reason to pin an upstream dependency, not track its unstable tip.
     (git:cloned "https://github.com/raysan5/raylib.git" #P"/opt/raylib/" "6.0")
-    (cmd:single "sh" "-c"
-                "cd /opt/raylib && mkdir -p build && cd build && cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release .. && make && make install && ldconfig")
+    (cmd:single "cmake" "-S /opt/raylib" "-B /opt/raylib/build" 
+                "-DBUILD_SHARED_LIBS=ON" 
+                "-DCMAKE_BUILD_TYPE=Release"
+                "-DBUILD_EXAMPLES=OFF"
+                "-DBUILD_GAMES=OFF")
+    (cmd:single "cmake" "--build /opt/raylib/build" "-j$(nproc)")
+    (cmd:single "sh" "-c" "cmake --install /opt/raylib/build && ldconfig")
 
     ;; 3. Roswell -> SBCL -> qlot, reusing dps-meta's own proven working
     ;; sequence (verified in #16/#27's investigation) rather than
     ;; inventing a new one.
     (cmd:single "sh" "-c"
-                (format nil "curl -sL https://github.com/roswell/roswell/releases/download/v~A/roswell_~A-1_amd64.deb -o /tmp/roswell.deb && dpkg -i /tmp/roswell.deb"
-                        *roswell-version* *roswell-version*))
+                (format nil "curl -sL ~A/v~A/roswell_~A-1_amd64.deb -o /tmp/roswell.deb && dpkg -i /tmp/roswell.deb"
+                        *roswell-uri* *roswell-version* *roswell-version*))
     (cmd:single "ros" "install" "sbcl-bin")
     (cmd:single "ros" "install" "qlot")))

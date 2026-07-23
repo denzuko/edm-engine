@@ -41,7 +41,7 @@ ros install qlot
 export PATH=\"$PATH:$HOME/.roswell/bin\"
 qlot install
 qlot exec ros run --load deploy/provision.lisp \\
-  --eval '(edm-engine-deploy:provision)' \\
+  --eval '(org.cimatrix.env.development:provision)' \\
   --eval '(uiop:quit 0)'
 qlot exec ros build make-edm-engine.ros")
 
