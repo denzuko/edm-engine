@@ -28,6 +28,7 @@
   (:local-nicknames (#:apt #:consfigurator.property.apt)
                      (#:git #:consfigurator.property.git)
                      (#:cmd #:consfigurator.property.cmd)
+                     (#:file #:consfigurator.property.file)
                      (#:os #:consfigurator.property.os))
   (:export #:provision))
 
@@ -36,7 +37,7 @@
 
 (defparameter *opa-version* "v0.11.0"
   "The open policy agent version for installation")
-(defparameter *opa-uri" "https://github.com/open-policy-agent/opa/releases/download")
+(defparameter *opa-uri* "https://github.com/open-policy-agent/opa/releases/download")
 
 (defparameter *roswell-version* "23.10.14.114"
   "The roswell release to install. Update this, not the shell command
@@ -111,4 +112,4 @@ runner and this sandbox — override for a different target.
                         *roswell-uri* *roswell-version* *roswell-version*))
                     ("ros" "install" "sbcl-bin")
                     ("ros" "install" "qlot")))
-                    (apply #'cmd:single ros))
+                    (apply #'cmd:single ros))))
