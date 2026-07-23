@@ -33,6 +33,11 @@
 
 (in-package :org.cimatrix.env.development)
 
+
+(defparameter *opa-version* "v0.11.0"
+  "The open policy agent version for installation")
+(defparameter *opa-uri" "https://github.com/open-policy-agent/opa/releases/download")
+
 (defparameter *roswell-version* "23.10.14.114"
   "The roswell release to install. Update this, not the shell command
 in PROVISION, when a newer roswell release is needed.")
@@ -57,17 +62,15 @@ in PROVISION, when a newer roswell release is needed.")
 roswell/sbcl/qlot toolchain exist — everything after this (qlot
 install, ros make-edm-engine.ros) is unchanged, existing tooling.
 SUITE/ARCH default to Ubuntu 24.04 (noble)/amd64, matching the CI
-runner and this sandbox — override for a different target."
-  (localsudon
+runner and this sandbox — override for a different target.
+
     ;; APT:INSTALLED's internal dispatch needs a concrete OS.DEBIAN
     ;; instance (not the abstract OS.DEBIANLIKE base class), with an
     ;; explicit suite and architecture — discovered by actually running
     ;; this against a real, missing-sudo sandbox, not assumed from docs.
-    (has-hostattrs :os (make-instance 'os:debian :suite suite :arch arch))
 
-    ;; 1. Build tools + raylib's own dependencies, sourced from the
+    ;; 1. Build tools + policy gates + raylib's own dependencies, sourced from the
     ;; raylib wiki's own documented Ubuntu/Debian dependency line.
-    (apply #'apt:installed *dev-dependencies*)
 
     ;; 2. raylib itself — clone and build from source, matching the exact
     ;; sequence already verified working manually earlier this session.
@@ -78,20 +81,34 @@ runner and this sandbox — override for a different target."
     ;; on a fresh runner even though this session's own sandbox had an
     ;; older, unaffected clone cached from earlier testing — the whole
     ;; reason to pin an upstream dependency, not track its unstable tip.
-    (git:cloned "https://github.com/raysan5/raylib.git" #P"/opt/raylib/" "6.0")
-    (cmd:single "cmake" "-S /opt/raylib" "-B /opt/raylib/build" 
-                "-DBUILD_SHARED_LIBS=ON" 
-                "-DCMAKE_BUILD_TYPE=Release"
-                "-DBUILD_EXAMPLES=OFF"
-                "-DBUILD_GAMES=OFF")
-    (cmd:single "cmake" "--build /opt/raylib/build" "-j$(nproc)")
-    (cmd:single "sh" "-c" "cmake --install /opt/raylib/build && ldconfig")
-
+  
     ;; 3. Roswell -> SBCL -> qlot, reusing dps-meta's own proven working
     ;; sequence (verified in #16/#27's investigation) rather than
     ;; inventing a new one.
-    (cmd:single "sh" "-c"
-                (format nil "curl -sL ~A/v~A/roswell_~A-1_amd64.deb -o /tmp/roswell.deb && dpkg -i /tmp/roswell.deb"
+"
+  (localsudon
+    
+    (has-hostattrs :os (make-instance 'os:debian :suite suite :arch arch))
+
+    (apply #'apt:installed *dev-dependencies*)
+    (cmd:single (format nil "curl -L -o /usr/local/bin/opa ~A/~A/opa_linux_amd64"
+                       *opa-uri*
+                       *opa-version*))
+    (file:has-mode "/usr/local/bin/opa" #o644)
+    
+    (git:cloned "https://github.com/raysan5/raylib.git" #P"/opt/raylib/" "6.0")
+    (dolist (cmake '(("cmake" "-S" "/opt/raylib" "-B" "/opt/raylib/build" 
+                         "-DBUILD_SHARED_LIBS=ON" 
+                         "-DCMAKE_BUILD_TYPE=Release" 
+                         "-DBUILD_EXAMPLES=OFF" 
+                         "-DBUILD_GAMES=OFF")
+                ("cmake" "--build" "/opt/raylib/build" "-j$(nproc)")
+                ("sh" "-c" "cmake --install /opt/raylib/build && ldconfig")))
+                (apply #'cmd:single cmake))
+
+    (dolist (ros '(("sh" "-c" (format nil 
+                                  "curl -sL ~A/v~A/roswell_~A-1_amd64.deb -o /tmp/roswell.deb && dpkg -i /tmp/roswell.deb"
                         *roswell-uri* *roswell-version* *roswell-version*))
-    (cmd:single "ros" "install" "sbcl-bin")
-    (cmd:single "ros" "install" "qlot")))
+                    ("ros" "install" "sbcl-bin")
+                    ("ros" "install" "qlot")))
+                    (apply #'cmd:single ros))
