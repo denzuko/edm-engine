@@ -1,0 +1,4 @@
+*.fs
+*.vs
+!*.fs.lisp
+!*.vs.lisp

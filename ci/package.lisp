@@ -37,11 +37,13 @@
 ;; FIXME: org.cimatrix.env.development from consfigurator needs to use the proper defhost system not
 ;;       Hand built functions.
 (defparameter +provision-and-build+
-  "sudo apt-get install -y -qq libacl1-dev libcap-dev sudo
+  "sudo apt-get install -y -qq libacl1-dev libcap-dev sudo python3
 which ros || (curl -sL https://github.com/roswell/roswell/releases/download/v23.10.14.114/roswell_23.10.14.114-1_amd64.deb -o /tmp/roswell.deb && sudo dpkg -i /tmp/roswell.deb)
 ros install sbcl-bin
 ros install qlot
 export PATH=\"$PATH:$HOME/.roswell/bin\"
+which opa || (curl -sL https://openpolicyagent.org/downloads/latest/opa_linux_amd64_static -o /tmp/opa && sudo install /tmp/opa /usr/local/bin/opa)
+./tools/run-gate.sh
 qlot install
 qlot exec ros run --load deploy/provision.lisp \\
   --eval '(org.cimatrix.env.development:provision)' \\
