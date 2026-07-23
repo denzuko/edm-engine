@@ -33,6 +33,9 @@
 ;; fix before it belongs in a required CI step, not bundled in here
 ;; where a broken suite would just make every commit red for an
 ;; unrelated reason.
+;; 
+;; FIXME: org.cimatrix.env.development from consfigurator needs to use the proper defhost system not
+;;       Hand built functions.
 (defparameter +provision-and-build+
   "sudo apt-get install -y -qq libacl1-dev libcap-dev sudo
 which ros || (curl -sL https://github.com/roswell/roswell/releases/download/v23.10.14.114/roswell_23.10.14.114-1_amd64.deb -o /tmp/roswell.deb && sudo dpkg -i /tmp/roswell.deb)
