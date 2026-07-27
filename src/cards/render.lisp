@@ -50,30 +50,42 @@ than swapping to a flat unrelated gray."
 ;;; design.md: "a domino hand is structurally the same interaction as
 ;;; a card hand" and "the same CARD-HAND-WIDGET shape as Hearts/
 ;;; dominoes" — real, named future consumers, not speculative
-;;; generalization. Pure data (cards/cursor-index/legal-cards), no
-;;; embedded functions/closures — genuinely data-driven, inspectable,
-;;; and constructible without calling anything. X-FN/Y stay as
-;;; DRAW-CARD-HAND's own separate parameters rather than fields on
-;;; the widget itself: positioning is each game's own DEFLAYOUT
-;;; choice (Hearts' HAND-CARD-X), not something this generic widget
-;;; should bake in.
+;;; generalization. Pure data (cards/cursor-index/legal-cards/
+;;; selected-cards), no embedded functions/closures — genuinely
+;;; data-driven, inspectable, and constructible without calling
+;;; anything. X-FN/Y stay as DRAW-CARD-HAND's own separate parameters
+;;; rather than fields on the widget itself: positioning is each
+;;; game's own DEFLAYOUT choice (Hearts' HAND-CARD-X), not something
+;;; this generic widget should bake in.
+;;;
+;;; SELECTED-CARDS: Hearts' own passing-phase UI (multi-select up to
+;;; N cards before sending) draws the identical row-of-cards shape as
+;;; the playing-phase legality-dimmed hand — cursor-highlighted,
+;;; per-card SELECTED-P instead of ALPHA-dimming. Not a second widget;
+;;; the same one, a second field.
 
 (defstruct card-hand-widget
   cards          ; list of cards, in display order (index 0..n-1)
   cursor-index   ; NIL, or the highlighted index
-  legal-cards)   ; NIL (everything playable) or the subset that is —
+  legal-cards    ; NIL (everything playable) or the subset that is —
                  ; the rest draw dimmed, not simply omitted
+  selected-cards) ; NIL (nothing selected) or the subset drawn as
+                  ; selected — orthogonal to LEGAL-CARDS, not a
+                  ; substitute for it
 
 (defun draw-card-hand (widget x-fn y)
   "Draws WIDGET's own CARDS via DRAW-CARD-FACE — X-FN is (LAMBDA
 (INDEX) X-POSITION), Y is fixed for the whole row. Highlights
 CURSOR-INDEX; dims any card not in LEGAL-CARDS when LEGAL-CARDS is
 non-NIL (a genuine restriction), full-alpha for all cards when it's
-NIL (no restriction in effect)."
+NIL (no restriction in effect); marks SELECTED-P for any card in
+SELECTED-CARDS."
   (loop for card in (card-hand-widget-cards widget)
         for i from 0
         for playable = (or (null (card-hand-widget-legal-cards widget))
                             (member card (card-hand-widget-legal-cards widget) :test #'equal))
+        for selected = (member card (card-hand-widget-selected-cards widget) :test #'equal)
         do (draw-card-face (funcall x-fn i) y card
                             :highlight-p (eql i (card-hand-widget-cursor-index widget))
-                            :alpha (if playable 1.0 0.35))))
+                            :alpha (if playable 1.0 0.35)
+                            :selected-p (and selected t))))

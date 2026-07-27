@@ -139,13 +139,11 @@ identical result, no behavior change, only where the value comes from."
     (raylib:draw-text (format nil "Pass 3 cards (~A): Enter to select/deselect, Enter again on the third to send"
                                (pass-direction-for-round (hearts-game-round game)))
                        20 (- window-height 130) 16 (edm-engine:rgb-color (edm-engine:theme-color :muted)))
-    (loop for card in hand
-          for i from 0
-          for x = (hand-card-x i)
-          for selected = (member card (hearts-game-pass-selection game) :test #'equal)
-          do (draw-card-face x (hand-card-y window-height) card
-                              :highlight-p (= i (hearts-game-cursor game))
-                              :selected-p selected))))
+    (edm-engine/cards:draw-card-hand
+     (edm-engine/cards:make-card-hand-widget
+      :cards hand :cursor-index (hearts-game-cursor game)
+      :selected-cards (hearts-game-pass-selection game))
+     #'hand-card-x (hand-card-y window-height))))
 
 (defun draw-human-hand (game window-width window-height)
   (declare (ignore window-width))

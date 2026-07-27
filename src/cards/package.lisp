@@ -8,4 +8,5 @@
    #:+card-width+ #:+card-height+ #:+card-roundness+
    #:card-color #:card-rect #:draw-card-back #:draw-card-face
    #:card-hand-widget #:make-card-hand-widget #:card-hand-widget-cards
-   #:card-hand-widget-cursor-index #:card-hand-widget-legal-cards #:draw-card-hand))
+   #:card-hand-widget-cursor-index #:card-hand-widget-legal-cards #:card-hand-widget-selected-cards
+   #:draw-card-hand))
