@@ -20,6 +20,8 @@
    #:ruleset-load #:ruleset-unload
    ;; game protocol
    #:game-title #:game-update #:game-render #:game-outcome #:game-score #:game-save-data
+   ;; seats (generic multi-seat table primitives)
+   #:target-player #:wrap-cursor
    ;; orchestration (#64)
    #:deforchestration
    ;; conditions (datalog-style corpus, #64's own reconciliation)

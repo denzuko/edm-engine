@@ -56,3 +56,16 @@ from what may lead."
   (if (or broken-p (every (lambda (c) (eq (cdr c) restricted-suit)) hand))
       hand
       (or (remove restricted-suit hand :key #'cdr) hand)))
+
+(defun toggle-selection (item selection max-count)
+  "The generic half of Hearts' own TOGGLE-PASS-SELECTION: toggle
+ITEM's membership in SELECTION, capped at MAX-COUNT. Pure — returns
+the new selection list, doesn't mutate anything; each game's own
+wrapper does the SETF. Not card-specific — the same shape as any
+'select up to N from a hand' UI (dominoes tiles, Boss Monster room
+cards)."
+  (if (member item selection :test #'equal)
+      (remove item selection :test #'equal)
+      (if (< (length selection) max-count)
+          (cons item selection)
+          selection)))

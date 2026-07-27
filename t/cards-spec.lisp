@@ -71,3 +71,19 @@ to lead it — matching Hearts' own existing rule for an all-hearts
 hand."
   (let ((hand (list (cons 5 :hearts) (cons 9 :hearts))))
     (is (equal hand (suit-broken-lead-restriction hand :hearts nil)))))
+
+;;; TOGGLE-SELECTION — the generic half of Hearts' own TOGGLE-PASS-
+;;; SELECTION: "toggle membership in a selection, up to N items."
+;;; Not card-specific at all — the same shape as any "select up to N
+;;; from a hand" UI (dominoes tiles, Boss Monster room cards). Pure —
+;;; returns the new selection list, doesn't mutate anything; each
+;;; game's own wrapper does the SETF.
+
+(test toggle-selection-adds-an-unselected-item
+  (is (equal '(:a) (toggle-selection :a nil 3))))
+
+(test toggle-selection-removes-an-already-selected-item
+  (is (equal nil (toggle-selection :a '(:a) 3))))
+
+(test toggle-selection-stops-adding-once-max-count-is-reached
+  (is (equal '(:c :b :a) (toggle-selection :d '(:c :b :a) 3))))

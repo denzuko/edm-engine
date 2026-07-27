@@ -133,12 +133,8 @@ trick, and sets them as the next leader."
   (:condition round-over round-over-p)
   (:condition game-over hearts-game-over-p))
 
-(defun target-player (player direction)
-  (ecase direction
-    (:left (mod (1+ player) 4))
-    (:right (mod (1- player) 4))
-    (:across (mod (+ player 2) 4))
-    (:none player)))
+;; TARGET-PLAYER now lives in EDM-ENGINE/CORE (generic seat rotation,
+;; not card-specific) — inherited here, not redefined.
 
 (defun execute-pass (game)
   "All 4 players pass simultaneously — human's choice comes from
@@ -153,7 +149,7 @@ to :PLAYING with the 2-of-clubs holder leading."
       (setf (nth p (hearts-game-hands game))
             (set-difference (nth p (hearts-game-hands game)) (nth p chosen) :test #'equal)))
     (dotimes (p 4)
-      (let ((target (target-player p direction)))
+      (let ((target (edm-engine:target-player p direction 4)))
         (setf (nth target (hearts-game-hands game))
               (append (nth target (hearts-game-hands game)) (nth p chosen)))))
     (setf (hearts-game-phase game) :playing
@@ -185,15 +181,11 @@ to :PLAYING with the 2-of-clubs holder leading."
     :bus-event (:game :hearts :cue :pass-executed)))
 
 (defun toggle-pass-selection (game card)
-  (if (member card (hearts-game-pass-selection game) :test #'equal)
-      (setf (hearts-game-pass-selection game)
-            (remove card (hearts-game-pass-selection game) :test #'equal))
-      (when (< (length (hearts-game-pass-selection game)) 3)
-        (push card (hearts-game-pass-selection game)))))
+  (setf (hearts-game-pass-selection game)
+        (toggle-selection card (hearts-game-pass-selection game) 3)))
 
 (defun move-hand-cursor (game delta hand-length)
-  (when (plusp hand-length)
-    (setf (hearts-game-cursor game) (mod (+ (hearts-game-cursor game) delta) hand-length))))
+  (setf (hearts-game-cursor game) (edm-engine:wrap-cursor (hearts-game-cursor game) delta hand-length)))
 
 (defun advance-round (game)
   "Deals a fresh round, carrying SCORES forward — called once the
