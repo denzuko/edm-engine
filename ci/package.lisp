@@ -49,6 +49,7 @@ qlot install
 qlot exec ros run --load deploy/provision.lisp \\
   --eval '(org.cimatrix.env.development:provision)' \\
   --eval '(uiop:quit 0)'
+qlot exec ros run --load tools/build-shaders.lisp --eval '(uiop:quit 0)'
 qlot exec ros build make-edm-engine.ros")
 
 ;; #35's suite is fixed and passes reliably in this project's own dev
