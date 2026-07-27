@@ -148,6 +148,28 @@ to :PLAYING with the 2-of-clubs holder leading."
     (let ((leader (find-two-of-clubs-holder (hearts-game-hands game))))
       (setf (hearts-game-leader game) leader (hearts-game-turn game) leader))))
 
+(defun hearts-pass-selection-complete-p (game)
+  (= 3 (length (hearts-game-pass-selection game))))
+
+;; #64's own Hearts pilot retrofit — replaces render.lisp's own manual
+;; guard-check + EXECUTE-PASS-call + BUS-PUSH trio with a single call
+;; to TRY-HEARTS-GAME-PASS-EXECUTED. EXECUTE-PASS itself stays
+;; completely untouched as the :EFFECT — it already sets :PLAYING
+;; itself, and EXECUTE-PASS-MOVES-13-CARDS-STILL-PER-HAND-AND-CLEARS-
+;; PASSING-PHASE (an existing spec, calling EXECUTE-PASS directly)
+;; depends on that; the pilot's own stated constraint is every
+;; existing spec passes unmodified, so the macro's own phase-set here
+;; is redundant (setting :PLAYING to :PLAYING again) but deliberately
+;; left that way rather than split EXECUTE-PASS apart for a cleaner
+;; abstraction that would break a real, already-passing test.
+(edm-engine:deforchestration hearts-game
+  (:transition pass-executed
+    :from-phase :passing
+    :to-phase :playing
+    :guard hearts-pass-selection-complete-p
+    :effect execute-pass
+    :bus-event (:game :hearts :cue :pass-executed)))
+
 (defun toggle-pass-selection (game card)
   (if (member card (hearts-game-pass-selection game) :test #'equal)
       (setf (hearts-game-pass-selection game)

@@ -199,9 +199,7 @@ work (see GH #3), not implemented yet. Not pretending otherwise."
             (let ((card (nth (hearts-game-cursor game) hand)))
               (toggle-pass-selection game card)
               (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :hearts :cue :card-selected))
-              (when (= 3 (length (hearts-game-pass-selection game)))
-                (execute-pass game)
-                (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :hearts :cue :pass-executed)))))))
+              (try-hearts-game-pass-executed game)))))
        (:playing
         (if (= 0 (hearts-game-turn game))
             (let* ((hand (first (hearts-game-hands game)))
