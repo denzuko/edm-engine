@@ -44,3 +44,36 @@ than swapping to a flat unrelated gray."
     (raylib:draw-rectangle-rounded-lines rect +card-roundness+ 6 (if highlight-p 2.5 1.5) border)
     (edm-engine:draw-glyph-text (card-string card) (round (+ x 6)) (round (+ y 6)) 20
                                  (raylib:fade (card-color card) alpha))))
+
+;;; CARD-HAND-WIDGET — generic to any card game's own hand display,
+;;; not Hearts-specific. Named directly in docs/next-wave-gamepaks-
+;;; design.md: "a domino hand is structurally the same interaction as
+;;; a card hand" and "the same CARD-HAND-WIDGET shape as Hearts/
+;;; dominoes" — real, named future consumers, not speculative
+;;; generalization. Pure data (cards/cursor-index/legal-cards), no
+;;; embedded functions/closures — genuinely data-driven, inspectable,
+;;; and constructible without calling anything. X-FN/Y stay as
+;;; DRAW-CARD-HAND's own separate parameters rather than fields on
+;;; the widget itself: positioning is each game's own DEFLAYOUT
+;;; choice (Hearts' HAND-CARD-X), not something this generic widget
+;;; should bake in.
+
+(defstruct card-hand-widget
+  cards          ; list of cards, in display order (index 0..n-1)
+  cursor-index   ; NIL, or the highlighted index
+  legal-cards)   ; NIL (everything playable) or the subset that is —
+                 ; the rest draw dimmed, not simply omitted
+
+(defun draw-card-hand (widget x-fn y)
+  "Draws WIDGET's own CARDS via DRAW-CARD-FACE — X-FN is (LAMBDA
+(INDEX) X-POSITION), Y is fixed for the whole row. Highlights
+CURSOR-INDEX; dims any card not in LEGAL-CARDS when LEGAL-CARDS is
+non-NIL (a genuine restriction), full-alpha for all cards when it's
+NIL (no restriction in effect)."
+  (loop for card in (card-hand-widget-cards widget)
+        for i from 0
+        for playable = (or (null (card-hand-widget-legal-cards widget))
+                            (member card (card-hand-widget-legal-cards widget) :test #'equal))
+        do (draw-card-face (funcall x-fn i) y card
+                            :highlight-p (eql i (card-hand-widget-cursor-index widget))
+                            :alpha (if playable 1.0 0.35))))

@@ -154,13 +154,10 @@ identical result, no behavior change, only where the value comes from."
          (legal (when (= 0 (hearts-game-turn game))
                   (legal-plays hand :led-suit led-suit :hearts-broken (hearts-game-hearts-broken game)
                                      :leading-p (null (hearts-game-current-trick game))))))
-    (loop for card in hand
-          for i from 0
-          for x = (hand-card-x i)
-          for playable = (member card legal :test #'equal)
-          do (draw-card-face x (hand-card-y window-height) card
-                              :highlight-p (= i (hearts-game-cursor game))
-                              :alpha (if (or (null legal) playable) 1.0 0.35)))))
+    (edm-engine/cards:draw-card-hand
+     (edm-engine/cards:make-card-hand-widget
+      :cards hand :cursor-index (hearts-game-cursor game) :legal-cards legal)
+     #'hand-card-x (hand-card-y window-height))))
 
 (defparameter +hearts-ai-think-seconds+ 0.8d0)
 
