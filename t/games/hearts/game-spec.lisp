@@ -87,7 +87,7 @@
     (is (member choice (nth leader (hearts-game-hands game)) :test #'equal))))
 
 (test ai-choose-pass-returns-three-distinct-cards-from-hand
-  (let* ((hand (first (deal-hands (shuffled-deck 5))))
+  (let* ((hand (first (deal-hands (shuffled-deck 5) 4 13)))
          (chosen (ai-choose-pass hand)))
     (is (= 3 (length chosen)))
     (is (= 3 (length (remove-duplicates chosen :test #'equal))))

@@ -77,7 +77,16 @@ instead of redefining it. Pure logic; no raylib."
   :depends-on ()
   :serial t
   :components ((:file "src/cards/package")
-               (:file "src/cards/deck")))
+               (:file "src/cards/deck")
+               (:file "src/cards/rules")))
+
+(defsystem "edm-engine/cards/tests"
+  :description "FiveAM spec suite for edm-engine/cards."
+  :depends-on ("edm-engine/cards" "fiveam")
+  :components ((:file "t/cards-spec"))
+  :perform (test-op (o c)
+             (unless (uiop:symbol-call :fiveam :run! :edm-engine-cards)
+               (error "edm-engine/cards FiveAM suite failed"))))
 
 (defsystem "edm-engine/cards/render"
   :description "Card-shape rendering shared across any card game — the

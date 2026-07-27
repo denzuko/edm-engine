@@ -1,0 +1,58 @@
+(in-package :edm-engine/cards)
+
+(declaim (optimize (speed 3) (safety 3)))
+
+;;; Generic to any trick-taking card game — Hearts was the first
+;;; consumer, not the only intended one (trick-taking games are a
+;;; named future release pack; Boss Monster's own card mechanics have
+;;; trick-taking-like structure too). Moved from
+;;; src/games/hearts/rules.lisp, where DEAL-HANDS and TRICK-WINNER-
+;;; INDEX lived as if Hearts-specific despite being standard, shared
+;;; mechanics (Spades/Bridge/Euchre all use the same "highest card of
+;;; the led suit wins" rule) — and where LEGAL-PLAYS bundled a
+;;; genuinely generic "follow suit if possible" rule together with a
+;;; genuinely Hearts-specific "can't lead this suit until broken"
+;;; rule as one function, when they're two separable primitives
+;;; (Spades has its own suit-broken-lead restriction on trump, for
+;;; instance — the same shape, a different suit).
+
+(defun deal-hands (deck player-count hand-size)
+  "Splits DECK into PLAYER-COUNT hands of HAND-SIZE, in dealing order
+(round-robin — player 0 gets card 0, player 1 gets card 1, ...).
+Generalized from Hearts' own hardcoded 4-players/13-cards; a future
+trick-taking game may have a different table or hand size."
+  (loop for i from 0 below player-count
+        collect (loop for j from i below (* player-count hand-size) by player-count
+                      collect (nth j deck))))
+
+(declaim (ftype (function (list keyword) fixnum) trick-winner-index))
+(defun trick-winner-index (trick led-suit)
+  "TRICK is a list of cards in play order. Returns the 0-based index
+of the highest-ranked card matching LED-SUIT — off-suit cards, however
+high their rank, never win."
+  (let ((best-index 0) (best-rank -1))
+    (loop for card in trick
+          for i from 0
+          when (and (eq (cdr card) led-suit) (> (car card) best-rank))
+            do (setf best-index i best-rank (car card)))
+    best-index))
+
+(defun follow-suit-legal-plays (hand led-suit)
+  "The generic half of a trick-taking legal-play rule: if HAND has any
+card matching LED-SUIT, only those are legal; otherwise the whole hand
+is legal (a genuine void in the led suit). No restricted-suit lead
+concept at all — that's SUIT-BROKEN-LEAD-RESTRICTION, a separate,
+composable primitive, not folded into this one."
+  (let ((following (remove led-suit hand :key #'cdr :test-not #'eq)))
+    (or following hand)))
+
+(defun suit-broken-lead-restriction (hand restricted-suit broken-p)
+  "The generic half of Hearts' 'can't lead hearts until broken' rule
+— Spades has the identical mechanic on its own trump suit, hence
+RESTRICTED-SUIT as a parameter rather than hardcoding :HEARTS. If
+BROKEN-P, or HAND is entirely RESTRICTED-SUIT (nothing else to lead),
+the whole hand may lead; otherwise RESTRICTED-SUIT cards are excluded
+from what may lead."
+  (if (or broken-p (every (lambda (c) (eq (cdr c) restricted-suit)) hand))
+      hand
+      (or (remove restricted-suit hand :key #'cdr) hand)))

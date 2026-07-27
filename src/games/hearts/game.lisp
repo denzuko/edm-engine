@@ -61,7 +61,7 @@ meaningful to carry across a save/load boundary."
                         :trick-pause-until 0.0d0)))
 
 (defun make-hearts-game (&key (seed (random 1000000)) (round 1) (scores '(0 0 0 0)))
-  (let* ((hands (deal-hands (shuffled-deck seed)))
+  (let* ((hands (deal-hands (shuffled-deck seed) 4 13))
          (direction (pass-direction-for-round round))
          (phase (if (eq direction :none) :playing :passing))
          (game (%make-hearts-game :hands hands :round round :phase phase :scores scores

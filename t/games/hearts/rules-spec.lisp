@@ -17,11 +17,8 @@
 (test shuffled-deck-differs-for-different-seeds
   (is (not (equal (shuffled-deck 1) (shuffled-deck 2)))))
 
-(test deal-hands-makes-four-hands-of-thirteen-no-overlap
-  (let ((hands (deal-hands (shuffled-deck 3))))
-    (is (= 4 (length hands)))
-    (is (every (lambda (h) (= 13 (length h))) hands))
-    (is (= 52 (length (remove-duplicates (apply #'append hands) :test #'equal))))))
+;;; DEAL-HANDS is generic (EDM-ENGINE/CARDS) now — its own coverage
+;;; lives in t/cards-spec.lisp, not duplicated here.
 
 (test card-points-hearts-are-one-point
   (is (= 1 (card-points (cons 5 :hearts)))))
@@ -65,13 +62,5 @@
   (let ((hand (list (cons 5 :hearts) (cons 9 :hearts))))
     (is (equal hand (legal-plays hand :led-suit nil :hearts-broken nil :leading-p t)))))
 
-;;; Trick winner
-
-(test trick-winner-index-highest-card-of-led-suit-wins
-  (let ((trick (list (cons 5 :clubs) (cons 12 :clubs) (cons 2 :hearts) (cons 9 :clubs))))
-    (is (= 1 (trick-winner-index trick :clubs)))))
-
-(test trick-winner-index-ignores-cards-not-in-led-suit
-  "An ace of a DIFFERENT suit never wins the trick, no matter how high."
-  (let ((trick (list (cons 3 :diamonds) (cons 14 :spades) (cons 9 :diamonds))))
-    (is (= 2 (trick-winner-index trick :diamonds)))))
+;;; TRICK-WINNER-INDEX is generic (EDM-ENGINE/CARDS) now — its own
+;;; coverage lives in t/cards-spec.lisp, not duplicated here.
