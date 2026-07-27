@@ -87,3 +87,46 @@ hand."
 
 (test toggle-selection-stops-adding-once-max-count-is-reached
   (is (equal '(:c :b :a) (toggle-selection :d '(:c :b :a) 3))))
+
+;;; START-CARD-TWEEN / CARD-DRAW-POSITION — item 3 of the systematic
+;;; catalog (6b91931): pure card+tween plumbing, nothing Hearts-
+;;; specific about "animate a card from A to B, draw its tweened
+;;; position while running or the default once finished." Made
+;;; genuinely pure and testable here — unlike Hearts' own original
+;;; (which called RAYLIB:GET-TIME internally, an I/O dependency with
+;;; no test coverage) — by taking NOW explicitly, matching TWEEN-
+;;; POSITION/TWEEN-FINISHED-P's own existing (TWEEN NOW) convention.
+;;; Each game still owns its own *CARD-TWEENS* hash table (a defvar
+;;; in its own render.lisp, same as *AI-CLOCK*/*THEME-SOUND*) — not
+;;; lifted into shared global state, just the pure functions that
+;;; operate on whichever table a caller passes in.
+
+(test start-card-tween-then-card-draw-position-returns-the-start-point-immediately
+  (let ((tweens (make-hash-table :test #'equal))
+        (card (cons 5 :hearts)))
+    (start-card-tween tweens card 10.0 20.0 100.0 200.0 0.0d0 0.5d0)
+    (multiple-value-bind (x y) (card-draw-position tweens card 999.0 999.0 0.0d0)
+      (is (= 10.0 x))
+      (is (= 20.0 y)))))
+
+(test card-draw-position-mid-tween-is-between-start-and-end
+  (let ((tweens (make-hash-table :test #'equal))
+        (card (cons 5 :hearts)))
+    (start-card-tween tweens card 0.0 0.0 100.0 0.0 0.0d0 1.0d0)
+    (multiple-value-bind (x y) (card-draw-position tweens card 999.0 999.0 0.5d0)
+      (declare (ignore y))
+      (is (< 0.0 x 100.0)))))
+
+(test card-draw-position-after-the-tween-finishes-returns-the-default
+  (let ((tweens (make-hash-table :test #'equal))
+        (card (cons 5 :hearts)))
+    (start-card-tween tweens card 0.0 0.0 100.0 0.0 0.0d0 0.5d0)
+    (multiple-value-bind (x y) (card-draw-position tweens card 42.0 43.0 10.0d0)
+      (is (= 42.0 x))
+      (is (= 43.0 y)))))
+
+(test card-draw-position-for-a-never-tweened-card-returns-the-default
+  (let ((tweens (make-hash-table :test #'equal)))
+    (multiple-value-bind (x y) (card-draw-position tweens (cons 9 :clubs) 7.0 8.0 0.0d0)
+      (is (= 7.0 x))
+      (is (= 8.0 y)))))

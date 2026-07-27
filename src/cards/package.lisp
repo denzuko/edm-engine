@@ -4,6 +4,7 @@
    #:make-deck #:shuffled-deck
    #:deal-hands #:trick-winner-index #:follow-suit-legal-plays #:suit-broken-lead-restriction
    #:toggle-selection
+   #:start-card-tween #:card-draw-position
    #:+suit-glyph+ #:+rank-glyph+ #:card-string
    #:+card-width+ #:+card-height+ #:+card-roundness+
    #:card-color #:card-rect #:draw-card-back #:draw-card-face

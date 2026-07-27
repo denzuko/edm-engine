@@ -69,3 +69,30 @@ cards)."
       (if (< (length selection) max-count)
           (cons item selection)
           selection)))
+
+;;; START-CARD-TWEEN / CARD-DRAW-POSITION — pure card+tween plumbing,
+;;; nothing Hearts-specific about "animate a card from A to B, draw
+;;; its tweened position while running or the default once finished."
+;;; TWEENS is a hash table (CARD -> TWEEN) each game owns as its own
+;;; state (a defvar in its own render.lisp, same as *AI-CLOCK*/
+;;; *THEME-SOUND*) — not lifted into shared global state, just the
+;;; pure functions passed whichever table a caller owns. NOW is
+;;; explicit (matching TWEEN-POSITION/TWEEN-FINISHED-P's own existing
+;;; convention) rather than calling RAYLIB:GET-TIME internally —
+;;; Hearts' own original did that, an I/O dependency with no test
+;;; coverage; genuinely pure and testable here instead.
+
+(defun start-card-tween (tweens card start-x start-y end-x end-y now duration)
+  (setf (gethash card tweens)
+        (edm-engine:make-tween :start-x (float start-x 1.0) :start-y (float start-y 1.0)
+                                :end-x (float end-x 1.0) :end-y (float end-y 1.0)
+                                :start-time now :duration duration)))
+
+(defun card-draw-position (tweens card default-x default-y now)
+  "Returns (values x y) — CARD's tweened position while its animation
+in TWEENS is still running, or DEFAULT-X/Y once it's finished (or was
+never tweened, e.g. a hand card that hasn't moved)."
+  (let ((tw (gethash card tweens)))
+    (if (and tw (not (edm-engine:tween-finished-p tw now)))
+        (edm-engine:tween-position tw now)
+        (values (float default-x 1.0) (float default-y 1.0)))))

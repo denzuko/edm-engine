@@ -32,19 +32,14 @@ it — 0.35s round-tripped through video compression reads as an instant
 cut more often than not, especially over a short start/end distance.")
 
 (defun start-card-tween (card start-x start-y end-x end-y)
-  (setf (gethash card *card-tweens*)
-        (edm-engine:make-tween :start-x (float start-x 1.0) :start-y (float start-y 1.0)
-                                :end-x (float end-x 1.0) :end-y (float end-y 1.0)
-                                :start-time (raylib:get-time) :duration +tween-duration+)))
+  (edm-engine/cards:start-card-tween *card-tweens* card start-x start-y end-x end-y
+                                      (raylib:get-time) +tween-duration+))
 
 (defun card-draw-position (card default-x default-y)
   "Returns (values x y) — the card's TWEENED position while its
 animation is still running, or DEFAULT-X/Y once it's finished (or was
 never tweened, e.g. a hand card that hasn't moved)."
-  (let ((tw (gethash card *card-tweens*)))
-    (if (and tw (not (edm-engine:tween-finished-p tw (raylib:get-time))))
-        (edm-engine:tween-position tw (raylib:get-time))
-        (values (float default-x 1.0) (float default-y 1.0)))))
+  (edm-engine/cards:card-draw-position *card-tweens* card default-x default-y (raylib:get-time)))
 
 ;; #36's DEFLAYOUT retrofit — HAND-CARD-X was already an LRP call
 ;; (this session's own earlier retrofit); now declared as data rather

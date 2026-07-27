@@ -76,7 +76,7 @@ exists to isolate."
   :description "Deck/card primitives shared across any card game — extracted
 from Hearts so a future card game (Solitaire, Blackjack, etc.) reuses this
 instead of redefining it. Pure logic; no raylib."
-  :depends-on ()
+  :depends-on ("edm-engine/core")
   :serial t
   :components ((:file "src/cards/package")
                (:file "src/cards/deck")
