@@ -99,6 +99,26 @@ async task."
        (setf (gethash key *pattern-cache*) (samples->raylib-sound samples)))
       (:wait nil))))
 
+;; #22's own non-blocking retrofit, lifted here after being found
+;; genuinely, byte-for-byte duplicated across all four games (Hearts,
+;; Queens, Wordle, Yahtzee each had their own ENSURE-THEME-PLAYING —
+;; identical shape, only the theme-pattern function, duration
+;; constant, and bus-topic keyword varying). CURRENT-SOUND/pure-
+;; return rather than a mutated global: each game still owns its own
+;; *THEME-SOUND* defvar (same pattern as *AI-CLOCK*/*CARD-TWEENS*),
+;; the caller does (SETF *THEME-SOUND* (ENSURE-THEME-PLAYING
+;; *THEME-SOUND* ...)).
+(defun ensure-theme-playing (current-sound pattern row-duration bus topic)
+  "Returns the (possibly newly-cached) Sound to store as the caller's
+own theme-sound state, having triggered playback if a cached sound is
+already available and not currently playing. Non-blocking — see
+ENSURE-THEME-SOUND-ASYNC's own docstring; this wraps it with the
+lazy-generate-then-loop policy every consumer needs identically."
+  (let ((sound (or current-sound (ensure-theme-sound-async pattern row-duration bus topic :amplitude 0.3))))
+    (when (and sound (not (raylib:is-sound-playing sound)))
+      (raylib:play-sound sound))
+    sound))
+
 ;; #59's audio piece — *PLAY-TONE-FUNCTION* is declared NIL in the
 ;; pure, raylib-free EDM-ENGINE/AUDIO/TONE system (cues.lisp); this
 ;; file already depends on raylib and defines the real PLAY-TONE

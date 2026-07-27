@@ -151,18 +151,13 @@ letter tile also duplicated) — now composes CENTER-WITHIN."
 (defvar *theme-sound* nil)
 
 (defun ensure-theme-playing ()
-  "#22: non-blocking — see Hearts' identical comment. Polling
-IS-SOUND-PLAYING and re-triggering PLAY-SOUND when it's false is
-unchanged, still how looping works without raylib's separate Music-
-streaming API; only the compute step (once cached, PATTERN-SOUND's own
-job before) is now async."
-  (unless *theme-sound*
-    (setf *theme-sound*
-          (edm-engine/audio:ensure-theme-sound-async
-           (queens-theme-pattern) +queens-theme-row-duration+
-           edm-engine:*engine-bus* :queens-theme :amplitude 0.3)))
-  (when (and *theme-sound* (not (raylib:is-sound-playing *theme-sound*)))
-    (raylib:play-sound *theme-sound*)))
+  "#22: non-blocking. Lifted, generic implementation now in
+EDM-ENGINE/AUDIO — this was found byte-for-byte duplicated across all
+four games, only the theme-pattern/duration/topic varying."
+  (setf *theme-sound*
+        (edm-engine/audio:ensure-theme-playing
+         *theme-sound* (queens-theme-pattern) +queens-theme-row-duration+
+         edm-engine:*engine-bus* :queens-theme)))
 
 (defmethod edm-engine:game-update ((game queens-game))
   (ensure-theme-playing)

@@ -64,14 +64,13 @@ each face value 1-6 — the standard arrangement on a real die.")
   (:confetti :count 80 :speed-range 180.0))
 
 (defun ensure-theme-playing ()
-  "#22: non-blocking — see Hearts' identical comment."
-  (unless *theme-sound*
-    (setf *theme-sound*
-          (edm-engine/audio:ensure-theme-sound-async
-           (yahtzee-theme-pattern) +yahtzee-theme-row-duration+
-           edm-engine:*engine-bus* :yahtzee-theme :amplitude 0.3)))
-  (when (and *theme-sound* (not (raylib:is-sound-playing *theme-sound*)))
-    (raylib:play-sound *theme-sound*)))
+  "#22: non-blocking. Lifted, generic implementation now in
+EDM-ENGINE/AUDIO — this was found byte-for-byte duplicated across all
+four games, only the theme-pattern/duration/topic varying."
+  (setf *theme-sound*
+        (edm-engine/audio:ensure-theme-playing
+         *theme-sound* (yahtzee-theme-pattern) +yahtzee-theme-row-duration+
+         edm-engine:*engine-bus* :yahtzee-theme)))
 
 (defun category-label (category)
   (case category

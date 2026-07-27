@@ -73,20 +73,13 @@ face-down stack, not individually laid out)."
     (3 (ai-origin-3 window-width window-height))))
 
 (defun ensure-theme-playing ()
-  "#22: non-blocking. The old PATTERN-SOUND call synchronously paid
-RENDER-PATTERN's measured 44ms cost on the frame it was first needed
-— a real, measured hitch. ENSURE-THEME-SOUND-ASYNC returns NIL every
-frame until the background task delivers samples via the shared bus;
-until then this plays nothing (silence, a better UX than a hitch) and
-tries again next frame — a cache hit after the first successful
-generation returns the sound immediately, same as before."
-  (unless *theme-sound*
-    (setf *theme-sound*
-          (edm-engine/audio:ensure-theme-sound-async
-           (hearts-theme-pattern) +hearts-theme-row-duration+
-           edm-engine:*engine-bus* :hearts-theme :amplitude 0.3)))
-  (when (and *theme-sound* (not (raylib:is-sound-playing *theme-sound*)))
-    (raylib:play-sound *theme-sound*)))
+  "#22: non-blocking. Lifted, generic implementation now in
+EDM-ENGINE/AUDIO — this was found byte-for-byte duplicated across all
+four games, only the theme-pattern/duration/topic varying."
+  (setf *theme-sound*
+        (edm-engine/audio:ensure-theme-playing
+         *theme-sound* (hearts-theme-pattern) +hearts-theme-row-duration+
+         edm-engine:*engine-bus* :hearts-theme)))
 
 ;; DRAW-AI-STACK now lives in EDM-ENGINE/CARDS/RENDER — generic to
 ;; any multi-seat card game's own opponent-hand display, not Hearts-
