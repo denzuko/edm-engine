@@ -89,3 +89,22 @@ SELECTED-CARDS."
                             :highlight-p (eql i (card-hand-widget-cursor-index widget))
                             :alpha (if playable 1.0 0.35)
                             :selected-p (and selected t))))
+
+;;; DRAW-AI-STACK — item 4 of the systematic catalog (6b91931):
+;;; generic to any multi-seat card game's own opponent-hand display,
+;;; lifted from Hearts. GLYPH-COLOR is a resolved color, not a
+;;; stylesheet selector — each game's own selector (Hearts' own
+;;; (:HEARTS :AI-AVATAR)) is resolved by the caller, keeping this
+;;; widget decoupled from any one game's stylesheet keys, matching
+;;; CARD-HAND-WIDGET's own no-embedded-lookups principle.
+
+(defun draw-ai-stack (x y count label difficulty glyph-color)
+  "A small fanned stack of face-down cards standing in for an AI's
+hand, an avatar glyph matching the chosen difficulty tier, and a
+card-count label — not just 'AI-1: 13 cards' as bare text."
+  (dotimes (i (min 4 (ceiling count 4)))
+    (draw-card-back (+ x (* i 4)) (+ y (* i 3))))
+  (edm-engine:draw-glyph-text (cdr (assoc difficulty edm-engine:+ai-difficulty-glyphs+))
+                               (round (+ x 12)) (round (- y 26)) 22 glyph-color)
+  (raylib:draw-text (format nil "~A (~D)" label count) (round x) (round (+ y +card-height+ 8)) 14
+                     (edm-engine:rgb-color (edm-engine:theme-color :muted))))
