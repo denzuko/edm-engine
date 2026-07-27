@@ -22,6 +22,8 @@
    #:game-title #:game-update #:game-render #:game-outcome #:game-score #:game-save-data
    ;; orchestration (#64)
    #:deforchestration
+   ;; conditions (datalog-style corpus, #64's own reconciliation)
+   #:defconditions #:condition-true-p #:*conditions*
    #:game-stop-audio #:gameOverlayEffects
    #:game-entry #:game-entry-title #:game-entry-constructor #:game-entry-restore-fn
    #:game-entry-ai-capable-p

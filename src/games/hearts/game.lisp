@@ -119,6 +119,20 @@ trick, and sets them as the next leader."
 (defun game-over-p (scores)
   (some (lambda (s) (>= s 100)) scores))
 
+;; #64's own Datalog reconciliation, second consumer after the
+;; pass-executed pilot: ROUND-OVER-P/GAME-OVER-P (already-named,
+;; already-tested predicates) registered under the corpus so
+;; render.lisp's own GAME-UPDATE can check them by name via
+;; CONDITION-TRUE-P instead of calling the raw function symbols
+;; directly. GAME-OVER-P itself takes SCORES, not GAME — wrapped here
+;; since DEFCONDITIONS' own contract is (PREDICATE GAME).
+(defun hearts-game-over-p (game)
+  (game-over-p (hearts-game-scores game)))
+
+(edm-engine:defconditions hearts-game
+  (:condition round-over round-over-p)
+  (:condition game-over hearts-game-over-p))
+
 (defun target-player (player direction)
   (ecase direction
     (:left (mod (1+ player) 4))

@@ -8,7 +8,7 @@
    #:hearts-game-hearts-broken #:hearts-game-round #:hearts-game-phase #:hearts-game-round-points
    #:hearts-game-passed-cards
    #:play-card #:pass-cards #:ai-choose-pass #:ai-choose-play
-   #:round-over-p #:score-round #:shoot-the-moon-p #:game-over-p
+   #:round-over-p #:score-round #:shoot-the-moon-p #:game-over-p #:hearts-game-over-p
    #:execute-pass #:toggle-pass-selection #:move-hand-cursor #:advance-round
    #:hearts-pass-selection-complete-p
    #:hearts-game-cursor #:hearts-game-pass-selection #:hearts-game-status

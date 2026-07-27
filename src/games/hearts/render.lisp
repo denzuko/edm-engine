@@ -220,11 +220,11 @@ work (see GH #3), not implemented yet. Not pretending otherwise."
                     (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :hearts :cue :player-card-played))
                     (edm-engine:ai-timer-reset *ai-clock* (raylib:get-time) +hearts-ai-think-seconds+)))))
             (maybe-run-ai-turn game))
-        (when (round-over-p game)
+        (when (edm-engine:condition-true-p 'hearts-game 'round-over game)
           (score-round game)
           (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :hearts :cue :round-scored))
           (cond
-            ((game-over-p (hearts-game-scores game))
+            ((edm-engine:condition-true-p 'hearts-game 'game-over game)
              (setf (hearts-game-status game)
                    (if (= (first (hearts-game-scores game)) (reduce #'min (hearts-game-scores game)))
                        :won :lost)))
