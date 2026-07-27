@@ -46,11 +46,6 @@ in PROVISION, when a newer roswell release is needed.")
 (defparameter *roswell-uri* "https://github.com/roswell/roswell/releases/download"
   "BaseURI for the latest roswell package")
 
-(defparameter *dev-dependencies* '("build-essential" "cmake" "git" "xvfb" "ffmpeg"
-                   "libasound2-dev" "libx11-dev" "libxrandr-dev" "libxi-dev"
-                   "libgl1-mesa-dev" "libglu1-mesa-dev" "libxcursor-dev"
-                   "libxinerama-dev" "libwayland-dev" "libxkbcommon-dev"))
-
 
 ;; FIXME: consfigurator already has this function and one just calls the consfigurator version
 ;;        
@@ -91,25 +86,38 @@ runner and this sandbox — override for a different target.
     
     (has-hostattrs :os (make-instance 'os:debian :suite suite :arch arch))
 
-    (apply #'apt:installed *dev-dependencies*)
+    (apt:installed "build-essential" "cmake" "git" "xvfb" "ffmpeg"
+                   "libasound2-dev" "libx11-dev" "libxrandr-dev" "libxi-dev"
+                   "libgl1-mesa-dev" "libglu1-mesa-dev" "libxcursor-dev"
+                   "libxinerama-dev" "libwayland-dev" "libxkbcommon-dev")
     (cmd:single (format nil "curl -L -o /usr/local/bin/opa ~A/~A/opa_linux_amd64"
                        *opa-uri*
                        *opa-version*))
     (file:has-mode "/usr/local/bin/opa" #o644)
     
     (git:cloned "https://github.com/raysan5/raylib.git" #P"/opt/raylib/" "6.0")
-    (dolist (cmake '(("cmake" "-S" "/opt/raylib" "-B" "/opt/raylib/build" 
-                         "-DBUILD_SHARED_LIBS=ON" 
-                         "-DCMAKE_BUILD_TYPE=Release" 
-                         "-DBUILD_EXAMPLES=OFF" 
-                         "-DBUILD_GAMES=OFF")
-                ("cmake" "--build" "/opt/raylib/build" "-j$(nproc)")
-                ("sh" "-c" "cmake --install /opt/raylib/build && ldconfig")))
-                (apply #'cmd:single cmake))
+    (cmd:single "cmake" "-S" "/opt/raylib" "-B" "/opt/raylib/build"
+                "-DBUILD_SHARED_LIBS=ON"
+                "-DCMAKE_BUILD_TYPE=Release"
+                "-DBUILD_EXAMPLES=OFF"
+                "-DBUILD_GAMES=OFF")
+    (cmd:single "sh" "-c" "cmake --build /opt/raylib/build -j$(nproc)")
+    (cmd:single "sh" "-c" "cmake --install /opt/raylib/build && ldconfig")
 
-    (dolist (ros '(("sh" "-c" (format nil 
+    (cmd:single "sh" "-c" (format nil
                                   "curl -sL ~A/v~A/roswell_~A-1_amd64.deb -o /tmp/roswell.deb && dpkg -i /tmp/roswell.deb"
-                        *roswell-uri* *roswell-version* *roswell-version*))
-                    ("ros" "install" "sbcl-bin")
-                    ("ros" "install" "qlot")))
-                    (apply #'cmd:single ros))))
+                                  *roswell-uri* *roswell-version* *roswell-version*))
+    (cmd:single "ros" "install" "sbcl-bin")
+    ;; Both `ros install qlot` and `ros install fukamachi/qlot` are
+    ;; genuinely, reproducibly broken on this Roswell version — checked
+    ;; directly, twice, including on a fresh local-projects directory,
+    ;; not assumed from one bad run. `ros install qlot` fails outright
+    ;; ("not a valid target"); `ros install fukamachi/qlot` gets
+    ;; further but hits a real Roswell-internal bug
+    ;; (MERGE-PATHNAMES "../" NIL in CHECKOUTDIR). The manual sequence
+    ;; below — clone directly, run qlot's own setup.sh — is the one
+    ;; confirmed working end to end.
+    (cmd:single "git" "clone" "-q" "https://github.com/fukamachi/qlot.git"
+                "/root/.roswell/local-projects/qlot")
+    (cmd:single "sh" "/root/.roswell/local-projects/qlot/scripts/setup.sh")
+    (cmd:single "ln" "-sf" "/root/.roswell/local-projects/qlot/bin/qlot" "/usr/local/bin/qlot")))
