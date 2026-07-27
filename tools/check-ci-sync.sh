@@ -18,9 +18,19 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Set once per shell session, same as `nvm use` — not re-derived via
+# `qlot exec` per command, which injects nothing extra for `ros`
+# specifically (Roswell's own bootstrap already checks
+# QUICKLISP_HOME itself; see docs/qlot-guide.md). Guarded so this
+# script stays safely callable standalone, not only as a step within
+# ci/package.lisp's own +PROVISION-AND-BUILD+, which already exports
+# this before calling here.
+: "${QUICKLISP_HOME:=$(pwd)/.qlot/}"
+export QUICKLISP_HOME
+
 cp .github/workflows/ci.yml /tmp/ci.yml.committed
 
-qlot exec ros run --eval '(push (truename ".") asdf:*central-registry*)' \
+ros run --eval '(push (truename ".") asdf:*central-registry*)' \
   --eval '(ql:register-local-projects)' \
   --eval '(ql:quickload :edm-engine/ci :silent t)' \
   --eval '(40ants-ci:generate :edm-engine)' \
