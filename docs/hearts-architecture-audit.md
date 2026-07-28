@@ -98,25 +98,29 @@ flowchart TB
 
 ## Gap table — what should be a core provider instead of hand-built into Hearts
 
+**Update, post-audit: all three items below are now closed** (`ec8cc78`, `abc49a0`, `a630f3c`) — kept in the table with their real resolution noted, not deleted, so the audit's own before/after is visible rather than silently rewritten.
+
 | Currently in Hearts | Should live in | Why | Status |
 |---|---|---|---|
-| `play-card`'s trick-completion (winner/score/reset/next-leader) | A generic trick-taking orchestration primitive in `edm-engine/cards` | The whole *sequence* (advance turn, or on the 4th card: determine winner via the already-generic `TRICK-WINNER-INDEX`, score it, reset, set next leader) is the same shape for Spades/Bridge/Euchre — only the scoring function (`CARD-POINTS`) is genuinely game-specific. Currently 100% imperative in `game.lisp`, only patched with a bus-push this turn, not restructured. | **Open — real gap** |
-| `ai-choose-play` (lowest-legal-card heuristic) | A generic naive-AI heuristic in `edm-engine/cards` or a new `edm-engine/ai-heuristics` | "Play the lowest legal card" is a reusable, genuinely game-agnostic naive strategy for any trick-taking game, not a Hearts-only idea. | **Open — real gap** |
-| `ai-choose-pass` (discard-highest-N heuristic) | Same as above | "Discard your N highest-value cards" is the same reusable shape. | **Open — real gap** |
-| `maybe-run-ai-turn` (AI-timer-gated turn dispatch) | A generic AI-turn-orchestration primitive, composing the existing `edm-engine:ai-timer-*` infrastructure | The *outer* shape ("if it's not my turn and the AI-timer says ready, run a decision→animate→act sequence") is generic; only the decision/animate/act functions passed in are Hearts-specific. Needs a real callback-based redesign, not a naive copy — correctly the lowest priority of this whole catalog. | **Open — deliberately deferred, higher design cost** |
+| `play-card`'s trick-completion (winner/score/reset/next-leader) | A generic trick-taking orchestration primitive in `edm-engine/cards` | The whole *sequence* (advance turn, or on the 4th card: determine winner via the already-generic `TRICK-WINNER-INDEX`, score it, reset, set next leader) is the same shape for Spades/Bridge/Euchre — only the scoring function (`CARD-POINTS`) is genuinely game-specific. Currently 100% imperative in `game.lisp`, only patched with a bus-push this turn, not restructured. | **Closed (`a630f3c`)** — `TRICK-COMPLETE-P`/`RESOLVE-COMPLETED-TRICK` |
+| `ai-choose-play` (lowest-legal-card heuristic) | A generic naive-AI heuristic in `edm-engine/cards` or a new `edm-engine/ai-heuristics` | "Play the lowest legal card" is a reusable, genuinely game-agnostic naive strategy for any trick-taking game, not a Hearts-only idea. | **Closed (`ec8cc78`)** — `LOWEST-RANK-CARD` |
+| `ai-choose-pass` (discard-highest-N heuristic) | Same as above | "Discard your N highest-value cards" is the same reusable shape. | **Closed (`ec8cc78`)** — `HIGHEST-N-CARDS` |
+| `maybe-run-ai-turn` (AI-timer-gated turn dispatch) | A generic AI-turn-orchestration primitive, composing the existing `edm-engine:ai-timer-*` infrastructure | The *outer* shape ("if it's not my turn and the AI-timer says ready, run a decision→animate→act sequence") is generic; only the decision/animate/act functions passed in are Hearts-specific. Needs a real callback-based redesign, not a naive copy — correctly the lowest priority of this whole catalog. | **Closed (`abc49a0`)** — `RUN-AI-TURN-WHEN-READY`, designed against Yahtzee's own already-existing, identical shape as a second real consumer, not Hearts alone |
 | `pass-cards` | N/A | Genuinely dead code — defined, exported, never called anywhere. Not a migration gap, just needs removing. | **Open — unrelated cleanup** |
 | `execute-pass`'s card-distribution logic | Stays in Hearts | Hearts' own passing mechanic isn't shared by Spades/Bridge/Euchre at all — correctly hand-built, not a gap. | **Correctly scoped** |
 | `score-round` / `shoot-the-moon-p` | Stays in Hearts | Hearts' own scoring rules (shoot-the-moon is Hearts-only). Correctly hand-built. | **Correctly scoped** |
 
 ## What "complete" actually requires, stated plainly
 
-Per the direct question this audit answers: Hearts was **not**
-completely migrated before this turn. It is closer now (`DEFOUTCOME`
-landed, the trick-completion bus gap is closed) but **still not
-complete** — the trick-completion transition itself remains
-imperative, and the two naive-AI heuristics plus `maybe-run-ai-turn`
-are real, un-lifted generic shapes. This table is the honest
-remainder, not a claim of completion.
+Per the direct question this audit originally answered: Hearts was
+**not** completely migrated at the time this doc was first written.
+As of `a630f3c`, all three named gaps are genuinely closed — `DEFOUTCOME`
+landed, the trick-completion bus gap and its own imperative sequence
+are both resolved, and the two naive-AI heuristics plus `RUN-AI-TURN-
+WHEN-READY` are lifted (the latter designed against Yahtzee's own
+already-existing, identical shape as a real second consumer, not
+Hearts alone). This table is the honest record of that becoming true,
+not a claim made in advance of the work.
 
 ## For the rest of #64 — applying this to Queens/Wordle/Yahtzee faster
 
