@@ -1,11 +1,8 @@
 (in-package :edm-engine/games/hearts/tests)
 (in-suite :edm-engine-hearts)
 
-(test target-player-left-right-across-none
-  (is (= 1 (target-player 0 :left)))
-  (is (= 3 (target-player 0 :right)))
-  (is (= 2 (target-player 0 :across)))
-  (is (= 0 (target-player 0 :none))))
+;;; TARGET-PLAYER is generic (EDM-ENGINE/CORE) now — its own coverage
+;;; lives in t/seats-spec.lisp, not duplicated here.
 
 (test toggle-pass-selection-adds-up-to-three-then-stops
   (let ((game (make-hearts-game :seed 1 :round 1)))
