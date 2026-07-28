@@ -90,8 +90,8 @@ flowchart LR
 
     Orch -->|"ONE semantic event\n(e.g. :HEARTS :WON)"| SemanticTopic[":SEMANTIC topic"]
 
-    SemanticTopic --> PAE["PROCESS-AUDIO-EVENTS\n(unchanged — still just a subscriber)"]
-    SemanticTopic --> PVE["PROCESS-VFX-EVENTS\n(new — same shape as PAE,\nDEFVFX-CUES-style registry)"]
+    SemanticTopic --> PAE["PROCESS-AUDIO-EVENTS reactor\n(unchanged — still just a subscriber)"]
+    SemanticTopic --> PVE["PLAY-VFX-EFFECT-FOR-EVENT reactor\n(resolves to an EXISTING\nDEFEFFECT-SEQUENCE function,\ne.g. YAHTZEE-CONFETTI-BURST)"]
     SemanticTopic --> Future["Future LOCAL subscribers\n(analytics, replay —\nadded without touching producers)"]
 
     PAE --> Speaker(("🔊"))
@@ -118,20 +118,53 @@ flowchart LR
 
 ## The design, in detail
 
-**The semantic-event half.** `deforchestration`/`defoutcome`-driven
-transitions push to a single, generic `:semantic` topic (event shape:
-`(:game GAME :event NAME)`, already close to today's `(:game :hearts
-:cue :won)` shape — a rename/generalization, not a redesign).
-`process-audio-events` becomes one subscriber among several,
-unchanged in its own logic — it already only cares about resolving a
-`(game . cue)` pair, which doesn't need to know the topic is now
-shared. A new, symmetric `defvfx-cues`/`process-vfx-events` (same
-registry-macro shape as `defaudio-cues`/`process-audio-events`,
-proven three times already this session for shaders/audio/theme-
-sound) becomes Yahtzee's real target, replacing its own inline
-`GameOverlayEffects` drain — and becomes available to Hearts/Queens/
-Wordle's own win transitions for free, without those games' own code
-needing to know VFX exists.
+**Real overlap found and reconciled, stated honestly.** An earlier
+draft of this section proposed `defvfx-cues`/`process-vfx-events` — a
+registry mapping `(game . cue)` to a raw callback, invented without
+having read `docs/vfx-style-pipeline-design.md` first. That doc
+already designed the actual VFX representation, and — checked
+directly, not assumed — most of it is *already implemented*:
+`src/effect.lisp`'s own `defeffect-state`/`defeffect-sequence` macros,
+`pulseVal`/`ese` (Queens' own cursor pulse, generalized), and
+`spawnConfetti`/`particle-effect` (Yahtzee's own win celebration,
+arena-backed). `defvfx-cues` would have been a second, competing,
+strictly weaker VFX system sitting next to a real one — reverted
+entirely, not kept in any form.
+
+**What was genuinely missing, and still is: the dispatch layer.**
+`docs/vfx-style-pipeline-design.md`'s own "VFX pipeline" section
+describes draining a topic and calling into `*effect-sequences*`/
+`*effect-states*` — but today, Yahtzee's own `GameOverlayEffects`
+still does this by hand, inline, calling `yahtzee-confetti-burst`
+(itself a real `defeffect-sequence`-generated function) directly from
+a hand-written drain loop over its own dedicated `:vfx` topic. This is
+exactly where the semantic topic fits: not as a replacement for
+`defeffect-sequence`/`defeffect-state`, but as the shared dispatch
+layer those primitives were always missing. `deforchestration`/
+`defoutcome`-driven transitions push to a single, generic `:semantic`
+topic (event shape: `(:game GAME :event NAME)`, close to today's
+`(:game :hearts :cue :won)` shape). `process-semantic-events` drains
+it once per call and fans each event out to every registered reactor
+— fixing a real bug found and confirmed directly before this design
+settled: `*engine-bus*` is a queue (`chanl`), not a broadcast, so two
+independent consumers each separately polling the same topic would
+compete for events rather than both receiving them.
+
+Two reactors, both real and proven:
+
+- `play-audio-cue-for-event` — resolves `(game . cue)` against
+  `defaudio-cues`' own existing registry, unchanged in its own logic.
+- `play-vfx-effect-for-event` — resolves `(game . cue)` against a
+  small registry mapping to an *already-existing*
+  `defeffect-sequence`/`defeffect-state`-generated function (Yahtzee's
+  own `yahtzee-confetti-burst`, proven as the real first retrofit),
+  closing over whatever game-specific context (arena, origin,
+  rng) that function needs — the registry only resolves *which*
+  already-built effect function to call, it doesn't represent effects
+  itself.
+
+`process-audio-events` needs no change to its own resolution logic —
+it becomes one of `process-semantic-events`' own reactors.
 
 **The intent-convergence half.** Today, `maybe-run-ai-turn`'s own
 decision (`ai-choose-play`, etc.) and a human's `key-enter` press
@@ -168,17 +201,41 @@ mechanical piece against a real consumer first, generalize from there.
 
 ## Scope, for whoever picks this up
 
-1. Rename/generalize `deforchestration`'s own hardcoded `:audio` push
-   to a genuine `:semantic` topic (or similar), keeping the event
-   shape close to today's for minimal churn — implemented first,
-   since it's the smaller, more mechanical change.
-2. Build `defvfx-cues`/`process-vfx-events`, proven against Yahtzee's
-   own real `:yahtzee-won` VFX trigger as the first real retrofit —
-   not built speculatively.
-3. Confirm `process-audio-events` needs no logic change, only to keep
-   subscribing to whatever the renamed/shared topic becomes.
-4. Design and build the intent-event shape and its one shared,
+1. Add `process-semantic-events` to `src/bus.lisp` — drains
+   `:semantic` once per call, fans each event out to whatever reactor
+   functions are given.
+2. Rename/generalize `deforchestration`'s own hardcoded `:audio` push
+   to `:semantic`, keeping the event shape close to today's for
+   minimal churn.
+3. Retrofit Hearts'/Queens'/Yahtzee's own `defoutcome`-driven outcome
+   pushes (which don't go through `deforchestration` at all — a
+   separate mechanism) to push to `:semantic` too, since those are the
+   actual `:won`/`:lost`/`:level-advanced` events other systems most
+   want to react to.
+4. Add `play-audio-cue-for-event` next to `process-audio-events` in
+   `src/audio/cues.lisp` — same resolution logic, callable as a
+   reactor.
+5. Add a small VFX-cue-registry and `play-vfx-effect-for-event`,
+   proven against Yahtzee's own real, already-existing
+   `yahtzee-confetti-burst` (a `defeffect-sequence` function) as the
+   first retrofit — resolving *which* already-built effect to call,
+   not representing effects itself; `defeffect-sequence`/
+   `defeffect-state` in `src/effect.lisp` remain the actual VFX
+   representation, unchanged.
+6. Retrofit Yahtzee's own `GameOverlayEffects` to stop hand-draining
+   `:vfx` inline — the shared dispatcher replaces it.
+7. Design and build the intent-event shape and its one shared,
    draining worker — informed by the semantic-event half already
    being real and proven by this point, not designed in the dark
    before any of it exists, but still the same unified architecture
    from the start, not an afterthought bolted on.
+
+## Cross-reference
+
+Depends on and does not duplicate `docs/vfx-style-pipeline-design.md`
+— that doc owns the actual VFX effect representation
+(`defeffect-sequence`/`defeffect-state`, arena-backed instances,
+already substantially implemented in `src/effect.lisp`); this doc
+owns only the event-dispatch layer feeding it, which that doc's own
+"VFX pipeline" section named as necessary but left as the one
+concretely unbuilt piece.
