@@ -13,7 +13,8 @@
   (:player-dice-rolled :square 500.0 0.05)
   (:die-held :square 600.0 0.03)
   (:category-scored :sine 700.0 0.15)
-  (:game-over :sine 1000.0 0.3))
+  (:won :sine 1200.0 0.4)
+  (:lost :sine 150.0 0.5))
 
 ;;; Dice as actual pip-faced squares — same lesson as Hearts' cards:
 ;;; a die shown as bare text ("3") reads as a terminal readout, not a
@@ -179,9 +180,9 @@ callback below is Yahtzee's own."
                     (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :yahtzee :cue :category-scored))))))))
          (maybe-run-ai-turn game))
      (when (game-over-p game)
-       (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :yahtzee :cue :game-over))
-       (setf (yahtzee-game-status game)
-             (if (= 0 (winner-index game)) :won :lost))
+       (let ((outcome (if (= 0 (winner-index game)) :won :lost)))
+         (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :yahtzee :cue outcome))
+         (setf (yahtzee-game-status game) outcome))
        ;; #37's bus-driven VFX trigger, retrofit against a real
        ;; consumer (this exact win transition) rather than built
        ;; speculatively: game logic pushes a semantic event, never

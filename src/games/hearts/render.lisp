@@ -10,7 +10,9 @@
   (:card-selected :square 500.0 0.03)
   (:pass-executed :sine 800.0 0.15)
   (:player-card-played :square 700.0 0.05)
-  (:round-scored :sine 1000.0 0.3))
+  (:round-scored :sine 1000.0 0.3)
+  (:won :sine 1200.0 0.4)
+  (:lost :sine 150.0 0.5))
 
 ;;; CARD-STRING/CARD-COLOR/+CARD-WIDTH+/+CARD-HEIGHT+/DRAW-CARD-FACE/
 ;;; DRAW-CARD-BACK now live in EDM-ENGINE/CARDS — generic to any card

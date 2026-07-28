@@ -131,7 +131,7 @@ separately-maintained rule check."
        (null (queens-conflicts game))))
 
 (defun queens-final-level-p (game)
-  (>= (queens-game-level game) +queens-level-count+))
+  (edm-engine:at-final-progression-p (queens-game-level game) +queens-level-count+))
 
 (edm-engine:defconditions queens-game
   (:condition final-level queens-final-level-p))
