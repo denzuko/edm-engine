@@ -86,3 +86,57 @@ wrong reason."
         (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio)
       (declare (ignore event))
       (is-false received-p))))
+
+;;; DEFOUTCOME — per direct correction: branching outcomes are exactly
+;;; the case for a Datalog-flavored rule table, not a computed
+;;; callback function threaded through DEFORCHESTRATION's own
+;;; :TO-PHASE. A callback can hide arbitrary, opaque branching logic
+;;; behind one function reference; a rule table is itself inspectable
+;;; data — an ordered list of (condition-name . outcome) facts, tried
+;;; in order, first true wins. Still macro-expansion only (the hard
+;;; constraint from docs/orchestration-dsl-design.md): each DEFOUTCOME
+;;; form expands into one plain DEFUN that calls CONDITION-TRUE-P for
+;;; each named condition in turn — checkable via MACROEXPAND-1, no
+;;; runtime interpreter walking the rule list itself. Conditions are
+;;; referenced by name (registered via DEFCONDITIONS elsewhere) — the
+;;; scoring/win logic itself lives in a named, real predicate function,
+;;; never inlined as a raw form inside the rule table.
+
+(defstruct outcome-test-game
+  (phase :playing :type keyword)
+  (score 0 :type fixnum)
+  (rounds-played 0 :type fixnum))
+
+(defun outcome-test-game-over-p (game)
+  (>= (outcome-test-game-rounds-played game) 3))
+
+(defun outcome-test-game-winning-p (game)
+  (>= (outcome-test-game-score game) 50))
+
+(edm-engine:defconditions outcome-test-game
+  (:condition over outcome-test-game-over-p)
+  (:condition winning outcome-test-game-winning-p))
+
+(edm-engine:defoutcome outcome-test-game-result (game)
+  (:rule (not (edm-engine:condition-true-p 'outcome-test-game 'over game)) :still-playing)
+  (:rule (edm-engine:condition-true-p 'outcome-test-game 'winning game) :won)
+  (:rule t :lost))
+
+(test defoutcome-expands-to-a-plain-checkable-function
+  (is (fboundp 'outcome-test-game-result)))
+
+(test defoutcome-returns-the-first-matching-rules-outcome
+  (is (eq :still-playing (outcome-test-game-result (make-outcome-test-game :rounds-played 1 :score 10)))))
+
+(test defoutcome-tries-rules-in-order-not-just-any-true-one
+  "Rounds-played 3 (so :OVER is true, ruling out the first rule) with
+a losing score — :OVER alone isn't enough to reach :WON, confirming
+the rules are genuinely tried in order against independent
+conditions, not any single true condition short-circuiting."
+  (is (eq :lost (outcome-test-game-result (make-outcome-test-game :rounds-played 3 :score 10)))))
+
+(test defoutcome-falls-through-to-the-catch-all-rule
+  (is (eq :lost (outcome-test-game-result (make-outcome-test-game :rounds-played 5 :score 0)))))
+
+(test defoutcome-reaches-a-non-catch-all-rule-when-its-own-condition-is-true
+  (is (eq :won (outcome-test-game-result (make-outcome-test-game :rounds-played 3 :score 60)))))

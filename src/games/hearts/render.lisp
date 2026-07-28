@@ -192,12 +192,12 @@ work (see GH #3), not implemented yet. Not pretending otherwise."
         (when (edm-engine:condition-true-p 'hearts-game 'round-over game)
           (score-round game)
           (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :hearts :cue :round-scored))
-          (cond
-            ((edm-engine:condition-true-p 'hearts-game 'game-over game)
-             (setf (hearts-game-status game)
-                   (if (= (first (hearts-game-scores game)) (reduce #'min (hearts-game-scores game)))
-                       :won :lost)))
-            (t (advance-round game)))))))
+          (let ((outcome (hearts-round-outcome game)))
+            (if (eq outcome :playing)
+                (advance-round game)
+                (progn
+                  (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :hearts :cue outcome))
+                  (setf (hearts-game-status game) outcome))))))))
     (t nil)))
 
 (defmethod edm-engine:game-render ((game hearts-game) window-width window-height)

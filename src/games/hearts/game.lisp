@@ -89,7 +89,8 @@ trick, and sets them as the next leader."
                     collect (+ (nth i (hearts-game-round-points game)) (if (= i winner) points 0))))
         (setf (hearts-game-current-trick game) nil
               (hearts-game-leader game) winner
-              (hearts-game-turn game) winner))
+              (hearts-game-turn game) winner)
+        (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :hearts :cue :trick-won)))
       (setf (hearts-game-turn game) (mod (1+ player) 4)))
   game)
 
@@ -129,9 +130,27 @@ trick, and sets them as the next leader."
 (defun hearts-game-over-p (game)
   (game-over-p (hearts-game-scores game)))
 
+(defun hearts-game-winning-p (game)
+  "The player with the current lowest score — Hearts scores are
+penalty points, lower is better, ties broken toward player 0 (the
+human) matching this table's own existing WON/LOST determination,
+unchanged in meaning, only where the logic lives now."
+  (= (first (hearts-game-scores game)) (reduce #'min (hearts-game-scores game))))
+
 (edm-engine:defconditions hearts-game
   (:condition round-over round-over-p)
-  (:condition game-over hearts-game-over-p))
+  (:condition game-over hearts-game-over-p)
+  (:condition winning hearts-game-winning-p))
+
+;; The branching round-over outcome, per direct correction: a
+;; declarative decision table over named, registered conditions —
+;; not a computed callback threaded through DEFORCHESTRATION's own
+;; :TO-PHASE, which would hide the same branching behind one opaque
+;; function reference instead of inspectable rule data.
+(edm-engine:defoutcome hearts-round-outcome (game)
+  (:rule (not (edm-engine:condition-true-p 'hearts-game 'game-over game)) :playing)
+  (:rule (edm-engine:condition-true-p 'hearts-game 'winning game) :won)
+  (:rule t :lost))
 
 ;; TARGET-PLAYER now lives in EDM-ENGINE/CORE (generic seat rotation,
 ;; not card-specific) — inherited here, not redefined.

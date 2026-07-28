@@ -25,7 +25,7 @@
    ;; orchestration (#64)
    #:deforchestration
    ;; conditions (datalog-style corpus, #64's own reconciliation)
-   #:defconditions #:condition-true-p #:*conditions*
+   #:defconditions #:condition-true-p #:*conditions* #:defoutcome
    #:game-stop-audio #:gameOverlayEffects
    #:game-entry #:game-entry-title #:game-entry-constructor #:game-entry-restore-fn
    #:game-entry-ai-capable-p
