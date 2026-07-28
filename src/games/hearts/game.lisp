@@ -233,8 +233,7 @@ previous round is scored and the game isn't over yet."
   (max 0 (- 100 (first (hearts-game-scores game)))))
 
 (defun ai-choose-play (hand led-suit hearts-broken)
-  (let ((choices (legal-plays hand :led-suit led-suit :hearts-broken hearts-broken :leading-p (null led-suit))))
-    (reduce (lambda (a b) (if (< (car a) (car b)) a b)) choices)))
+  (lowest-rank-card (legal-plays hand :led-suit led-suit :hearts-broken hearts-broken :leading-p (null led-suit))))
 
 (defun ai-choose-pass (hand)
-  (subseq (sort (copy-list hand) #'> :key #'car) 0 3))
+  (highest-n-cards hand 3))

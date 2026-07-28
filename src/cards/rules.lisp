@@ -96,3 +96,22 @@ never tweened, e.g. a hand card that hasn't moved)."
     (if (and tw (not (edm-engine:tween-finished-p tw now)))
         (edm-engine:tween-position tw now)
         (values (float default-x 1.0) (float default-y 1.0)))))
+
+;;; LOWEST-RANK-CARD / HIGHEST-N-CARDS — the reusable naive-AI
+;;; heuristic shapes behind Hearts' own AI-CHOOSE-PLAY/AI-CHOOSE-PASS,
+;;; generic to any trick-taking game's own naive strategy. Each
+;;; game's own function still decides WHICH cards are eligible
+;;; (Hearts' own LEGAL-PLAYS, or simply the whole hand) — these two
+;;; only pick from within an already-decided candidate list.
+
+(defun lowest-rank-card (cards)
+  "The lowest-rank card in CARDS, regardless of suit — 'always play
+your weakest legal card' is a genuine, reusable naive strategy, not
+Hearts-specific."
+  (reduce (lambda (a b) (if (< (car a) (car b)) a b)) cards))
+
+(defun highest-n-cards (cards n)
+  "The N highest-rank cards in CARDS (fewer if CARDS itself has fewer
+than N) — 'discard your strongest cards' is the same reusable naive
+strategy, generalized from Hearts' own hardcoded 3."
+  (subseq (sort (copy-list cards) #'> :key #'car) 0 (min n (length cards))))

@@ -130,3 +130,23 @@ hand."
     (multiple-value-bind (x y) (card-draw-position tweens (cons 9 :clubs) 7.0 8.0 0.0d0)
       (is (= 7.0 x))
       (is (= 8.0 y)))))
+
+;;; LOWEST-RANK-CARD / HIGHEST-N-CARDS — item 6 of the systematic
+;;; catalog (6b91931): the reusable naive-AI heuristic shapes behind
+;;; Hearts' own AI-CHOOSE-PLAY ("play the lowest legal card") and
+;;; AI-CHOOSE-PASS ("discard your N highest cards") — generic to any
+;;; trick-taking game's own naive strategy, not Hearts-specific logic.
+;;; Hearts' own functions keep deciding WHICH cards are eligible
+;;; (LEGAL-PLAYS, the whole hand) — these two only pick from within
+;;; an already-decided candidate list, the genuinely reusable part.
+
+(test lowest-rank-card-picks-the-lowest-rank-regardless-of-suit
+  (is (equal (cons 2 :clubs)
+             (lowest-rank-card (list (cons 9 :hearts) (cons 2 :clubs) (cons 14 :spades))))))
+
+(test highest-n-cards-returns-the-n-highest-rank-cards
+  (is (equal (list (cons 14 :spades) (cons 9 :hearts))
+             (highest-n-cards (list (cons 2 :clubs) (cons 9 :hearts) (cons 14 :spades)) 2))))
+
+(test highest-n-cards-with-n-greater-than-the-hand-returns-the-whole-hand
+  (is (= 2 (length (highest-n-cards (list (cons 2 :clubs) (cons 9 :hearts)) 5)))))
