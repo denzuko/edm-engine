@@ -63,14 +63,21 @@ restored on top of that fresh board."
 non-committal elimination note with no rule significance) -> QUEEN ->
 EMPTY. Not a plain two-state toggle — a mark lets a player rule out a
 cell without committing to a queen there, exactly the 'miss-placed X'
-state that needs its own test coverage, not just queen placement."
+state that needs its own test coverage, not just queen placement.
+Pushes its own bus event at the point of state change (found via the
+#65 audit against Hearts' own method: render.lisp's own GAME-UPDATE
+used to infer this by comparing before/after snapshots, the exact
+pre-migration pattern Hearts had)."
   (when (eq (queens-game-status game) :playing)
     (let ((cell (cons row col)))
       (ecase (cell-state game row col)
-        (:empty (push cell (queens-game-marked game)))
+        (:empty (push cell (queens-game-marked game))
+                (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :queens :cue :cell-marked)))
         (:marked (setf (queens-game-marked game) (remove cell (queens-game-marked game) :test #'equal))
-                 (push cell (queens-game-placed game)))
-        (:queen (setf (queens-game-placed game) (remove cell (queens-game-placed game) :test #'equal))))
+                 (push cell (queens-game-placed game))
+                 (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :queens :cue :queen-placed)))
+        (:queen (setf (queens-game-placed game) (remove cell (queens-game-placed game) :test #'equal))
+                (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :queens :cue :cell-cleared))))
       (maybe-advance game)))
   game)
 
@@ -123,23 +130,38 @@ separately-maintained rule check."
   (and (= (length (queens-game-placed game)) (queens-board-size (queens-game-board game)))
        (null (queens-conflicts game))))
 
+(defun queens-final-level-p (game)
+  (>= (queens-game-level game) +queens-level-count+))
+
+(edm-engine:defconditions queens-game
+  (:condition final-level queens-final-level-p))
+
+(edm-engine:defoutcome queens-level-outcome (game)
+  (:rule (edm-engine:condition-true-p 'queens-game 'final-level game) :campaign-won)
+  (:rule t :level-advanced))
+
 (defun maybe-advance (game)
   "Checks whether GAME's current placement solves the level; if so,
 banks that level's score and either wins the whole campaign (level 25
-solved) or moves to a fresh board for the next level."
+solved) or moves to a fresh board for the next level. The branching
+outcome itself is QUEENS-LEVEL-OUTCOME's own declarative decision
+table, matching Hearts' own HEARTS-ROUND-OUTCOME — not a computed
+callback hiding the branch."
   (when (queens-solved-p game)
     (incf (queens-game-score game) (queens-game-points-for-level (queens-game-level game)))
-    (if (>= (queens-game-level game) +queens-level-count+)
-        (setf (queens-game-status game) :won)
-        (progn
-          (incf (queens-game-level game))
-          (setf (queens-game-board game)
-                (generate-board (queens-board-size-for-level (queens-game-level game))
-                                 (queens-seed-for-level (queens-game-level game))))
-          (setf (queens-game-placed game) nil)
-          (setf (queens-game-marked game) nil)
-          (setf (queens-game-cursor-row game) 0)
-          (setf (queens-game-cursor-col game) 0)))))
+    (let ((outcome (queens-level-outcome game)))
+      (if (eq outcome :campaign-won)
+          (setf (queens-game-status game) :won)
+          (progn
+            (incf (queens-game-level game))
+            (setf (queens-game-board game)
+                  (generate-board (queens-board-size-for-level (queens-game-level game))
+                                   (queens-seed-for-level (queens-game-level game))))
+            (setf (queens-game-placed game) nil)
+            (setf (queens-game-marked game) nil)
+            (setf (queens-game-cursor-row game) 0)
+            (setf (queens-game-cursor-col game) 0)))
+      (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :queens :cue outcome)))))
 
 (defmethod edm-engine:game-outcome ((game queens-game))
   (if (eq (queens-game-status game) :won) :win nil))

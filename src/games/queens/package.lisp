@@ -8,5 +8,5 @@
    #:queens-game-cursor-row #:queens-game-cursor-col #:move-cursor
    #:cell-state #:cycle-cell #:cycle-cell-at-cursor #:queens-conflicts
    #:queens-solved-p #:queens-game-points-for-level #:clamp-to-board
-   #:queens-game-marked
+   #:queens-game-marked #:queens-final-level-p #:queens-level-outcome
    #:queens-theme-pattern #:+queens-theme-row-duration+))

@@ -260,3 +260,64 @@ correctly together."
       (is (eq (queens-game-status game) (queens-game-status restored)))
       (is (= (queens-game-cursor-row game) (queens-game-cursor-row restored)))
       (is (= (queens-game-cursor-col game) (queens-game-cursor-col restored))))))
+
+;;; Bus event integration — item found via the systematic #65 audit
+;;; against Hearts' own method: render.lisp's own GAME-UPDATE inferred
+;;; which cue to push by comparing before/after state snapshots, the
+;;; exact pre-migration pattern Hearts had. Moved into CYCLE-CELL/
+;;; MAYBE-ADVANCE themselves, at the actual point of state change,
+;;; matching Hearts' own PLAY-CARD/EXECUTE-PASS convention.
+
+(test cycle-cell-pushes-cell-marked-on-first-press
+  (loop while (nth-value 1 (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio)))
+  (let ((game (make-queens-game)))
+    (cycle-cell game 0 0)
+    (multiple-value-bind (event received-p) (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio)
+      (is-true received-p)
+      (is (equal '(:game :queens :cue :cell-marked) event)))))
+
+(test cycle-cell-pushes-queen-placed-on-second-press
+  (loop while (nth-value 1 (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio)))
+  (let ((game (make-queens-game)))
+    (cycle-cell game 0 0)
+    (loop while (nth-value 1 (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio)))
+    (cycle-cell game 0 0)
+    (multiple-value-bind (event received-p) (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio)
+      (is-true received-p)
+      (is (equal '(:game :queens :cue :queen-placed) event)))))
+
+(test cycle-cell-pushes-cell-cleared-on-third-press
+  (loop while (nth-value 1 (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio)))
+  (let ((game (make-queens-game)))
+    (dotimes (i 2) (cycle-cell game 0 0))
+    (loop while (nth-value 1 (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio)))
+    (cycle-cell game 0 0)
+    (multiple-value-bind (event received-p) (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio)
+      (is-true received-p)
+      (is (equal '(:game :queens :cue :cell-cleared) event)))))
+
+(test maybe-advance-pushes-level-advanced-when-not-the-final-level
+  (loop while (nth-value 1 (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio)))
+  (let* ((game (make-queens-game :level 1))
+         (board (queens-game-board game))
+         (last-event nil))
+    (loop for row from 0
+          for col in (queens-board-placement board)
+          do (place-queen game row col))
+    (loop for (event received-p) = (multiple-value-list (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio))
+          while received-p
+          do (setf last-event event))
+    (is (equal '(:game :queens :cue :level-advanced) last-event))))
+
+(test maybe-advance-pushes-campaign-won-on-the-final-level
+  (loop while (nth-value 1 (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio)))
+  (let* ((game (make-queens-game :level 25))
+         (board (queens-game-board game))
+         (last-event nil))
+    (loop for row from 0
+          for col in (queens-board-placement board)
+          do (place-queen game row col))
+    (loop for (event received-p) = (multiple-value-list (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio))
+          while received-p
+          do (setf last-event event))
+    (is (equal '(:game :queens :cue :campaign-won) last-event))))
