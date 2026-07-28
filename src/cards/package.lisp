@@ -6,6 +6,7 @@
    #:toggle-selection
    #:start-card-tween #:card-draw-position
    #:lowest-rank-card #:highest-n-cards
+   #:trick-complete-p #:resolve-completed-trick
    #:+suit-glyph+ #:+rank-glyph+ #:card-string
    #:+card-width+ #:+card-height+ #:+card-roundness+
    #:card-color #:card-rect #:draw-card-back #:draw-card-face

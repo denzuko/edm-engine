@@ -73,17 +73,17 @@ meaningful to carry across a save/load boundary."
 
 (defun play-card (game player card)
   "PLAYER plays CARD from their hand. Advances turn, or — once the
-trick's 4th card lands — scores the trick to its winner, clears the
-trick, and sets them as the next leader."
+trick is complete — scores it to its winner, clears the trick, and
+sets them as the next leader. The generic sequence itself now lives
+in EDM-ENGINE/CARDS:TRICK-COMPLETE-P/RESOLVE-COMPLETED-TRICK — only
+CARD-POINTS (the scoring function) stays Hearts' own."
   (setf (nth player (hearts-game-hands game))
         (remove card (nth player (hearts-game-hands game)) :test #'equal :count 1))
   (setf (hearts-game-current-trick game) (append (hearts-game-current-trick game) (list card)))
   (when (eq (cdr card) :hearts) (setf (hearts-game-hearts-broken game) t))
-  (if (= 4 (length (hearts-game-current-trick game)))
-      (let* ((led-suit (cdr (first (hearts-game-current-trick game))))
-             (winner-offset (trick-winner-index (hearts-game-current-trick game) led-suit))
-             (winner (mod (+ (hearts-game-leader game) winner-offset) 4))
-             (points (reduce #'+ (mapcar #'card-points (hearts-game-current-trick game)))))
+  (if (trick-complete-p (hearts-game-current-trick game) 4)
+      (multiple-value-bind (winner points)
+          (resolve-completed-trick (hearts-game-current-trick game) (hearts-game-leader game) #'card-points)
         (setf (hearts-game-round-points game)
               (loop for i from 0 below 4
                     collect (+ (nth i (hearts-game-round-points game)) (if (= i winner) points 0))))

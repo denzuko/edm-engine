@@ -115,3 +115,25 @@ Hearts-specific."
 than N) — 'discard your strongest cards' is the same reusable naive
 strategy, generalized from Hearts' own hardcoded 3."
   (subseq (sort (copy-list cards) #'> :key #'car) 0 (min n (length cards))))
+
+;;; TRICK-COMPLETE-P / RESOLVE-COMPLETED-TRICK — the generic sequence
+;;; behind any trick-taking game's own trick-completion logic (advance
+;;; turn, or once the Nth card lands: determine winner, score, next
+;;; leader) — everything except the scoring function itself, which
+;;; stays each game's own (Hearts' own CARD-POINTS).
+
+(defun trick-complete-p (trick seat-count)
+  "True once TRICK holds SEAT-COUNT cards — one from each seat at the
+table."
+  (= seat-count (length trick)))
+
+(defun resolve-completed-trick (trick leader points-fn)
+  "TRICK is a complete trick (cards in play order), LEADER is the
+0-based seat that led it. Returns (values winner-seat points) —
+WINNER-SEAT via TRICK-WINNER-INDEX against the trick's own led suit,
+wrapped relative to LEADER; POINTS via summing (FUNCALL POINTS-FN
+CARD) across TRICK."
+  (let* ((led-suit (cdr (first trick)))
+         (winner-offset (trick-winner-index trick led-suit))
+         (winner (mod (+ leader winner-offset) (length trick))))
+    (values winner (reduce #'+ (mapcar points-fn trick)))))

@@ -150,3 +150,33 @@ hand."
 
 (test highest-n-cards-with-n-greater-than-the-hand-returns-the-whole-hand
   (is (= 2 (length (highest-n-cards (list (cons 2 :clubs) (cons 9 :hearts)) 5)))))
+
+;;; TRICK-COMPLETE-P / RESOLVE-COMPLETED-TRICK — the last open item in
+;;; docs/hearts-architecture-audit.md's own gap table: PLAY-CARD's
+;;; trick-completion sequence (advance turn, or on the Nth card:
+;;; determine winner, score, reset, set next leader) is generic to
+;;; any trick-taking game except the scoring function itself
+;;; (Hearts' own CARD-POINTS) — the same "generic sequence, one
+;;; game-specific function passed in" shape RUN-AI-TURN-WHEN-READY
+;;; already proved for AI-turn orchestration.
+
+(test trick-complete-p-false-before-seat-count-cards-are-in
+  (is (not (trick-complete-p (list (cons 5 :clubs) (cons 9 :hearts)) 4))))
+
+(test trick-complete-p-true-once-seat-count-cards-are-in
+  (is (trick-complete-p (list (cons 5 :clubs) (cons 9 :hearts) (cons 2 :spades) (cons 14 :diamonds)) 4)))
+
+(test resolve-completed-trick-returns-the-winner-seat-relative-to-leader
+  "Leader is seat 2; the trick's own highest-led-suit card is at
+index 1 (0-based) — winner should be seat (2+1) mod 4 = 3."
+  (let ((trick (list (cons 5 :clubs) (cons 12 :clubs) (cons 2 :hearts) (cons 9 :clubs))))
+    (multiple-value-bind (winner points) (resolve-completed-trick trick 2 (lambda (c) (declare (ignore c)) 0))
+      (is (= 3 winner))
+      (is (= 0 points)))))
+
+(test resolve-completed-trick-sums-points-via-the-given-points-fn
+  (let ((trick (list (cons 2 :hearts) (cons 3 :hearts) (cons 4 :hearts))))
+    (multiple-value-bind (winner points)
+        (resolve-completed-trick trick 0 (lambda (c) (declare (ignore c)) 1))
+      (declare (ignore winner))
+      (is (= 3 points)))))
