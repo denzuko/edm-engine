@@ -137,7 +137,7 @@ separately-maintained rule check."
   (:condition final-level queens-final-level-p))
 
 (edm-engine:defoutcome queens-level-outcome (game)
-  (:rule (edm-engine:condition-true-p 'queens-game 'final-level game) :campaign-won)
+  (:rule (edm-engine:condition-true-p 'queens-game 'final-level game) :won)
   (:rule t :level-advanced))
 
 (defun maybe-advance (game)
@@ -150,7 +150,7 @@ callback hiding the branch."
   (when (queens-solved-p game)
     (incf (queens-game-score game) (queens-game-points-for-level (queens-game-level game)))
     (let ((outcome (queens-level-outcome game)))
-      (if (eq outcome :campaign-won)
+      (if (eq outcome :won)
           (setf (queens-game-status game) :won)
           (progn
             (incf (queens-game-level game))

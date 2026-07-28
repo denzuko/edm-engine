@@ -309,7 +309,7 @@ correctly together."
           do (setf last-event event))
     (is (equal '(:game :queens :cue :level-advanced) last-event))))
 
-(test maybe-advance-pushes-campaign-won-on-the-final-level
+(test maybe-advance-pushes-won-on-the-final-level
   (loop while (nth-value 1 (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio)))
   (let* ((game (make-queens-game :level 25))
          (board (queens-game-board game))
@@ -320,4 +320,4 @@ correctly together."
     (loop for (event received-p) = (multiple-value-list (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio))
           while received-p
           do (setf last-event event))
-    (is (equal '(:game :queens :cue :campaign-won) last-event))))
+    (is (equal '(:game :queens :cue :won) last-event))))

@@ -8,7 +8,7 @@
   (:cell-marked :square 400.0 0.04)
   (:queen-placed :square 700.0 0.05)
   (:cell-cleared :square 250.0 0.05)
-  (:campaign-won :sine 1200.0 0.4))
+  (:won :sine 1200.0 0.4))
 
 (defparameter +cell-size+ 60.0)
 (defparameter +cell-gap+ 4.0)
