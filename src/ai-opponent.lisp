@@ -19,6 +19,24 @@
   (setf (ai-timer-next-action-time timer) (+ now delay))
   timer)
 
+;;; RUN-AI-TURN-WHEN-READY — the generic outer shape behind an AI-
+;;; opponent game's own turn loop, designed against two real
+;;; consumers at once (Hearts, Yahtzee — both already had their own,
+;;; independently-written MAYBE-RUN-AI-TURN with this identical
+;;; guard-act-reset shape before this existed). The decision+action
+;;; logic itself stays each game's own, entirely different ACT-FN —
+;;; Hearts plays a card, Yahtzee rolls dice or commits a score; this
+;;; only owns the shared bookkeeping around whichever one a caller
+;;; provides.
+
+(defun run-ai-turn-when-ready (timer now turn delay act-fn)
+  "When TURN is not the human's own (TURN /= 0) and TIMER is ready at
+NOW, calls ACT-FN (no arguments) and resets TIMER to fire again after
+DELAY. Does nothing on either a human turn or a not-yet-ready timer."
+  (when (and (/= turn 0) (ai-ready-p timer now))
+    (funcall act-fn)
+    (ai-timer-reset timer now delay)))
+
 ;;; Difficulty tiers — a shared concept any AI-opponent game hooks its
 ;;; own decision logic into. The tier list and the selection screen are
 ;;; shared; what NOVICE/STANDARD/EXPERT actually mean for a given

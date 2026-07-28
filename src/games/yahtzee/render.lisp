@@ -133,19 +133,23 @@ four games, only the theme-pattern/duration/topic varying."
 (defmethod edm-engine:game-title ((game yahtzee-game)) "Yahtzee")
 
 (defun maybe-run-ai-turn (game)
-  (when (and (/= (yahtzee-game-turn game) 0) (edm-engine:ai-ready-p *ai-clock* (raylib:get-time)))
-    (cond
-      ((plusp (yahtzee-game-rolls-remaining game))
-       (when (< (yahtzee-game-rolls-remaining game) 3)
-         (setf (yahtzee-game-held game) (ai-choose-holds (yahtzee-game-dice game) (yahtzee-game-held game))))
-       (roll-turn-dice game)
-       (start-roll-animation game)
-       (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :yahtzee :cue :ai-dice-rolled)))
-      (t
-       (let ((cat (ai-choose-category (yahtzee-game-dice game) (available-categories game (yahtzee-game-turn game)))))
-         (commit-score game cat)
-         (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :yahtzee :cue :category-scored)))))
-    (edm-engine:ai-timer-reset *ai-clock* (raylib:get-time) +yahtzee-ai-think-seconds+)))
+  "Guard/timer-reset bookkeeping shared with Hearts' own identical
+shape via EDM-ENGINE:RUN-AI-TURN-WHEN-READY — only the decision+act
+callback below is Yahtzee's own."
+  (edm-engine:run-ai-turn-when-ready
+   *ai-clock* (raylib:get-time) (yahtzee-game-turn game) +yahtzee-ai-think-seconds+
+   (lambda ()
+     (cond
+       ((plusp (yahtzee-game-rolls-remaining game))
+        (when (< (yahtzee-game-rolls-remaining game) 3)
+          (setf (yahtzee-game-held game) (ai-choose-holds (yahtzee-game-dice game) (yahtzee-game-held game))))
+        (roll-turn-dice game)
+        (start-roll-animation game)
+        (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :yahtzee :cue :ai-dice-rolled)))
+       (t
+        (let ((cat (ai-choose-category (yahtzee-game-dice game) (available-categories game (yahtzee-game-turn game)))))
+          (commit-score game cat)
+          (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :yahtzee :cue :category-scored))))))))
 
 (defmethod edm-engine:game-update ((game yahtzee-game))
   (ensure-theme-playing)

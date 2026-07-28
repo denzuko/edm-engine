@@ -140,18 +140,22 @@ happening, not an instant flurry of plays. *AI-DIFFICULTY* is read here
 so the difficulty-selection screen's choice reaches this game — the
 actual DECISION logic below is still the one Novice-tier heuristic
 regardless of tier; Standard/Expert distinct behavior is real future
-work (see GH #3), not implemented yet. Not pretending otherwise."
-  (when (and (/= (hearts-game-turn game) 0) (edm-engine:ai-ready-p *ai-clock* (raylib:get-time)))
-    (let* ((p (hearts-game-turn game))
-           (led-suit (when (hearts-game-current-trick game) (cdr (first (hearts-game-current-trick game)))))
-           (card (ai-choose-play (nth p (hearts-game-hands game)) led-suit (hearts-game-hearts-broken game)))
-           (trick-index (length (hearts-game-current-trick game))))
-      (multiple-value-bind (sx sy) (ai-origin-position p 1024.0 768.0)
-        (start-card-tween card sx sy (trick-card-x 1024.0 trick-index) (trick-card-y 768.0)))
-      (play-card game p card)
-      (when (null (hearts-game-current-trick game)) (clrhash *card-tweens*))
-      (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :hearts :cue :ai-card-played))
-      (edm-engine:ai-timer-reset *ai-clock* (raylib:get-time) +hearts-ai-think-seconds+))))
+work (see GH #3), not implemented yet. Not pretending otherwise.
+Guard/timer-reset bookkeeping now shared with Yahtzee's own identical
+shape via EDM-ENGINE:RUN-AI-TURN-WHEN-READY — only the decision+act
+callback below is Hearts' own."
+  (edm-engine:run-ai-turn-when-ready
+   *ai-clock* (raylib:get-time) (hearts-game-turn game) +hearts-ai-think-seconds+
+   (lambda ()
+     (let* ((p (hearts-game-turn game))
+            (led-suit (when (hearts-game-current-trick game) (cdr (first (hearts-game-current-trick game)))))
+            (card (ai-choose-play (nth p (hearts-game-hands game)) led-suit (hearts-game-hearts-broken game)))
+            (trick-index (length (hearts-game-current-trick game))))
+       (multiple-value-bind (sx sy) (ai-origin-position p 1024.0 768.0)
+         (start-card-tween card sx sy (trick-card-x 1024.0 trick-index) (trick-card-y 768.0)))
+       (play-card game p card)
+       (when (null (hearts-game-current-trick game)) (clrhash *card-tweens*))
+       (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :hearts :cue :ai-card-played))))))
 
 (defmethod edm-engine:game-title ((game hearts-game)) "Hearts")
 
