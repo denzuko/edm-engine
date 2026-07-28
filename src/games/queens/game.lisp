@@ -86,7 +86,7 @@ pre-migration pattern Hearts had)."
 
 (declaim (ftype (function (fixnum fixnum) fixnum) clamp-to-board))
 (defun clamp-to-board (value size)
-  (max 0 (min (1- size) value)))
+  (edm-engine:clamp-cursor value size))
 
 (defun move-cursor (game d-row d-col)
   "Moves GAME's cursor by (D-ROW, D-COL), clamped to the current board's

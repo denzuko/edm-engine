@@ -29,3 +29,11 @@ callers with an odd seat count shouldn't use :ACROSS."
 erroring on a MOD-by-zero — a real edge case any hand-cursor consumer
 needs handled, not Hearts-specific behavior being preserved."
   (if (plusp length) (mod (+ cursor delta) length) cursor))
+
+(defun clamp-cursor (value size)
+  "VALUE clamped to 0..SIZE-1 — stops at the edge rather than cycling
+to the opposite side, the genuinely different sibling to WRAP-CURSOR.
+Generalized from Queens' own CLAMP-TO-BOARD: a board/grid cursor
+should stop at the edge (running off a board makes no sense), while a
+hand cursor wraps (there's no 'edge' to a circular row of cards)."
+  (max 0 (min (1- size) value)))

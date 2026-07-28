@@ -38,3 +38,20 @@
 Hearts-specific behavior to preserve, but a real one any hand-cursor
 consumer needs handled."
   (is (= 0 (wrap-cursor 0 1 0))))
+
+;;; CLAMP-CURSOR — found via a fresh, complete re-pass over Queens' own
+;;; files (not the earlier, narrower audit): CLAMP-TO-BOARD was
+;;; flagged as a generic candidate in that first pass but never
+;;; actually lifted. Distinct semantics from WRAP-CURSOR (stops at the
+;;; edge rather than cycling to the opposite side) — a genuinely
+;;; different, equally generic 2D-grid-cursor primitive, not a
+;;; duplicate of the wrap one.
+
+(test clamp-cursor-stays-within-bounds-unmodified
+  (is (= 5 (clamp-cursor 5 10))))
+
+(test clamp-cursor-clamps-below-zero-to-zero
+  (is (= 0 (clamp-cursor -3 10))))
+
+(test clamp-cursor-clamps-above-the-max-index-to-the-max-index
+  (is (= 9 (clamp-cursor 12 10))))

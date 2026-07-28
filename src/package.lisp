@@ -21,7 +21,7 @@
    ;; game protocol
    #:game-title #:game-update #:game-render #:game-outcome #:game-score #:game-save-data
    ;; seats (generic multi-seat table primitives)
-   #:target-player #:wrap-cursor
+   #:target-player #:wrap-cursor #:clamp-cursor
    #:at-final-progression-p #:advance-or-terminate
    ;; orchestration (#64)
    #:deforchestration
