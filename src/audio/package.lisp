@@ -6,6 +6,7 @@
    #:note-frequency #:mix-samples #:render-pattern #:play-pattern #:pattern-sound
    #:render-pattern-async #:theme-playback-decision #:ensure-theme-sound-async #:ensure-theme-playing
    #:*pattern-cache* #:*pattern-pending*
-   #:defaudio-cues #:resolve-audio-cue #:process-audio-events #:*play-tone-function*))
+   #:defaudio-cues #:resolve-audio-cue #:process-audio-events #:*play-tone-function*
+   #:play-audio-cue-for-event))
 (in-package :edm-engine/audio)
 

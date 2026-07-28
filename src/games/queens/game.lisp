@@ -162,7 +162,7 @@ real consumers, not generalized from either alone."
                        (setf (queens-game-marked game) nil)
                        (setf (queens-game-cursor-row game) 0)
                        (setf (queens-game-cursor-col game) 0)))))
-      (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :queens :cue (or outcome :level-advanced)))
+      (edm-engine:bus-push edm-engine:*engine-bus* :semantic (list :game :queens :cue (or outcome :level-advanced)))
       (when outcome (setf (queens-game-status game) outcome)))))
 
 (defmethod edm-engine:game-outcome ((game queens-game))

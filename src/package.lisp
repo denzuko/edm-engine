@@ -12,6 +12,7 @@
    #:mHistCount #:mHistSum #:mHistMin #:mHistMax
    #:installGcHook #:recordGcMetrics #:dumpMetrics #:*metricsLogPath*
    #:bus #:make-bus #:bus-topic #:bus-push #:bus-pop #:bus-try-pop #:*engine-bus* #:btd
+   #:process-semantic-events
    ;; arena
    #:arena #:make-arena #:arena-spawn #:arena-despawn #:arena-alive-p
    #:arena-position #:arena-set-position #:arena-velocity #:arena-set-velocity
@@ -54,6 +55,7 @@
    #:grid-origin
    #:defstylesheet #:get-style #:resolve-style-role #:resolve-style-role-keyword #:*stylesheets*
    #:pulseVal #:ese #:clearEse #:*ese* #:spawnConfetti #:despawnExpired #:defeffect-state #:defeffect-sequence
+   #:defvfx-cue #:resolve-vfx-cue #:play-vfx-effect-for-event #:*vfx-cues*
    #:particle-effect #:make-particle-effect #:particle-effect-arena #:particle-effect-handle
    #:+die-sides+ #:roll-die #:roll-dice-n #:roll-percentile
    #:roll-animation #:make-roll-animation #:roll-animation-finished-p #:roll-animation-display-values

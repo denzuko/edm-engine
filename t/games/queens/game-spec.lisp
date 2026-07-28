@@ -297,27 +297,27 @@ correctly together."
       (is (equal '(:game :queens :cue :cell-cleared) event)))))
 
 (test maybe-advance-pushes-level-advanced-when-not-the-final-level
-  (loop while (nth-value 1 (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio)))
+  (loop while (nth-value 1 (edm-engine:bus-try-pop edm-engine:*engine-bus* :semantic)))
   (let* ((game (make-queens-game :level 1))
          (board (queens-game-board game))
          (last-event nil))
     (loop for row from 0
           for col in (queens-board-placement board)
           do (place-queen game row col))
-    (loop for (event received-p) = (multiple-value-list (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio))
+    (loop for (event received-p) = (multiple-value-list (edm-engine:bus-try-pop edm-engine:*engine-bus* :semantic))
           while received-p
           do (setf last-event event))
     (is (equal '(:game :queens :cue :level-advanced) last-event))))
 
 (test maybe-advance-pushes-won-on-the-final-level
-  (loop while (nth-value 1 (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio)))
+  (loop while (nth-value 1 (edm-engine:bus-try-pop edm-engine:*engine-bus* :semantic)))
   (let* ((game (make-queens-game :level 25))
          (board (queens-game-board game))
          (last-event nil))
     (loop for row from 0
           for col in (queens-board-placement board)
           do (place-queen game row col))
-    (loop for (event received-p) = (multiple-value-list (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio))
+    (loop for (event received-p) = (multiple-value-list (edm-engine:bus-try-pop edm-engine:*engine-bus* :semantic))
           while received-p
           do (setf last-event event))
     (is (equal '(:game :queens :cue :won) last-event))))

@@ -331,7 +331,10 @@ specific table — that's the whole point."
                         (arcade-render state 1024 768)
                         (process-save-game-events)
                         (process-load-game-events state)
-                        (edm-engine/audio:process-audio-events))
+                        (edm-engine/audio:process-audio-events)
+                        (process-semantic-events
+                         #'edm-engine/audio:play-audio-cue-for-event
+                         (lambda (event) (play-vfx-effect-for-event event 1024 768))))
                     (error (c)
                       (log-crash c)
                       (incf crash-count)

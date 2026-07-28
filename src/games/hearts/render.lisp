@@ -201,7 +201,7 @@ callback below is Hearts' own."
           (let ((outcome (edm-engine:advance-or-terminate
                           (hearts-round-outcome game) :playing (lambda () (advance-round game)))))
             (when outcome
-              (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :hearts :cue outcome))
+              (edm-engine:bus-push edm-engine:*engine-bus* :semantic (list :game :hearts :cue outcome))
               (setf (hearts-game-status game) outcome)))))))
     (t nil)))
 

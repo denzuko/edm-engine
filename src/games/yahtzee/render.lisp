@@ -64,6 +64,17 @@ each face value 1-6 — the standard arrangement on a real die.")
 (edm-engine:defeffect-sequence yahtzee-confetti-burst (arena origin-x origin-y now rng)
   (:confetti :count 80 :speed-range 180.0))
 
+;; The dispatch-layer registration PROCESS-SEMANTIC-EVENTS' own
+;; PLAY-VFX-EFFECT-FOR-EVENT reactor resolves against — closes over
+;; *CONFETTIARENA*/a fresh random-state so the reactor itself (called
+;; centrally from src/main.lisp, not per-game) stays a plain function
+;; of (WINDOW-WIDTH WINDOW-HEIGHT), matching every other registered
+;; effect's own shape.
+(edm-engine:defvfx-cue :yahtzee :won
+                        (lambda (window-width window-height)
+                          (yahtzee-confetti-burst *confettiArena* (/ window-width 2.0) (/ window-height 3.0)
+                                                   (raylib:get-time) (make-random-state t))))
+
 (defun ensure-theme-playing ()
   "#22: non-blocking. Lifted, generic implementation now in
 EDM-ENGINE/AUDIO — this was found byte-for-byte duplicated across all
@@ -181,21 +192,21 @@ callback below is Yahtzee's own."
          (maybe-run-ai-turn game))
      (when (game-over-p game)
        (let ((outcome (if (= 0 (winner-index game)) :won :lost)))
-         (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :yahtzee :cue outcome))
-         (setf (yahtzee-game-status game) outcome))
-       ;; #37's bus-driven VFX trigger, retrofit against a real
-       ;; consumer (this exact win transition) rather than built
-       ;; speculatively: game logic pushes a semantic event, never
-       ;; calls a draw/effect function directly — GAMEOVERLAYEFFECTS
-       ;; drains this on the render side, below.
-       (when (= 0 (winner-index game))
-         (edm-engine:bus-push edm-engine:*engine-bus* :vfx (list :yahtzee-won)))))
+         ;; #37/#64's own reconciliation (see docs/semantic-event-
+         ;; architecture-design.md): ONE :SEMANTIC event now drives
+         ;; both the audio cue and the VFX confetti burst via
+         ;; PROCESS-SEMANTIC-EVENTS' own fan-out — no longer a
+         ;; separate, hand-rolled :VFX push at this same call site for
+         ;; the same logical fact.
+         (edm-engine:bus-push edm-engine:*engine-bus* :semantic (list :game :yahtzee :cue outcome))
+         (setf (yahtzee-game-status game) outcome))))
     (t nil)))
 
 (defmethod edm-engine:game-render ((game yahtzee-game) window-width window-height)
   (draw-yahtzee-table game window-width window-height))
 
 (defmethod edm-engine:gameOverlayEffects ((game yahtzee-game) window-width window-height)
+  (declare (ignorable window-width window-height))
   ;; #46's confetti, #33's arena's first real adoption — a status
   ;; transition INTO :won specifically (not every frame while already
   ;; :won) is the trigger, matching how a real celebration moment
@@ -214,20 +225,20 @@ callback below is Yahtzee's own."
   ;; after the popup in ARCADE-RENDER, a true top layer.
   ;;
   ;; #37's bus-driven VFX processor, retrofit against this real
-  ;; consumer — drains the :vfx topic until empty (never blocks; a
-  ;; frame with nothing pending does zero work beyond the poll
-  ;; itself), matching the design doc's own stated shape: producers
-  ;; can be any thread, only the main/render thread (this runs from)
-  ;; touches the arena/GPU-bound state. Replaces the earlier status-
+  ;; consumer — spawning happens centrally now (PROCESS-SEMANTIC-
+  ;; EVENTS' own PLAY-VFX-EFFECT-FOR-EVENT reactor, src/main.lisp),
+  ;; matching the design doc's own stated shape: producers can be any
+  ;; thread, only the main/render thread (this runs from) touches the
+  ;; arena/GPU-bound state. Replaces the earlier status-
   ;; polling detection (*CONFETTIPREVSTATUS* tracking a transition
   ;; every frame) with the actual event GAME-UPDATE now pushes once,
   ;; at the moment it happens — not a per-frame poll for a change that
-  ;; already occurred.
-  (loop for (event received-p) = (multiple-value-list (edm-engine:bus-try-pop edm-engine:*engine-bus* :vfx))
-        while received-p
-        when (eq (first event) :yahtzee-won)
-          do (yahtzee-confetti-burst *confettiArena* (/ window-width 2.0) (/ window-height 3.0)
-                                      (raylib:get-time) (make-random-state t)))
+  ;; already occurred. Triggering itself now happens centrally, via
+  ;; EDM-ENGINE:PROCESS-SEMANTIC-EVENTS' own PLAY-VFX-EFFECT-FOR-EVENT
+  ;; reactor (src/main.lisp), resolving Yahtzee's own :WON cue
+  ;; (registered below, near YAHTZEE-CONFETTI-BURST's own definition)
+  ;; — this method's own job is drawing whatever's already live in the
+  ;; arena, every frame, regardless of what triggered it.
   (edm-engine:advance-tick *confettiArena* *confettiTick* (raylib:get-frame-time))
   (edm-engine:despawnExpired *confettiArena* (raylib:get-time) +confettiLifetime+)
   (dolist (h (edm-engine:arena-live-handles *confettiArena*))

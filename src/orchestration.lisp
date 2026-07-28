@@ -22,8 +22,14 @@
 GUARD-FN :EFFECT EFFECT-FN :BUS-EVENT EVENT-PLIST) in TRANSITIONS,
 defines TRY-STRUCT-NAME-NAME (GAME): if GAME's own PHASE accessor
 reads FROM and (GUARD-FN GAME) is true, calls (EFFECT-FN GAME), sets
-PHASE to TO, pushes EVENT-PLIST onto *ENGINE-BUS*'s :AUDIO topic, and
-returns T; otherwise does nothing and returns NIL.
+PHASE to TO, pushes EVENT-PLIST onto *ENGINE-BUS*'s :SEMANTIC topic,
+and returns T; otherwise does nothing and returns NIL.
+
+:SEMANTIC (not :AUDIO) per docs/semantic-event-architecture-design.md
+— a meaningful game-state transition is not inherently an audio-only
+concern; PROCESS-AUDIO-EVENTS is one of potentially several
+reactors PROCESS-SEMANTIC-EVENTS fans this topic out to, not this
+topic's sole reason to exist.
 
 STRUCT-NAME must have a PHASE slot with the conventional DEFSTRUCT
 accessor name STRUCT-NAME-PHASE (e.g. HEARTS-GAME-PHASE for
@@ -46,5 +52,5 @@ domain logic, only its declared phase."
                                      (funcall #',guard game))
                             (funcall #',effect game)
                             (setf (,phase-accessor game) ,to-phase)
-                            (bus-push *engine-bus* :audio (list ,@bus-event))
+                            (bus-push *engine-bus* :semantic (list ,@bus-event))
                             t))))))

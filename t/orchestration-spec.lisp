@@ -65,27 +65,67 @@ convention."
     (is (equal '(:effect-ran) (test-machine-effect-log m)))))
 
 (test try-transition-pushes-its-declared-bus-event-on-success
-  "Drains *ENGINE-BUS*'s own :AUDIO topic first — it's global, shared
+  "Drains *ENGINE-BUS*'s own :SEMANTIC topic first — it's global, shared
 state across the whole suite (matching DEFAUDIO-CUES' own convention
 of always using *ENGINE-BUS*, not a parameterized bus), so a prior
 test's own leftover event would otherwise make this test pass for the
 wrong reason."
-  (loop while (nth-value 1 (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio)))
+  (loop while (nth-value 1 (edm-engine:bus-try-pop edm-engine:*engine-bus* :semantic)))
   (let ((m (make-test-machine :phase :idle)))
     (try-test-machine-idle-to-running m)
     (multiple-value-bind (event received-p)
-        (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio)
+        (edm-engine:bus-try-pop edm-engine:*engine-bus* :semantic)
       (is-true received-p)
       (is (equal '(:game :test :cue :idle-to-running) event)))))
 
 (test try-transition-pushes-no-bus-event-when-it-does-not-fire
-  (loop while (nth-value 1 (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio)))
+  (loop while (nth-value 1 (edm-engine:bus-try-pop edm-engine:*engine-bus* :semantic)))
   (let ((m (make-test-machine :phase :running)))
     (try-test-machine-running-to-done m)
     (multiple-value-bind (event received-p)
-        (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio)
+        (edm-engine:bus-try-pop edm-engine:*engine-bus* :semantic)
       (declare (ignore event))
       (is-false received-p))))
+
+;;; PROCESS-SEMANTIC-EVENTS — the shared dispatch layer docs/vfx-
+;;; style-pipeline-design.md itself named as needed but left as the
+;;; one concretely unbuilt piece; reconciled with that doc's own
+;;; DEFEFFECT-SEQUENCE/DEFEFFECT-STATE machinery, not a replacement
+;;; for it (see docs/semantic-event-architecture-design.md). Found
+;;; necessary fixing a real bug caught before it shipped: *ENGINE-BUS*
+;;; is a queue (CHANL), not a broadcast — two independent consumers
+;;; each polling the same :SEMANTIC topic would compete for the same
+;;; events rather than both receiving them, confirmed directly by
+;;; testing the bus's own real behavior. The fix: ONE dispatcher
+;;; drains :SEMANTIC once per call and fans each event out to every
+;;; reactor function given, in order — reactors are plain (EVENT) ->
+;;; ignored functions, letting each caller close over whatever extra
+;;; context (window dimensions, etc.) its own reactor needs at the
+;;; actual call site.
+
+(test process-semantic-events-fans-one-event-out-to-every-reactor
+  (loop while (nth-value 1 (edm-engine:bus-try-pop edm-engine:*engine-bus* :semantic)))
+  (edm-engine:bus-push edm-engine:*engine-bus* :semantic (list :game :spec :cue :test-event))
+  (let ((reactor-a-saw nil) (reactor-b-saw nil))
+    (edm-engine:process-semantic-events
+     (lambda (event) (setf reactor-a-saw event))
+     (lambda (event) (setf reactor-b-saw event)))
+    (is (equal '(:game :spec :cue :test-event) reactor-a-saw))
+    (is (equal '(:game :spec :cue :test-event) reactor-b-saw))))
+
+(test process-semantic-events-drains-multiple-events-in-order
+  (loop while (nth-value 1 (edm-engine:bus-try-pop edm-engine:*engine-bus* :semantic)))
+  (edm-engine:bus-push edm-engine:*engine-bus* :semantic (list :game :spec :cue :first))
+  (edm-engine:bus-push edm-engine:*engine-bus* :semantic (list :game :spec :cue :second))
+  (let ((seen nil))
+    (edm-engine:process-semantic-events (lambda (event) (push (getf event :cue) seen)))
+    (is (equal '(:second :first) seen))))
+
+(test process-semantic-events-is-a-genuine-no-op-with-nothing-pending
+  (loop while (nth-value 1 (edm-engine:bus-try-pop edm-engine:*engine-bus* :semantic)))
+  (let ((called nil))
+    (edm-engine:process-semantic-events (lambda (event) (declare (ignore event)) (setf called t)))
+    (is (not called))))
 
 ;;; DEFOUTCOME — per direct correction: branching outcomes are exactly
 ;;; the case for a Datalog-flavored rule table, not a computed

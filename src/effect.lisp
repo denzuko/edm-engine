@@ -195,3 +195,42 @@ invent a different calling convention for its one real consumer."
          `(defun ,name (,arena-var ,origin-x-var ,origin-y-var ,now-var ,rng-var)
             (spawnConfetti ,arena-var ,origin-x-var ,origin-y-var ,count ,now-var ,rng-var
                             :speed-range ,speed-range)))))))
+
+;;; DEFVFX-CUE / PLAY-VFX-EFFECT-FOR-EVENT — the dispatch layer
+;;; docs/vfx-style-pipeline-design.md itself named as needed but left
+;;; as the one concretely unbuilt piece (see docs/semantic-event-
+;;; architecture-design.md's own reconciliation of the two designs).
+;;; Resolves WHICH already-built DEFEFFECT-SEQUENCE/DEFEFFECT-STATE
+;;; function to call for a given (GAME . CUE) — a real function,
+;;; usually a closure over a game's own arena/rng/origin, not compile-
+;;; time data like DEFAUDIO-CUES' own waveform/frequency/duration
+;;; triple, so this is a plain function registering one cue at a
+;;; time, not a macro batching several with compile-time validation.
+;;; Does NOT represent effects itself — that's PULSEVAL/ESE/
+;;; SPAWNCONFETTI/DEFEFFECT-STATE/DEFEFFECT-SEQUENCE's own job,
+;;; entirely unchanged by this.
+
+(defvar *vfx-cues* (make-hash-table :test 'equal)
+  "Maps (GAME . CUE) conses to effect functions (WINDOW-WIDTH
+WINDOW-HEIGHT) -> ignored, registered via DEFVFX-CUE.")
+
+(defun defvfx-cue (game cue effect-fn)
+  "Registers EFFECT-FN under (GAME . CUE) in *VFX-CUES*."
+  (setf (gethash (cons game cue) *vfx-cues*) effect-fn))
+
+(defun resolve-vfx-cue (game cue)
+  "Returns the registered effect function for (GAME . CUE), or NIL if
+never registered — a genuine NIL, not a signaled error, matching
+RESOLVE-AUDIO-CUE's own established convention."
+  (gethash (cons game cue) *vfx-cues*))
+
+(defun play-vfx-effect-for-event (event window-width window-height)
+  "A PROCESS-SEMANTIC-EVENTS reactor once partially applied by its
+caller with window dimensions (not known at reactor-registration
+time, only at the actual render-loop call site — see
+src/main.lisp). Resolves EVENT's own :GAME/:CUE pair against
+*VFX-CUES* and calls the registered effect function with WINDOW-WIDTH/
+WINDOW-HEIGHT if one exists — a genuine no-op otherwise, not a crash."
+  (let ((effect-fn (resolve-vfx-cue (getf event :game) (getf event :cue))))
+    (when effect-fn
+      (funcall effect-fn window-width window-height))))

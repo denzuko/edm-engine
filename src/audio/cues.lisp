@@ -47,13 +47,31 @@ than crashing over a missing or stale cue."
   (gethash (cons game cue) *audio-cues*))
 
 (defun process-audio-events ()
-  "Drains *ENGINE-BUS*'s :AUDIO topic, resolving each event's :GAME/
-:CUE pair and playing it via *PLAY-TONE-FUNCTION* — a genuine no-op
-for an unregistered cue, not a crash. Called from the main loop
-alongside PROCESS-SAVE-GAME-EVENTS/PROCESS-LOAD-GAME-EVENTS."
+  "Drains *ENGINE-BUS*'s own :AUDIO topic, resolving each event's
+:GAME/:CUE pair and playing it via *PLAY-TONE-FUNCTION* — a genuine
+no-op for an unregistered cue, not a crash. Called from the main loop
+alongside PROCESS-SAVE-GAME-EVENTS/PROCESS-LOAD-GAME-EVENTS.
+
+Does NOT also drain :SEMANTIC directly — *ENGINE-BUS* is a queue
+(CHANL), not a broadcast: two independent consumers polling the same
+topic would compete for the same events rather than both receiving
+them, confirmed directly before this file settled on its final shape.
+:SEMANTIC-sourced audio reactions go through PLAY-AUDIO-CUE-FOR-EVENT,
+called from EDM-ENGINE's own shared PROCESS-SEMANTIC-EVENTS dispatcher
+instead, which drains :SEMANTIC once and fans each event out to every
+registered reactor — see src/bus.lisp."
   (loop for (event received-p) = (multiple-value-list
                                    (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio))
         while received-p
         do (let ((cue (resolve-audio-cue (getf event :game) (getf event :cue))))
              (when (and cue *play-tone-function*)
                (apply *play-tone-function* cue)))))
+
+(defun play-audio-cue-for-event (event)
+  "A PROCESS-SEMANTIC-EVENTS reactor: resolves EVENT's own :GAME/:CUE
+pair against *AUDIO-CUES* and plays it if registered — the :SEMANTIC-
+topic sibling to PROCESS-AUDIO-EVENTS' own :AUDIO-topic handling,
+sharing the same resolution logic."
+  (let ((cue (resolve-audio-cue (getf event :game) (getf event :cue))))
+    (when (and cue *play-tone-function*)
+      (apply *play-tone-function* cue))))

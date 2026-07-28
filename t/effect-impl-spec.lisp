@@ -57,3 +57,33 @@ elapsed values for each, not just 'they differ'."
   (ese :key-b t 8.0d0)
   (is (= 1.0d0 (ese :key-a t 6.0d0)))
   (is (= 1.0d0 (ese :key-b t 9.0d0))))
+
+;;; DEFVFX-CUE / PLAY-VFX-EFFECT-FOR-EVENT — the dispatch layer
+;;; docs/vfx-style-pipeline-design.md itself named as needed but left
+;;; as the one concretely unbuilt piece (see docs/semantic-event-
+;;; architecture-design.md's own reconciliation). Resolves WHICH
+;;; already-built DEFEFFECT-SEQUENCE/DEFEFFECT-STATE function to call
+;;; for a given (GAME . CUE) — it doesn't represent effects itself,
+;;; that's PULSEVAL/ESE/SPAWNCONFETTI/DEFEFFECT-STATE/DEFEFFECT-
+;;; SEQUENCE's own job, unchanged.
+
+(test defvfx-cue-registers-a-cue-resolvable-by-game-and-cue-keyword
+  (let ((called nil))
+    (defvfx-cue :spec-game-a :celebrate (lambda (w h) (setf called (list w h))))
+    (funcall (resolve-vfx-cue :spec-game-a :celebrate) 100 200)
+    (is (equal '(100 200) called))))
+
+(test resolve-vfx-cue-returns-nil-for-an-unregistered-cue
+  "A genuine NIL, not a signaled error — PLAY-VFX-EFFECT-FOR-EVENT
+needs to treat a typo'd or stale cue as a harmless no-op, matching
+RESOLVE-AUDIO-CUE's own established convention."
+  (is (null (resolve-vfx-cue :spec-game-a :genuinely-never-registered))))
+
+(test play-vfx-effect-for-event-calls-the-resolved-effect-with-window-dimensions
+  (let ((called nil))
+    (defvfx-cue :spec-game-b :won (lambda (w h) (setf called (list w h))))
+    (play-vfx-effect-for-event (list :game :spec-game-b :cue :won) 1024 768)
+    (is (equal '(1024 768) called))))
+
+(test play-vfx-effect-for-event-is-a-genuine-no-op-for-an-unregistered-cue
+  (is (eq nil (play-vfx-effect-for-event (list :game :spec-game-b :cue :never-registered) 1024 768))))

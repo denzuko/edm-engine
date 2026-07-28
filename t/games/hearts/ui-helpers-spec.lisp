@@ -61,12 +61,12 @@ this just confirms the direction lookup used by EXECUTE-PASS agrees."
     (is (every (lambda (h) (= 13 (length h))) (hearts-game-hands game)))))
 
 (test try-hearts-game-pass-executed-pushes-its-own-bus-event
-  (loop while (nth-value 1 (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio)))
+  (loop while (nth-value 1 (edm-engine:bus-try-pop edm-engine:*engine-bus* :semantic)))
   (let ((game (make-hearts-game :seed 1 :round 1)))
     (setf (hearts-game-pass-selection game) (subseq (first (hearts-game-hands game)) 0 3))
     (try-hearts-game-pass-executed game)
     (multiple-value-bind (event received-p)
-        (edm-engine:bus-try-pop edm-engine:*engine-bus* :audio)
+        (edm-engine:bus-try-pop edm-engine:*engine-bus* :semantic)
       (is-true received-p)
       (is (equal '(:game :hearts :cue :pass-executed) event)))))
 

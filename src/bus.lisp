@@ -50,6 +50,36 @@ non-blocking poll that finds nothing pending isn't a real pop."
                  (float (btd topic) 1.0d0)))
     (values value received-p)))
 
+;;; PROCESS-SEMANTIC-EVENTS — the shared dispatch layer docs/vfx-
+;;; style-pipeline-design.md itself named as needed but left as the
+;;; one concretely unbuilt piece (see docs/semantic-event-
+;;; architecture-design.md for the full reconciliation with that
+;;; doc's own DEFEFFECT-SEQUENCE/DEFEFFECT-STATE machinery, which
+;;; this does not replace or duplicate). Found necessary fixing a real
+;;; bug caught before it shipped: *ENGINE-BUS* is a queue (this file's
+;;; own CHANL-based implementation above), not a broadcast — two
+;;; independent consumers each separately polling the same :SEMANTIC
+;;; topic would compete for the same events rather than both
+;;; receiving them, confirmed directly by testing the bus's own real
+;;; behavior (a second BUS-TRY-POP after a first genuinely returns
+;;; NIL, not the same value again). The fix: ONE dispatcher drains
+;;; :SEMANTIC once per call and fans each event out to every reactor
+;;; given, in order.
+
+(defun process-semantic-events (&rest reactors)
+  "Drains *ENGINE-BUS*'s own :SEMANTIC topic completely; for each
+event, calls every function in REACTORS with that event (a plist,
+e.g. (:GAME :HEARTS :CUE :WON)). REACTORS are plain (EVENT) ->
+ignored functions — a caller needing extra context beyond the event
+itself (window dimensions, an arena, etc.) closes over it when
+building its own reactor, e.g. (LAMBDA (EVENT) (PLAY-VFX-EFFECT-FOR-
+EVENT EVENT WINDOW-WIDTH WINDOW-HEIGHT)) — this dispatcher itself
+stays generic to any reactor shape."
+  (loop for (event received-p) = (multiple-value-list (bus-try-pop *engine-bus* :semantic))
+        while received-p
+        do (dolist (reactor reactors)
+             (funcall reactor event))))
+
 (defun btd (topic)
   "btd = bus topic depth. Pushed minus popped for TOPIC — 0 if neither
 counter exists yet (a topic never touched has depth 0, not a
