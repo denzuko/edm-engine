@@ -138,8 +138,8 @@ triggers are untested I/O."
     (case (try-submit game)
       (:submitted
        (ecase (wordle-game-status game)
-         (:won (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :wordle :cue :won)))
-         (:lost (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :wordle :cue :lost)))
+         (:won (edm-engine:bus-push edm-engine:*engine-bus* :semantic (list :game :wordle :cue :won)))
+         (:lost (edm-engine:bus-push edm-engine:*engine-bus* :semantic (list :game :wordle :cue :lost)))
          (:playing (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :wordle :cue :guess-submitted)))))
       (:rejected (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :wordle :cue :rejected)))))
   (tick-pulse game))
