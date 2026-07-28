@@ -48,8 +48,7 @@
 (defun grid-origin (window-width window-height rows cols)
   "Top-left of a ROWS x COLS tile grid, centered in a WINDOW-WIDTH x
 WINDOW-HEIGHT window."
-  (multiple-value-bind (x y) (wordle-cell-position 0 0 window-width window-height rows cols)
-    (values (float x 1.0) (float y 1.0))))
+  (edm-engine:grid-origin #'wordle-cell-position window-width window-height rows cols))
 
 (defun draw-tile (x y state letter &optional (highlight 0.0) (outcome nil) (elapsed 0.0))
   "Draws one tile. Color comes entirely from the fragment shader via the

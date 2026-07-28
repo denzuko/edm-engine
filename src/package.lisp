@@ -51,6 +51,7 @@
    #:effect-update #:effect-finished-p #:effect-apply
    #:tween-start-x #:tween-start-y #:tween-end-x #:tween-end-y #:tween-start-time #:tween-duration
    #:centered-row-positions #:wrap-text-lines #:centered-grid-positions #:center-within #:lrp #:anchor-at-edge #:deflayout
+   #:grid-origin
    #:defstylesheet #:get-style #:resolve-style-role #:resolve-style-role-keyword #:*stylesheets*
    #:pulseVal #:ese #:clearEse #:*ese* #:spawnConfetti #:despawnExpired #:defeffect-state #:defeffect-sequence
    #:particle-effect #:make-particle-effect #:particle-effect-arena #:particle-effect-handle

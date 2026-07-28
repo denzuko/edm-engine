@@ -205,3 +205,21 @@ offset, 0.0x62.0 content) — not an arbitrary example."
     (multiple-value-bind (ex ey) (anchor-at-edge :left 24.0 1024.0 768.0 0.0 62.0)
       (is (= ex x))
       (is (= ey y)))))
+
+;;; GRID-ORIGIN — found via a direct listing of every function across
+;;; all four games' own render.lisp files, sorted by name: Wordle's
+;;; own GRID-ORIGIN and Queens' own QUEENS-GRID-ORIGIN are the
+;;; identical shape (call the game's own DEFLAYOUT-produced position
+;;; function at row=0/col=0, float-coerce the result), independently
+;;; hand-written twice rather than shared once.
+
+(test grid-origin-calls-the-given-position-fn-at-zero-zero-and-floats-the-result
+  (deflayout test-grid-cell (row col window-width window-height size)
+    (:grid :rows size :cols size :item-w 60 :item-h 60
+           :gap-x edm-engine:+space-1+ :gap-y edm-engine:+space-1+
+           :container-w window-width :container-h window-height
+           :row-index row :col-index col))
+  (multiple-value-bind (gx gy) (grid-origin #'test-grid-cell 1024 768 8)
+    (multiple-value-bind (ox oy) (test-grid-cell 0 0 1024 768 8)
+      (is (= gx (float ox 1.0)))
+      (is (= gy (float oy 1.0))))))

@@ -192,3 +192,20 @@ one, checked as symbol identity before the value even exists."
            `(defun ,name ,lambda-list
               ,@(when ignorable-params `((declare (ignorable ,@ignorable-params))))
               (anchor-at-edge ,edge ,offset ,container-w ,container-h ,content-w ,content-h))))))))
+
+;;; GRID-ORIGIN — found via a direct listing of every function across
+;;; all four games' own render.lisp files: Wordle's own GRID-ORIGIN
+;;; and Queens' own QUEENS-GRID-ORIGIN independently hand-wrote the
+;;; identical shape (call a DEFLAYOUT-produced grid position function
+;;; at row=0/col=0, float-coerce the result) rather than sharing it
+;;; once. POSITION-FN is any :GRID-shaped DEFLAYOUT function; ARGS are
+;;; whatever it needs beyond ROW/COL (each game's own window-size/grid-
+;;; size parameters, which genuinely differ in shape between games —
+;;; not something this helper needs to know about).
+
+(defun grid-origin (position-fn &rest args)
+  "Top-left corner of a DEFLAYOUT :GRID's own (0, 0) cell — POSITION-FN
+is a function DEFLAYOUT produced, called here at row=0/col=0 with
+ARGS as its own remaining parameters."
+  (multiple-value-bind (x y) (apply position-fn 0 0 args)
+    (values (float x 1.0) (float y 1.0))))

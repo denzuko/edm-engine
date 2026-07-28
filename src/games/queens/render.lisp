@@ -41,13 +41,6 @@
   (edm-engine:ensure-shader +cell-shader-cache+ +cell-vertex-shader-source+ +cell-fragment-shader-source+
                              '("hue" "cursor" "time")))
 
-(defun ensure-cell-shader ()
-  (unless *cell-shader*
-    (setf *cell-shader* (raylib:load-shader-from-memory +cell-vertex-shader-source+ +cell-fragment-shader-source+))
-    (setf *cell-hue-loc* (raylib:get-shader-location *cell-shader* "hue"))
-    (setf *cell-cursor-loc* (raylib:get-shader-location *cell-shader* "cursor"))
-    (setf *cell-time-loc* (raylib:get-shader-location *cell-shader* "time"))))
-
 (defun draw-cell (x y region-id size cursor-p elapsed)
   (ecase edm-engine:*render-mode*
     (:gpu
@@ -85,8 +78,7 @@
 lookup — DRAW-QUEENS-BOARD's own loop still derives each cell's
 position from the origin plus a per-cell offset (below), matching how
 it already worked before this retrofit."
-  (multiple-value-bind (x y) (queens-cell-position 0 0 window-width window-height size)
-    (values (float x 1.0) (float y 1.0))))
+  (edm-engine:grid-origin #'queens-cell-position window-width window-height size))
 
 (defun draw-cell-glyph (game x y row col conflicts)
   "The 'miss-placed X' and queen states both need real visual feedback:
