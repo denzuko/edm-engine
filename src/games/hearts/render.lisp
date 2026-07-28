@@ -198,12 +198,11 @@ callback below is Hearts' own."
         (when (edm-engine:condition-true-p 'hearts-game 'round-over game)
           (score-round game)
           (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :hearts :cue :round-scored))
-          (let ((outcome (hearts-round-outcome game)))
-            (if (eq outcome :playing)
-                (advance-round game)
-                (progn
-                  (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :hearts :cue outcome))
-                  (setf (hearts-game-status game) outcome))))))))
+          (let ((outcome (edm-engine:advance-or-terminate
+                          (hearts-round-outcome game) :playing (lambda () (advance-round game)))))
+            (when outcome
+              (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :hearts :cue outcome))
+              (setf (hearts-game-status game) outcome)))))))
     (t nil)))
 
 (defmethod edm-engine:game-render ((game hearts-game) window-width window-height)

@@ -26,3 +26,16 @@ behind Queens' own 'is this the final level' check, generalized to
 any capped, numbered progression (a level, a bounded round count, a
 wave number)."
   (>= current max))
+
+(defun advance-or-terminate (outcome keep-going-value advance-fn)
+  "The shared shape behind Hearts' own round-over transition and
+Queens' own level-advance transition: if OUTCOME is KEEP-GOING-VALUE
+(the DEFOUTCOME sentinel meaning 'not done yet'), calls ADVANCE-FN
+(no arguments — each game's own callback resets whatever per-
+progression state a fresh level/round needs) and returns NIL.
+Otherwise returns OUTCOME itself as the terminal status, without
+calling ADVANCE-FN — the caller sets its own status field to
+whatever's returned when it isn't NIL."
+  (if (eq outcome keep-going-value)
+      (progn (funcall advance-fn) nil)
+      outcome))

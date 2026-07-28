@@ -21,3 +21,23 @@
   "Shouldn't matter if a caller somehow advances past the cap in one
 step — still true, not requiring an exact match."
   (is (at-final-progression-p 30 25)))
+
+;;; ADVANCE-OR-TERMINATE — found via the same full-audit treatment
+;;; #64's own pilot got, applied to the level/round progression shape
+;;; specifically: Hearts' own round-over transition and Queens' own
+;;; level-advance transition independently arrived at the identical
+;;; outer shape — a DEFOUTCOME call producing either a 'keep going'
+;;; sentinel or a terminal status, then either advancing (resetting
+;;; per-progression state via each game's own callback) or setting
+;;; the terminal status. Proven against both real consumers at once,
+;;; not generalized from one.
+
+(test advance-or-terminate-calls-advance-fn-and-returns-nil-when-keep-going
+  (let ((advanced nil))
+    (is (eq nil (advance-or-terminate :playing :playing (lambda () (setf advanced t)))))
+    (is-true advanced)))
+
+(test advance-or-terminate-does-not-call-advance-fn-when-terminal
+  (let ((advanced nil))
+    (is (eq :won (advance-or-terminate :won :playing (lambda () (setf advanced t)))))
+    (is (not advanced))))

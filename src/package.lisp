@@ -22,7 +22,7 @@
    #:game-title #:game-update #:game-render #:game-outcome #:game-score #:game-save-data
    ;; seats (generic multi-seat table primitives)
    #:target-player #:wrap-cursor
-   #:at-final-progression-p
+   #:at-final-progression-p #:advance-or-terminate
    ;; orchestration (#64)
    #:deforchestration
    ;; conditions (datalog-style corpus, #64's own reconciliation)

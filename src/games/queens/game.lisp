@@ -146,22 +146,24 @@ banks that level's score and either wins the whole campaign (level 25
 solved) or moves to a fresh board for the next level. The branching
 outcome itself is QUEENS-LEVEL-OUTCOME's own declarative decision
 table, matching Hearts' own HEARTS-ROUND-OUTCOME — not a computed
-callback hiding the branch."
+callback hiding the branch. ADVANCE-OR-TERMINATE is the same shared
+shape Hearts' own round-over transition uses — proven against both
+real consumers, not generalized from either alone."
   (when (queens-solved-p game)
     (incf (queens-game-score game) (queens-game-points-for-level (queens-game-level game)))
-    (let ((outcome (queens-level-outcome game)))
-      (if (eq outcome :won)
-          (setf (queens-game-status game) :won)
-          (progn
-            (incf (queens-game-level game))
-            (setf (queens-game-board game)
-                  (generate-board (queens-board-size-for-level (queens-game-level game))
-                                   (queens-seed-for-level (queens-game-level game))))
-            (setf (queens-game-placed game) nil)
-            (setf (queens-game-marked game) nil)
-            (setf (queens-game-cursor-row game) 0)
-            (setf (queens-game-cursor-col game) 0)))
-      (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :queens :cue outcome)))))
+    (let ((outcome (edm-engine:advance-or-terminate
+                     (queens-level-outcome game) :level-advanced
+                     (lambda ()
+                       (incf (queens-game-level game))
+                       (setf (queens-game-board game)
+                             (generate-board (queens-board-size-for-level (queens-game-level game))
+                                              (queens-seed-for-level (queens-game-level game))))
+                       (setf (queens-game-placed game) nil)
+                       (setf (queens-game-marked game) nil)
+                       (setf (queens-game-cursor-row game) 0)
+                       (setf (queens-game-cursor-col game) 0)))))
+      (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :queens :cue (or outcome :level-advanced)))
+      (when outcome (setf (queens-game-status game) outcome)))))
 
 (defmethod edm-engine:game-outcome ((game queens-game))
   (if (eq (queens-game-status game) :won) :win nil))
