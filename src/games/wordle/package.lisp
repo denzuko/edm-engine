@@ -8,6 +8,7 @@
    #:wordle-game-status #:wordle-game-input #:wordle-game-pulse
    #:push-letter #:pop-letter #:try-submit #:tick-pulse #:+pulse-max+
    #:valid-word-p #:invalid-word #:invalid-word-guess #:wordle-restore-game
+   #:wordle-won-p #:wordle-out-of-rows-p #:wordle-guess-outcome
    #:wordle-theme-pattern #:+wordle-theme-row-duration+))
 (in-package :edm-engine/games/wordle)
 

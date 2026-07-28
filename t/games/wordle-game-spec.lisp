@@ -7,6 +7,32 @@
     (is (= 1 (length (wordle-game-history game))))
     (is (equalp (evaluate-guess "STEED" "CRANE") (cdr (first (wordle-game-history game)))))))
 
+;;; WORDLE-WON-P/WORDLE-OUT-OF-ROWS-P/WORDLE-GUESS-OUTCOME — #65's own
+;;; audit found SUBMIT-GUESS's status branch (won/lost/still-playing)
+;;; was still a hand-rolled COND, the same un-migrated shape Hearts'
+;;; and Queens' own round/level-outcome transitions had before their
+;;; own DEFOUTCOME retrofits. Migrated here to the same pattern.
+
+(test wordle-won-p-true-when-the-latest-guess-matches-the-answer
+  (let ((game (make-wordle-game "CRANE")))
+    (setf (wordle-game-history game) (list (cons "CRANE" #(:correct :correct :correct :correct :correct))))
+    (is (wordle-won-p game))))
+
+(test wordle-won-p-false-when-the-latest-guess-does-not-match
+  (let ((game (make-wordle-game "CRANE")))
+    (setf (wordle-game-history game) (list (cons "STEED" #(:absent :absent :absent :absent :absent))))
+    (is (not (wordle-won-p game)))))
+
+(test wordle-out-of-rows-p-true-once-history-reaches-max-rows
+  (let ((game (make-wordle-game "CRANE" :max-rows 2)))
+    (setf (wordle-game-history game) (list (cons "STEED" #()) (cons "TRAIN" #())))
+    (is (wordle-out-of-rows-p game))))
+
+(test wordle-guess-outcome-still-playing-with-rows-remaining-and-no-win
+  (let ((game (make-wordle-game "CRANE" :max-rows 6)))
+    (setf (wordle-game-history game) (list (cons "STEED" #())))
+    (is (eq :playing (wordle-guess-outcome game)))))
+
 (test submit-guess-wins-when-guess-matches-answer
   (let ((game (make-wordle-game "CRANE")))
     (submit-guess game "STEED")

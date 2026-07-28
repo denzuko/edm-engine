@@ -26,13 +26,33 @@
 (defun valid-word-p (word corpus)
   (and (member (string-upcase word) corpus :test #'string=) t))
 
+(defun wordle-won-p (game)
+  (let ((latest (first (last (wordle-game-history game)))))
+    (and latest (string= (car latest) (wordle-game-answer game)))))
+
+(defun wordle-out-of-rows-p (game)
+  (>= (length (wordle-game-history game)) (wordle-game-max-rows game)))
+
+(edm-engine:defconditions wordle-game
+  (:condition won wordle-won-p)
+  (:condition out-of-rows wordle-out-of-rows-p))
+
+(edm-engine:defoutcome wordle-guess-outcome (game)
+  (:rule (edm-engine:condition-true-p 'wordle-game 'won game) :won)
+  (:rule (edm-engine:condition-true-p 'wordle-game 'out-of-rows game) :lost)
+  (:rule t :playing))
+
 (declaim (ftype (function (wordle-game string) wordle-game) submit-guess))
 (defun submit-guess (game guess)
   "Appends GUESS's feedback to GAME's history and updates GAME's status.
 Signals an error if GAME already finished, GUESS isn't the right
 length, or GUESS isn't in GAME's corpus (a real Wordle rule: guesses
 must be actual words, not just any letter combination) — this is the
-local BDD/e2e gate the CI pipeline doesn't need to re-check."
+local BDD/e2e gate the CI pipeline doesn't need to re-check. The
+branching status itself goes through WORDLE-GUESS-OUTCOME's own
+declarative decision table now — #65's own migration of the last
+un-migrated hand-rolled branch in this game, matching Hearts'/Queens'
+own DEFOUTCOME retrofits."
   (unless (eq (wordle-game-status game) :playing)
     (error "wordle-game already finished: ~A" (wordle-game-status game)))
   (unless (= (length guess) (length (wordle-game-answer game)))
@@ -43,10 +63,9 @@ local BDD/e2e gate the CI pipeline doesn't need to re-check."
          (feedback (evaluate-guess guess (wordle-game-answer game))))
     (setf (wordle-game-history game)
           (append (wordle-game-history game) (list (cons guess feedback))))
-    (cond ((string= guess (wordle-game-answer game))
-           (setf (wordle-game-status game) :won))
-          ((>= (length (wordle-game-history game)) (wordle-game-max-rows game))
-           (setf (wordle-game-status game) :lost))))
+    (let ((outcome (wordle-guess-outcome game)))
+      (unless (eq outcome :playing)
+        (setf (wordle-game-status game) outcome))))
   game)
 
 (declaim (ftype (function (list fixnum) list) pad-row))
