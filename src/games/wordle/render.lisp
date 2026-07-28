@@ -15,24 +15,17 @@
 (defparameter +tile-size+ 62.0)
 (defparameter +tile-gap+ 8.0)
 
-(defvar *tile-shader* nil)
-(defvar *tile-state-loc* nil)
-(defvar *tile-outcome-loc* nil)
-(defvar *tile-time-loc* nil)
-
-;; #24's fix — embedded at compile time, zero runtime file access.
 (defparameter +tile-vertex-shader-source+
   (edm-engine/asset-embed:embedFileString "src/shaders/wordle/tile.vs" :system :edm-engine/games/wordle))
 (defparameter +tile-fragment-shader-source+
   (edm-engine/asset-embed:embedFileString "src/shaders/wordle/tile.fs" :system :edm-engine/games/wordle))
 
+(defparameter +tile-shader-cache+ (edm-engine:make-shader-cache))
+
 (defun ensure-tile-shader ()
   "Lazily loads the tile shader pair."
-  (unless *tile-shader*
-    (setf *tile-shader* (raylib:load-shader-from-memory +tile-vertex-shader-source+ +tile-fragment-shader-source+))
-    (setf *tile-state-loc* (raylib:get-shader-location *tile-shader* "state"))
-    (setf *tile-outcome-loc* (raylib:get-shader-location *tile-shader* "outcome"))
-    (setf *tile-time-loc* (raylib:get-shader-location *tile-shader* "time"))))
+  (edm-engine:ensure-shader +tile-shader-cache+ +tile-vertex-shader-source+ +tile-fragment-shader-source+
+                             '("state" "outcome" "time")))
 
 (declaim (ftype (function ((member nil :win :lose :tie)) (integer 0 3)) outcome-code))
 (defun outcome-code (outcome)
@@ -69,12 +62,13 @@ win/lose/tie pulse — same shader, same mechanism as tile-state color.
 three found duplicates (alongside Queens' mark label and queen glyph),
 now composes CENTER-WITHIN."
   (ensure-tile-shader)
-  (raylib:begin-shader-mode *tile-shader*)
-  (edm-engine:set-shader-int *tile-shader* *tile-state-loc* (state-code state))
-  (edm-engine:set-shader-int *tile-shader* *tile-outcome-loc* (outcome-code outcome))
-  (edm-engine:set-shader-float *tile-shader* *tile-time-loc* elapsed)
-  (raylib:draw-rectangle (round x) (round y) (round +tile-size+) (round +tile-size+) :white)
-  (raylib:end-shader-mode)
+  (let ((shader (edm-engine:shader-cache-shader +tile-shader-cache+)))
+    (raylib:begin-shader-mode shader)
+    (edm-engine:set-shader-int shader (edm-engine:shader-loc +tile-shader-cache+ "state") (state-code state))
+    (edm-engine:set-shader-int shader (edm-engine:shader-loc +tile-shader-cache+ "outcome") (outcome-code outcome))
+    (edm-engine:set-shader-float shader (edm-engine:shader-loc +tile-shader-cache+ "time") elapsed)
+    (raylib:draw-rectangle (round x) (round y) (round +tile-size+) (round +tile-size+) :white)
+    (raylib:end-shader-mode))
   (when (plusp highlight)
     (raylib:draw-rectangle-lines-ex
      (raylib:make-rectangle :x (float x) :y (float y)

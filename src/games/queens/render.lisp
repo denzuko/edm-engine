@@ -21,11 +21,6 @@
 ;;; the GPU (TIME-driven sine), a real selection-glow effect the shader
 ;;; itself expresses, not a DRAW-RECTANGLE-LINES-EX overlay on top.
 
-(defvar *cell-shader* nil)
-(defvar *cell-hue-loc* nil)
-(defvar *cell-cursor-loc* nil)
-(defvar *cell-time-loc* nil)
-
 ;; #24's fix — embedded at compile time. PASSTHROUGH.VS's own source is
 ;; already embedded once in RENDER.LISP (+CHROME-VERTEX-SHADER-SOURCE+);
 ;; re-embedding it here rather than referencing that variable directly
@@ -40,6 +35,12 @@
   (edm-engine/asset-embed:embedFileString "src/shaders/queens/cell.fs"
                                            :system :edm-engine/games/queens))
 
+(defparameter +cell-shader-cache+ (edm-engine:make-shader-cache))
+
+(defun ensure-cell-shader ()
+  (edm-engine:ensure-shader +cell-shader-cache+ +cell-vertex-shader-source+ +cell-fragment-shader-source+
+                             '("hue" "cursor" "time")))
+
 (defun ensure-cell-shader ()
   (unless *cell-shader*
     (setf *cell-shader* (raylib:load-shader-from-memory +cell-vertex-shader-source+ +cell-fragment-shader-source+))
@@ -51,12 +52,13 @@
   (ecase edm-engine:*render-mode*
     (:gpu
      (ensure-cell-shader)
-     (raylib:begin-shader-mode *cell-shader*)
-     (edm-engine:set-shader-float *cell-shader* *cell-hue-loc* (/ (float region-id 1.0) size))
-     (edm-engine:set-shader-int *cell-shader* *cell-cursor-loc* (if cursor-p 1 0))
-     (edm-engine:set-shader-float *cell-shader* *cell-time-loc* elapsed)
-     (raylib:draw-rectangle (round x) (round y) (round +cell-size+) (round +cell-size+) :white)
-     (raylib:end-shader-mode))
+     (let ((shader (edm-engine:shader-cache-shader +cell-shader-cache+)))
+       (raylib:begin-shader-mode shader)
+       (edm-engine:set-shader-float shader (edm-engine:shader-loc +cell-shader-cache+ "hue") (/ (float region-id 1.0) size))
+       (edm-engine:set-shader-int shader (edm-engine:shader-loc +cell-shader-cache+ "cursor") (if cursor-p 1 0))
+       (edm-engine:set-shader-float shader (edm-engine:shader-loc +cell-shader-cache+ "time") elapsed)
+       (raylib:draw-rectangle (round x) (round y) (round +cell-size+) (round +cell-size+) :white)
+       (raylib:end-shader-mode)))
     (:cpu
      (let ((line-color (if (eq edm-engine:*theme-direction* :dark) :white :black)))
        (raylib:draw-rectangle-lines-ex

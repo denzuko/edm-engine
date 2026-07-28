@@ -61,6 +61,7 @@
    ;; render (defined in edm-engine/render; declared here so main can call them)
    #:open-window #:close-window #:window-should-close-p #:draw-arena
    #:draw-chrome-rect #:ensure-chrome-shader #:set-shader-int #:set-shader-float
+   #:shader-cache #:make-shader-cache #:shader-cache-shader #:ensure-shader #:shader-loc
    #:draw-glyph-text #:glyph-text-width #:ensure-glyph-font #:draw-wrapped-text
    #:draw-ui-text #:ui-text-width #:ensure-ui-font #:ensure-mono-font
    #:+space-1+ #:+space-2+ #:+space-3+ #:+space-4+ #:+space-5+ #:+space-6+ #:+space-7+ #:+space-8+

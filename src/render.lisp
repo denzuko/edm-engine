@@ -14,6 +14,36 @@
 
 (defun window-should-close-p () (raylib:window-should-close))
 
+;;; Shared lazy-shader-loading ceremony. Found genuinely, independently
+;;; duplicated three times — this file's own ENSURE-CHROME-SHADER,
+;;; Queens' ENSURE-CELL-SHADER, Wordle's ENSURE-TILE-SHADER — all the
+;;; identical shape: load a vertex/fragment pair once, cache each of
+;;; several named uniform locations. One definition now, reused by
+;;; all three (and whatever a future table's own shader needs).
+
+(defstruct shader-cache
+  shader
+  (uniform-locs (make-hash-table :test 'equal)))
+
+(defun ensure-shader (cache vertex-source fragment-source uniform-names)
+  "Lazily loads CACHE's own shader from VERTEX-SOURCE/FRAGMENT-SOURCE
+and caches each name in UNIFORM-NAMES (a list of strings) as its own
+uniform location, keyed by that same name — a no-op on any call after
+the first."
+  (unless (shader-cache-shader cache)
+    (setf (shader-cache-shader cache) (raylib:load-shader-from-memory vertex-source fragment-source))
+    (dolist (name uniform-names)
+      (setf (gethash name (shader-cache-uniform-locs cache))
+            (raylib:get-shader-location (shader-cache-shader cache) name))))
+  (shader-cache-shader cache))
+
+(defun shader-loc (cache name)
+  "CACHE's own cached location for uniform NAME — call ENSURE-SHADER
+first; this doesn't itself lazily load anything, matching how a
+caller already needs the shader object from ENSURE-SHADER's own
+return value before it can BEGIN-SHADER-MODE at all."
+  (gethash name (shader-cache-uniform-locs cache)))
+
 ;;; Shared shader-uniform-setting ceremony. Every shader in this engine
 ;;; (tile.fs's state/outcome/time, chrome.fs's hue/saturation/value/alpha,
 ;;; and whatever a future table's own shader pack needs) sets scalar
@@ -45,12 +75,6 @@ No logic here; ARENA state is produced entirely by ADVANCE-TICK."
 ;;; parameterized by hue/saturation/value/alpha uniforms derived from
 ;;; THEME-HSV — a theme swap is a new hue, not a new shader file.
 
-(defvar *chrome-shader* nil)
-(defvar *chrome-hue-loc* nil)
-(defvar *chrome-saturation-loc* nil)
-(defvar *chrome-value-loc* nil)
-(defvar *chrome-alpha-loc* nil)
-
 ;; #24's fix: embedded at compile time, not resolved via a runtime
 ;; file path — the actual reason PASSTHROUGH.VS is shared (one
 ;; embedded copy, not a same-named chrome.vs that never got
@@ -62,14 +86,11 @@ No logic here; ARENA state is produced entirely by ADVANCE-TICK."
 (defparameter +chrome-vertex-shader-source+
   (edm-engine/asset-embed:embedFileString "src/shaders/passthrough.vs"))
 
+(defparameter +chrome-shader-cache+ (make-shader-cache))
+
 (defun ensure-chrome-shader ()
-  (unless *chrome-shader*
-    (setf *chrome-shader*
-          (raylib:load-shader-from-memory +chrome-vertex-shader-source+ +chrome-fragment-shader-source+))
-    (setf *chrome-hue-loc* (raylib:get-shader-location *chrome-shader* "hue"))
-    (setf *chrome-saturation-loc* (raylib:get-shader-location *chrome-shader* "saturation"))
-    (setf *chrome-value-loc* (raylib:get-shader-location *chrome-shader* "value"))
-    (setf *chrome-alpha-loc* (raylib:get-shader-location *chrome-shader* "alpha"))))
+  (ensure-shader +chrome-shader-cache+ +chrome-vertex-shader-source+ +chrome-fragment-shader-source+
+                 '("hue" "saturation" "value" "alpha")))
 
 (declaim (ftype (function (fixnum fixnum fixnum fixnum (member :dim :panel :muted :accent :info)
                            &optional single-float)
@@ -87,13 +108,14 @@ GPU cost."
     (:gpu
      (ensure-chrome-shader)
      (multiple-value-bind (h s v) (theme-hsv role)
-       (raylib:begin-shader-mode *chrome-shader*)
-       (set-shader-float *chrome-shader* *chrome-hue-loc* h)
-       (set-shader-float *chrome-shader* *chrome-saturation-loc* s)
-       (set-shader-float *chrome-shader* *chrome-value-loc* v)
-       (set-shader-float *chrome-shader* *chrome-alpha-loc* alpha)
-       (raylib:draw-rectangle x y width height :white)
-       (raylib:end-shader-mode)))
+       (let ((shader (shader-cache-shader +chrome-shader-cache+)))
+         (raylib:begin-shader-mode shader)
+         (set-shader-float shader (shader-loc +chrome-shader-cache+ "hue") h)
+         (set-shader-float shader (shader-loc +chrome-shader-cache+ "saturation") s)
+         (set-shader-float shader (shader-loc +chrome-shader-cache+ "value") v)
+         (set-shader-float shader (shader-loc +chrome-shader-cache+ "alpha") alpha)
+         (raylib:draw-rectangle x y width height :white)
+         (raylib:end-shader-mode))))
     (:cpu
      (raylib:draw-rectangle-lines-ex
       (raylib:make-rectangle :x (float x 1.0) :y (float y 1.0) :width (float width 1.0) :height (float height 1.0))
