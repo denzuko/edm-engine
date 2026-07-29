@@ -20,7 +20,13 @@
 easing curve for UI motion."
   (- 1.0 (expt (- 1.0 tt) 3)))
 
-(defstruct tween
+;; #32's own real retrofit — DEFINE-TIMED-STRUCT proven against
+;; TWEEN's own already-correct START-TIME/DURATION fields (both were
+;; already DOUBLE-FLOAT; this doesn't change TWEEN's own behavior at
+;; all, only makes it impossible for a future edit to accidentally
+;; regress either field back to SINGLE-FLOAT without a macro-
+;; expansion-time error).
+(define-timed-struct tween (start-time duration)
   (start-x 0.0 :type single-float)
   (start-y 0.0 :type single-float)
   (end-x 0.0 :type single-float)

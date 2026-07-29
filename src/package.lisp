@@ -24,6 +24,7 @@
    ;; seats (generic multi-seat table primitives)
    #:target-player #:wrap-cursor #:clamp-cursor
    #:at-final-progression-p #:advance-or-terminate
+   #:define-timed-struct
    ;; orchestration (#64)
    #:deforchestration
    ;; conditions (datalog-style corpus, #64's own reconciliation)

@@ -37,7 +37,11 @@ reads as 100, not 0."
 ;;; position); a die roll needs discrete flickering face values for a
 ;;; short window, then the real result.
 
-(defstruct roll-animation
+;; #32's own third real retrofit — the exact struct #32's own title
+;; names directly (ROLL-ANIMATION's duration field). Both fields were
+;; already correctly DOUBLE-FLOAT; this guards against a future
+;; regression.
+(define-timed-struct roll-animation (start-time duration)
   (start-time 0.0d0 :type double-float)
   (duration 0.4d0 :type double-float)
   (final-values nil :type list))

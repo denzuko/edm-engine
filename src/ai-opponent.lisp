@@ -7,7 +7,10 @@
 ;;; justifies pulling it out now rather than letting Yahtzee reinvent
 ;;; it — same discipline as the cards/shader/tween extractions.
 
-(defstruct ai-timer
+;; #32's own second real retrofit — NEXT-ACTION-TIME was already
+;; correctly DOUBLE-FLOAT; this only guards against a future
+;; regression back to SINGLE-FLOAT.
+(define-timed-struct ai-timer (next-action-time)
   (next-action-time 0.0d0 :type double-float))
 
 (declaim (ftype (function (ai-timer double-float) boolean) ai-ready-p))
