@@ -11,13 +11,22 @@
 ;;; the tables list), and word-wrapping text to a width budget instead
 ;;; of letting it run off the edge of whatever it's drawn in.
 
-(declaim (ftype (function (fixnum fixnum fixnum fixnum) list) centered-row-positions))
+;; Per docs/layout-float-consistency-and-gpu-tweens-design.md: unified
+;; on SINGLE-FLOAT, matching ANCHOR-AT-EDGE, the arena's own storage
+;; (src/arena.lisp's pos-x/pos-y are already SINGLE-FLOAT sf-vectors),
+;; and raylib itself — FIXNUM bought nothing here, every caller still
+;; needed to reach raylib as a float eventually, so the old convention
+;; just moved the coercion to every call site instead of fixing it
+;; once at the source. The same boundary-mismatch bug class #32's own
+;; DEFINE-TIMED-STRUCT prevents at the time-value layer, here at the
+;; coordinate-type layer.
+(declaim (ftype (function (fixnum single-float single-float single-float) list) centered-row-positions))
 (defun centered-row-positions (n item-size gap total-size)
   "N evenly-spaced ITEM-SIZE items with GAP between them, centered
 within TOTAL-SIZE — the starting position of each item, left to right."
   (when (plusp n)
     (let* ((content-size (+ (* n item-size) (* (1- n) gap)))
-           (start (round (/ (- total-size content-size) 2.0))))
+           (start (/ (- total-size content-size) 2.0)))
       (loop for i from 0 below n collect (+ start (* i (+ item-size gap)))))))
 
 ;; #36's first real retrofit — grounded against Queens, which had the
@@ -25,7 +34,7 @@ within TOTAL-SIZE — the starting position of each item, left to right."
 ;; found CENTER-WITHIN instances). Both primitives match the design
 ;; doc's own sketch exactly, not reinvented at implementation time.
 
-(declaim (ftype (function (fixnum fixnum fixnum fixnum fixnum fixnum fixnum fixnum)
+(declaim (ftype (function (fixnum fixnum single-float single-float single-float single-float single-float single-float)
                           (values list list))
                 centered-grid-positions))
 (defun centered-grid-positions (rows cols item-w item-h gap-x gap-y container-w container-h)
@@ -37,7 +46,7 @@ has COLS entries (each column's X) — a cell at (ROW, COL) sits at
   (values (centered-row-positions rows item-h gap-y container-h)
           (centered-row-positions cols item-w gap-x container-w)))
 
-(declaim (ftype (function (fixnum fixnum fixnum fixnum) fixnum) lrp))
+(declaim (ftype (function (single-float fixnum single-float single-float) single-float) lrp))
 (defun lrp (base-offset index item-size gap)
   "LRP = linear row position. BASE-OFFSET + INDEX * (ITEM-SIZE + GAP) —
 a fixed-start row, the non-centered sibling of CENTERED-ROW-POSITIONS.
@@ -49,7 +58,8 @@ every frame per hand/dice-row item, a genuinely hot, frequently-
 repeated call site."
   (+ base-offset (* index (+ item-size gap))))
 
-(declaim (ftype (function (fixnum fixnum fixnum fixnum fixnum fixnum) (values fixnum fixnum))
+(declaim (ftype (function (single-float single-float single-float single-float single-float single-float)
+                          (values single-float single-float))
                 center-within))
 (defun center-within (container-x container-y container-w container-h content-w content-h)
   "Top-left position to center a CONTENT-W x CONTENT-H element within a
@@ -57,8 +67,8 @@ CONTAINER-W x CONTAINER-H region at CONTAINER-X,CONTAINER-Y — the
 formula that appeared three separate, byte-for-byte-identical times
 across Queens' mark label, Queens' queen glyph, and Wordle's letter
 tile before this retrofit, named once."
-  (values (round (+ container-x (/ (- container-w content-w) 2.0)))
-          (round (+ container-y (/ (- container-h content-h) 2.0)))))
+  (values (+ container-x (/ (- container-w content-w) 2.0))
+          (+ container-y (/ (- container-h content-h) 2.0))))
 
 ;; #36's own open question resolved: yes, general — Hearts' three
 ;; AI-opponent positions (a fixed offset from one edge, centered on
@@ -104,9 +114,9 @@ never split mid-word."
 ;;; pure integer/float data, no raylib dependency, needed here at
 ;;; macro-expansion time by DEFLAYOUT below.
 
-(defparameter +space-1+ 4) (defparameter +space-2+ 8) (defparameter +space-3+ 12)
-(defparameter +space-4+ 16) (defparameter +space-5+ 24) (defparameter +space-6+ 32)
-(defparameter +space-7+ 48) (defparameter +space-8+ 64)
+(defparameter +space-1+ 4.0) (defparameter +space-2+ 8.0) (defparameter +space-3+ 12.0)
+(defparameter +space-4+ 16.0) (defparameter +space-5+ 24.0) (defparameter +space-6+ 32.0)
+(defparameter +space-7+ 48.0) (defparameter +space-8+ 64.0)
 (defparameter +radius-sm+ 0.03) (defparameter +radius-md+ 0.06) (defparameter +radius-lg+ 0.1)
 
 ;;; DEFLAYOUT — #36's own remaining, central scope: declaring a
@@ -128,13 +138,15 @@ equal the same number.")
 
 (defun check-deflayout-gap (name gap)
   "DEFLAYOUT's own real enforcement, shared across every shape that
-takes a gap-style argument: GAP must be the literal 0 (the absence of
-spacing, not a spacing value, exempted from the scale check for
-exactly that reason) or one of the +SPACE-N+ symbols — a bare non-zero
-literal like 55 is a real macro-expansion-time error, checked as
-symbol identity before GAP's value even exists, not a runtime check
-against the resolved integer."
-  (unless (or (eql gap 0) (member gap +space-scale-symbols+))
+takes a gap-style argument: GAP must be zero (the absence of spacing,
+not a spacing value, exempted from the scale check for exactly that
+reason — accepted as either the literal 0 or 0.0, since GAP is
+SINGLE-FLOAT-typed downstream but a caller may write either literal
+form) or one of the +SPACE-N+ symbols — a bare non-zero literal like
+55 is a real macro-expansion-time error, checked as symbol identity
+before GAP's value even exists, not a runtime check against the
+resolved value."
+  (unless (or (and (numberp gap) (zerop gap)) (member gap +space-scale-symbols+))
     (error "DEFLAYOUT ~A: gap arguments must be 0 or one of ~A, got ~S (a bare non-zero literal is not a spacing scale reference)"
            name +space-scale-symbols+ gap)))
 

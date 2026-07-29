@@ -47,7 +47,7 @@ never tweened, e.g. a hand card that hasn't moved)."
 ;; (this session's own earlier retrofit); now declared as data rather
 ;; than a bare function body, the macro's own first real consumer.
 (edm-engine:deflayout hand-card-x (i)
-  (:row :anchor 20 :item-size 55 :gap 0 :index i))
+  (:row :anchor 20.0 :item-size 55.0 :gap 0.0 :index i))
 (defun hand-card-y (window-height) (- window-height 90))
 
 (defun trick-card-x (window-width i) (+ (/ window-width 2.0) (* i 55) -110))

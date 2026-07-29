@@ -111,7 +111,7 @@ four games, only the theme-pattern/duration/topic varying."
 ;; loop below; now declared as data, matching Hearts' HAND-CARD-X
 ;; retrofit.
 (edm-engine:deflayout dice-row-x (i)
-  (:row :anchor 20 :item-size 70 :gap 0 :index i))
+  (:row :anchor 20.0 :item-size 70.0 :gap 0.0 :index i))
 
 (defun draw-yahtzee-table (game window-width window-height)
   (declare (ignore window-width))

@@ -110,8 +110,8 @@ driver's done."
            (progn
              (setf state (edm-engine:make-arcade-state))
              (loop until (or (edm-engine:window-should-close-p) should-stop)
-                   do (edm-engine:arcade-update state 1024 768)
-                      (edm-engine:arcade-render state 1024 768)))
+                   do (edm-engine:arcade-update state 1024.0 768.0)
+                      (edm-engine:arcade-render state 1024.0 768.0)))
         (edm-engine:close-window))
       (bordeaux-threads:join-thread driver-thread))))
 

@@ -191,7 +191,7 @@ actual tokens — see src/palette.lisp), not a flat CLEAR-BACKGROUND."
       (:difficulty
        (draw-section-title (format nil "~A: CHOOSE OPPONENT SKILL"
                                     (game-entry-title (arcade-state-pending-entry state))))
-       (let* ((card-w 180) (card-h 200) (gap 30) (y 130)
+       (let* ((card-w 180.0) (card-h 200.0) (gap 30.0) (y 130.0)
               (xs (centered-row-positions 3 card-w gap window-width)))
          (loop for tier in +ai-difficulty-tiers+
                for x in xs
@@ -327,14 +327,14 @@ specific table — that's the whole point."
          (loop until (window-should-close-p)
                do (handler-case
                       (wTmr "render.frame_time"
-                        (arcade-update state 1024 768)
-                        (arcade-render state 1024 768)
+                        (arcade-update state 1024.0 768.0)
+                        (arcade-render state 1024.0 768.0)
                         (process-save-game-events)
                         (process-load-game-events state)
                         (edm-engine/audio:process-audio-events)
                         (process-semantic-events
                          #'edm-engine/audio:play-audio-cue-for-event
-                         (lambda (event) (play-vfx-effect-for-event event 1024 768))))
+                         (lambda (event) (play-vfx-effect-for-event event 1024.0 768.0))))
                     (error (c)
                       (log-crash c)
                       (incf crash-count)

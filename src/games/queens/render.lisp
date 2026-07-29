@@ -68,7 +68,7 @@
 ;; explicitly here rather than the untyped float literal it's always
 ;; equaled.
 (edm-engine:deflayout queens-cell-position (row col window-width window-height size)
-  (:grid :rows size :cols size :item-w (round +cell-size+) :item-h (round +cell-size+)
+  (:grid :rows size :cols size :item-w +cell-size+ :item-h +cell-size+
          :gap-x edm-engine:+space-1+ :gap-y edm-engine:+space-1+
          :container-w window-width :container-h window-height
          :row-index row :col-index col))
@@ -93,14 +93,14 @@ letter tile also duplicated) — now composes CENTER-WITHIN."
     (:empty nil)
     (:marked
      (let* ((label "X") (font-size 26) (tw (raylib:measure-text label font-size)))
-       (multiple-value-bind (tx ty) (edm-engine:center-within (round x) (round y) (round +cell-size+) (round +cell-size+) tw font-size)
-         (raylib:draw-text label tx ty font-size (edm-engine:rgb-color (edm-engine:theme-color :muted))))))
+       (multiple-value-bind (tx ty) (edm-engine:center-within x y +cell-size+ +cell-size+ (float tw 1.0) (float font-size 1.0))
+         (raylib:draw-text label (round tx) (round ty) font-size (edm-engine:rgb-color (edm-engine:theme-color :muted))))))
     (:queen
      (let* ((font-size 30)
             (tw (edm-engine:glyph-text-width +queen-glyph+ font-size))
             (conflicted (member (cons row col) conflicts :test #'equal)))
-       (multiple-value-bind (tx ty) (edm-engine:center-within (round x) (round y) (round +cell-size+) (round +cell-size+) tw font-size)
-         (edm-engine:draw-glyph-text +queen-glyph+ tx ty font-size
+       (multiple-value-bind (tx ty) (edm-engine:center-within x y +cell-size+ +cell-size+ (float tw 1.0) (float font-size 1.0))
+         (edm-engine:draw-glyph-text +queen-glyph+ (round tx) (round ty) font-size
                                       (if conflicted (edm-engine:rgb-color edm-engine:+color-red+) :black)))))))
 
 ;; #37's DEFEFFECT-STATE — Queens' cursor pulse is its own real, named

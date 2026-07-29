@@ -40,7 +40,7 @@
 ;; retrofit. +TILE-GAP+'s own value (8.0) genuinely IS +SPACE-2+ (8)
 ;; — checked directly, not assumed — used explicitly here.
 (edm-engine:deflayout wordle-cell-position (row col window-width window-height rows cols)
-  (:grid :rows rows :cols cols :item-w (round +tile-size+) :item-h (round +tile-size+)
+  (:grid :rows rows :cols cols :item-w +tile-size+ :item-h +tile-size+
          :gap-x edm-engine:+space-2+ :gap-y edm-engine:+space-2+
          :container-w window-width :container-h window-height
          :row-index row :col-index col))
@@ -77,8 +77,8 @@ now composes CENTER-WITHIN."
     (let* ((s (string letter))
            (font-size 32)
            (tw (raylib:measure-text s font-size)))
-      (multiple-value-bind (tx ty) (edm-engine:center-within (round x) (round y) (round +tile-size+) (round +tile-size+) tw font-size)
-        (raylib:draw-text s tx ty font-size :white)))))
+      (multiple-value-bind (tx ty) (edm-engine:center-within x y +tile-size+ +tile-size+ (float tw 1.0) (float font-size 1.0))
+        (raylib:draw-text s (round tx) (round ty) font-size :white)))))
 
 (defun draw-grid (window-width window-height rows-data
                    &key pulse-row pulse-col (pulse-fraction 0.0) outcome (elapsed 0.0))
