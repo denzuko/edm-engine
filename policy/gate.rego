@@ -176,3 +176,22 @@ deny contains msg if {
 	not contains(src, "unwind-protect")
 	msg := sprintf("%s mutates READTABLE-CASE via SETF without a nearby UNWIND-PROTECT to restore it — a real, found leak (see tools/build-shaders.lisp's own fix)", [path])
 }
+
+# #32: the recurring single/double-float time-comparison bug class,
+# found three separate times by manual audit (AI-TIMER-RESET's own
+# delay field, ROLL-ANIMATION's own duration field, TWEEN's own
+# duration field, #31) before DEFINE-TIMED-STRUCT (src/timed-
+# struct.lisp) made the mistake impossible to write going forward
+# through that macro specifically — this is the complementary,
+# coarser syntactic layer #32's own issue names directly, catching a
+# plain DEFSTRUCT slot that bypasses DEFINE-TIMED-STRUCT entirely.
+# Name-based, not real type-flow analysis, per the issue's own stated
+# scope ("coarse... but catches exactly this recurring shape").
+deny contains msg if {
+	some path
+	src := input.files[path]
+	startswith(path, "src/")
+	is_lisp_source(path)
+	regex.match(`\((duration|delay|[a-z0-9-]*-time)\s+[0-9.]+d?0?\s+:type\s+single-float\)`, lower(src))
+	msg := sprintf("%s declares a time-named slot (duration/delay/*-time) as :TYPE SINGLE-FLOAT — compared against RAYLIB:GET-TIME's own DOUBLE-FLOAT, this silently fails boundary comparisons (#32, the same bug class found three times by manual audit). Use DEFINE-TIMED-STRUCT (src/timed-struct.lisp) instead of a plain DEFSTRUCT for structs with time-valued slots.", [path])
+}
