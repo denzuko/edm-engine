@@ -57,7 +57,7 @@ isn't worth chasing for a thumbnail)."
               (raylib:load-texture (namestring path))))))
   *save-slot-preview-texture*)
 
-(defun arcade-update (state)
+(defun arcade-update (state window-width window-height)
   (ecase (arcade-state-mode state)
     (:title
      (ensure-title-theme-playing)
@@ -118,7 +118,7 @@ isn't worth chasing for a thumbnail)."
               (arcade-popup-confirm state))))
          ((game-outcome game) (arcade-open-popup state))
          ((raylib:is-key-pressed :key-escape) (arcade-open-popup state))
-         (t (game-update game)))))))
+         (t (game-update game window-width window-height)))))))
 
 (defun draw-popup-menu (state window-width window-height)
   "Generic pause/outcome menu — New Game / Save State / Return to Tables,
@@ -327,7 +327,7 @@ specific table — that's the whole point."
          (loop until (window-should-close-p)
                do (handler-case
                       (wTmr "render.frame_time"
-                        (arcade-update state)
+                        (arcade-update state 1024 768)
                         (arcade-render state 1024 768)
                         (process-save-game-events)
                         (process-load-game-events state)

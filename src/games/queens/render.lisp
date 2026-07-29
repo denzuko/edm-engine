@@ -154,7 +154,8 @@ four games, only the theme-pattern/duration/topic varying."
          *theme-sound* (queens-theme-pattern) +queens-theme-row-duration+
          edm-engine:*engine-bus* :queens-theme)))
 
-(defmethod edm-engine:game-update ((game queens-game))
+(defmethod edm-engine:game-update ((game queens-game) window-width window-height)
+  (declare (ignore window-width window-height))
   (ensure-theme-playing)
   (let ((before-row (queens-game-cursor-row game))
         (before-col (queens-game-cursor-col game)))

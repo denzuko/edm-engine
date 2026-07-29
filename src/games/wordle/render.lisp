@@ -118,11 +118,12 @@ four games, only the theme-pattern/duration/topic varying."
          *theme-sound* (wordle-theme-pattern) +wordle-theme-row-duration+
          edm-engine:*engine-bus* :wordle-theme)))
 
-(defmethod edm-engine:game-update ((game wordle-game))
+(defmethod edm-engine:game-update ((game wordle-game) window-width window-height)
   "Reads keyboard input and drives GAME's incremental-typing state
 machine. The typing logic itself (PUSH-LETTER/POP-LETTER/TRY-SUBMIT) is
 pure and FiveAM-tested; only these raylib reads and the generated-tone
 triggers are untested I/O."
+  (declare (ignore window-width window-height))
   (ensure-theme-playing)
   (loop for code = (raylib:get-char-pressed)
         while (plusp code)

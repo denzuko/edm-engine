@@ -135,7 +135,7 @@ four games, only the theme-pattern/duration/topic varying."
 
 (defparameter +hearts-ai-think-seconds+ 0.8d0)
 
-(defun maybe-run-ai-turn (game)
+(defun maybe-run-ai-turn (game window-width window-height)
   "AI players act after a short pause (>= +HEARTS-AI-THINK-SECONDS+, via
 the shared EDM-ENGINE:AI-TIMER) so a human can actually see what's
 happening, not an instant flurry of plays. *AI-DIFFICULTY* is read here
@@ -145,7 +145,10 @@ regardless of tier; Standard/Expert distinct behavior is real future
 work (see GH #3), not implemented yet. Not pretending otherwise.
 Guard/timer-reset bookkeeping now shared with Yahtzee's own identical
 shape via EDM-ENGINE:RUN-AI-TURN-WHEN-READY — only the decision+act
-callback below is Hearts' own."
+callback below is Hearts' own. WINDOW-WIDTH/WINDOW-HEIGHT are GAME-
+UPDATE's own real parameters now (#19) — not the 1024.0/768.0 literals
+this used to hardcode, which silently went stale once already the
+last time the window size actually changed."
   (edm-engine:run-ai-turn-when-ready
    *ai-clock* (raylib:get-time) (hearts-game-turn game) +hearts-ai-think-seconds+
    (lambda ()
@@ -153,15 +156,16 @@ callback below is Hearts' own."
             (led-suit (when (hearts-game-current-trick game) (cdr (first (hearts-game-current-trick game)))))
             (card (ai-choose-play (nth p (hearts-game-hands game)) led-suit (hearts-game-hearts-broken game)))
             (trick-index (length (hearts-game-current-trick game))))
-       (multiple-value-bind (sx sy) (ai-origin-position p 1024.0 768.0)
-         (start-card-tween card sx sy (trick-card-x 1024.0 trick-index) (trick-card-y 768.0)))
+       (multiple-value-bind (sx sy) (ai-origin-position p (float window-width 1.0) (float window-height 1.0))
+         (start-card-tween card sx sy (trick-card-x (float window-width 1.0) trick-index)
+                            (trick-card-y (float window-height 1.0))))
        (play-card game p card)
        (when (null (hearts-game-current-trick game)) (clrhash *card-tweens*))
        (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :hearts :cue :ai-card-played))))))
 
 (defmethod edm-engine:game-title ((game hearts-game)) "Hearts")
 
-(defmethod edm-engine:game-update ((game hearts-game))
+(defmethod edm-engine:game-update ((game hearts-game) window-width window-height)
   (ensure-theme-playing)
   (case (hearts-game-status game)
     (:playing
@@ -186,15 +190,15 @@ callback below is Hearts' own."
                        (legal (legal-plays hand :led-suit led-suit :hearts-broken (hearts-game-hearts-broken game)
                                                  :leading-p (null (hearts-game-current-trick game)))))
                   (when (member card legal :test #'equal)
-                    (start-card-tween card (hand-card-x (hearts-game-cursor game)) (hand-card-y 768.0)
-                                       (trick-card-x 1024.0 (length (hearts-game-current-trick game)))
-                                       (trick-card-y 768.0))
+                    (start-card-tween card (hand-card-x (hearts-game-cursor game)) (hand-card-y (float window-height 1.0))
+                                       (trick-card-x (float window-width 1.0) (length (hearts-game-current-trick game)))
+                                       (trick-card-y (float window-height 1.0)))
                     (play-card game 0 card)
                     (when (null (hearts-game-current-trick game)) (clrhash *card-tweens*))
                     (setf (hearts-game-cursor game) 0)
                     (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :hearts :cue :player-card-played))
                     (edm-engine:ai-timer-reset *ai-clock* (raylib:get-time) +hearts-ai-think-seconds+)))))
-            (maybe-run-ai-turn game))
+            (maybe-run-ai-turn game window-width window-height))
         (when (edm-engine:condition-true-p 'hearts-game 'round-over game)
           (score-round game)
           (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :hearts :cue :round-scored))

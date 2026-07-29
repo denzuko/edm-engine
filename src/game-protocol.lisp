@@ -4,11 +4,17 @@
 (defgeneric game-title (game)
   (:documentation "Display name shown in the arcade menu."))
 
-(defgeneric game-update (game)
+(defgeneric game-update (game window-width window-height)
   (:documentation "Called once per frame while GAME is active. Reads
 input and mutates GAME. Pure state transitions belong on the game's own
 struct/functions, tested by FiveAM; only the raylib input reads here are
-untested I/O, same boundary as RENDER.LISP."))
+untested I/O, same boundary as RENDER.LISP.
+
+WINDOW-WIDTH/WINDOW-HEIGHT match GAME-RENDER's own parameters exactly
+(#19) — real window dimensions for any size-dependent update-side logic
+(Hearts' own card-tween start/end coordinates, the concrete case that
+found this gap) rather than a hardcoded literal that silently goes
+stale the next time the window size changes, as it already did once."))
 
 (defgeneric game-render (game window-width window-height)
   (:documentation "Called once per frame after GAME-UPDATE. Draws GAME's

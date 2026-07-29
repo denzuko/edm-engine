@@ -163,7 +163,8 @@ callback below is Yahtzee's own."
           (commit-score game cat)
           (edm-engine:bus-push edm-engine:*engine-bus* :audio (list :game :yahtzee :cue :category-scored))))))))
 
-(defmethod edm-engine:game-update ((game yahtzee-game))
+(defmethod edm-engine:game-update ((game yahtzee-game) window-width window-height)
+  (declare (ignore window-width window-height))
   (ensure-theme-playing)
   (case (yahtzee-game-status game)
     (:playing
