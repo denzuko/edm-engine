@@ -94,11 +94,9 @@ CARD-POINTS (the scoring function) stays Hearts' own."
       (setf (hearts-game-turn game) (mod (1+ player) 4)))
   game)
 
-(defun pass-cards (game player cards)
-  (setf (nth player (hearts-game-hands game))
-        (set-difference (nth player (hearts-game-hands game)) cards :test #'equal))
-  (setf (hearts-game-passed-cards game)
-        (append (hearts-game-passed-cards game) (list (cons player cards)))))
+;; PASS-CARDS removed — genuinely dead code (defined, exported, never
+;; called anywhere), flagged during the systematic Hearts catalog
+;; (6b91931) and left as a tracked finding until now.
 
 (defun round-over-p (game)
   (every #'null (hearts-game-hands game)))
