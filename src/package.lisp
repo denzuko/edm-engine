@@ -52,6 +52,9 @@
    #:lerp #:ease-out-cubic #:tween #:make-tween #:tween-position #:tween-finished-p
    #:effect-update #:effect-finished-p #:effect-apply
    #:tween-start-x #:tween-start-y #:tween-end-x #:tween-end-y #:tween-start-time #:tween-duration
+   #:value-tween #:make-value-tween #:value-tween-values #:value-tween-finished-p
+   #:value-tween-start-values #:value-tween-end-values #:value-tween-start-time
+   #:value-tween-duration #:value-tween-easing-fn
    #:centered-row-positions #:wrap-text-lines #:centered-grid-positions #:center-within #:lrp #:anchor-at-edge #:deflayout
    #:grid-origin
    #:defstylesheet #:get-style #:resolve-style-role #:resolve-style-role-keyword #:*stylesheets*

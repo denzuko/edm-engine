@@ -81,3 +81,49 @@ EFFECT-FINISHED-P."))
 
 (defmethod effect-apply ((effect tween) now)
   (tween-position effect now))
+
+;;; VALUE-TWEEN — #46's own generalization of TWEEN to an N-
+;;; dimensional, array-based value interpolator (scale, rotation,
+;;; alpha, color — not just a hardcoded 2D position). One real
+;;; correction to #46's own draft sketch, made here rather than
+;;; implemented as originally written: that sketch specified DOUBLE-
+;;; FLOAT for the interpolated values themselves, written before this
+;;; session's own float-consistency retrofit (docs/layout-float-
+;;; consistency-and-gpu-tweens-design.md) established SINGLE-FLOAT as
+;;; the standard for coordinate/visual values throughout this engine —
+;;; matching the arena's own storage, raylib itself, ANCHOR-AT-EDGE.
+;;; #31's own DOUBLE-FLOAT lesson was specifically about TIME values
+;;; compared against RAYLIB:GET-TIME; START-TIME/DURATION stay
+;;; DOUBLE-FLOAT here too, matching TWEEN's own already-correct
+;;; convention — only the interpolated payload itself changes from
+;;; the original sketch.
+
+(define-timed-struct value-tween (start-time duration)
+  (start-values (make-array 0 :element-type 'single-float) :type (simple-array single-float (*)))
+  (end-values (make-array 0 :element-type 'single-float) :type (simple-array single-float (*)))
+  (start-time 0.0d0 :type double-float)
+  (duration 0.3d0 :type double-float)
+  (easing-fn #'ease-out-cubic :type function))
+
+(declaim (ftype (function (value-tween double-float) (simple-array single-float (*))) value-tween-values))
+(defun value-tween-values (value-tween now)
+  "Returns a fresh vector, one interpolated entry per START-VALUES/
+END-VALUES pair, at time NOW — clamped and eased the same way TWEEN-
+POSITION already is, generalized to however many dimensions this
+particular VALUE-TWEEN holds."
+  (let* ((elapsed (- now (value-tween-start-time value-tween)))
+         (raw-tt (max 0.0d0 (min 1.0d0 (/ elapsed (value-tween-duration value-tween)))))
+         (eased-tt (funcall (value-tween-easing-fn value-tween) (float raw-tt 1.0)))
+         (starts (value-tween-start-values value-tween))
+         (ends (value-tween-end-values value-tween)))
+    (map '(simple-array single-float (*)) (lambda (s e) (lerp s e eased-tt)) starts ends)))
+
+(declaim (ftype (function (value-tween double-float) boolean) value-tween-finished-p))
+(defun value-tween-finished-p (value-tween now)
+  (>= (- now (value-tween-start-time value-tween)) (value-tween-duration value-tween)))
+
+(defmethod effect-finished-p ((effect value-tween) now)
+  (value-tween-finished-p effect now))
+
+(defmethod effect-apply ((effect value-tween) now)
+  (value-tween-values effect now))

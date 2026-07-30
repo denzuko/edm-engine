@@ -194,3 +194,54 @@ spawning logic of its own."
   (let ((arena (make-arena 50)))
     (test-confetti-burst arena 0.0 0.0 0.0d0 (make-random-state t))
     (is (= 30 (length (arena-live-handles arena))))))
+
+;;; VALUE-TWEEN — #46's own generalization of TWEEN from a hardcoded
+;;; 2D-position struct to an N-dimensional, array-based value
+;;; interpolator (scale/rotation/alpha, not just position). One real
+;;; correction to #46's own draft sketch, made here rather than
+;;; implemented as originally written: that sketch specified DOUBLE-
+;;; FLOAT for the interpolated values themselves — written before this
+;;; session's own float-consistency retrofit (docs/layout-float-
+;;; consistency-and-gpu-tweens-design.md) established SINGLE-FLOAT as
+;;; the standard for coordinate/visual values throughout this engine
+;;; (matching the arena's own storage, raylib itself, ANCHOR-AT-EDGE).
+;;; #31's own DOUBLE-FLOAT lesson was specifically about TIME values
+;;; compared against RAYLIB:GET-TIME — START-TIME/DURATION stay
+;;; DOUBLE-FLOAT, matching TWEEN's own already-correct convention;
+;;; only the interpolated payload itself changes from the sketch.
+
+(test value-tween-interpolates-an-arbitrary-length-value-vector
+  "GOAL: not hardcoded to 2 dimensions like TWEEN — works for a single
+scalar (alpha), a pair (position), or more (an RGB color), the same
+mechanism throughout."
+  (let ((vt (make-value-tween :start-values (make-array 3 :element-type 'single-float
+                                                            :initial-contents '(0.0 10.0 100.0))
+                               :end-values (make-array 3 :element-type 'single-float
+                                                          :initial-contents '(10.0 0.0 200.0))
+                               :start-time 0.0d0 :duration 1.0d0)))
+    (let ((mid (value-tween-values vt 0.5d0)))
+      (is (= 3 (length mid)))
+      (is (/= (aref mid 0) (aref (value-tween-start-values vt) 0)))
+      (is (/= (aref mid 0) (aref (value-tween-end-values vt) 0))))))
+
+(test value-tween-reaches-exactly-the-end-values-once-finished
+  "GOAL: at or past START-TIME + DURATION, the interpolated result is
+exactly END-VALUES, not merely close to it — matching TWEEN-POSITION's
+own clamped-at-1.0 behavior, generalized."
+  (let ((vt (make-value-tween :start-values (make-array 1 :element-type 'single-float :initial-contents '(0.0))
+                               :end-values (make-array 1 :element-type 'single-float :initial-contents '(50.0))
+                               :start-time 0.0d0 :duration 1.0d0)))
+    (is (equalp (make-array 1 :element-type 'single-float :initial-contents '(50.0))
+                (value-tween-values vt 5.0d0)))))
+
+(test value-tween-implements-the-generic-effect-protocol
+  "GOAL: a real EFFECT, not a parallel mechanism alongside it — usable
+anywhere TWEEN already is (EFFECT-FINISHED-P/EFFECT-APPLY), matching
+the same protocol #37's own design doc names TWEEN as the first
+implementation of."
+  (let ((vt (make-value-tween :start-values (make-array 1 :element-type 'single-float :initial-contents '(0.0))
+                               :end-values (make-array 1 :element-type 'single-float :initial-contents '(1.0))
+                               :start-time 0.0d0 :duration 1.0d0)))
+    (is (not (effect-finished-p vt 0.5d0)))
+    (is (effect-finished-p vt 1.5d0))
+    (is (equalp (value-tween-values vt 0.5d0) (effect-apply vt 0.5d0)))))
